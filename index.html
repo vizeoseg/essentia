@@ -3607,6 +3607,11 @@ function renderVueSemaineEmp(offset){
 
 function setFiltreCoGerant(nom){
   _filtreCoGerant = nom;
+  // Debug temporaire
+  if(nom){
+    const assignés = clientsData.filter(c=>(c.interventions||[]).some(i=>i.intervenant===nom));
+    console.log('[Owen] Filtre activé:', nom, '| Clients assignés:', assignés.map(c=>c.nom+' jours:'+JSON.stringify((c.interventions||[]).filter(i=>i.intervenant===nom).map(i=>i.jour))));
+  }
   // Mettre à jour visuellement les boutons
   const btnTous = document.getElementById('btnVueTous');
   const btnOwen = document.getElementById('btnVueOwen');
@@ -12919,6 +12924,9 @@ function sauvegarderAssignations(){
     interv[field] = sel.value;
   });
   sauvegarderTout(true);
+  // Forcer sync Supabase immédiate pour ne pas perdre les interventions
+  try { localStorage.setItem('_lastSaveTs', Date.now().toString()); } catch(e){}
+  if(typeof _supaSnapshotEtSave === 'function') setTimeout(_supaSnapshotEtSave, 500);
   renderPlanningMois('planningMoisCalendar', planningMoisOffset);
   fermerTableauAssignation();
   toast('Assignations enregistrées ✓','success');
