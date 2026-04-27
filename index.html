@@ -3318,7 +3318,7 @@ function renderVueSemaine(offset){
       if(clientEstAbsentCeJour(c.id, dateKey)) return false;
       if(_filtreCoGerant){
         const interv = (c.interventions||[]).find(i=>i.jour===jourNom);
-        return interv && interv.intervenant === _filtreCoGerant;
+        return interv && interv.intervenant && interv.intervenant.toLowerCase() === _filtreCoGerant.toLowerCase();
       }
       return true;
     });
@@ -3371,7 +3371,7 @@ function ouvrirDrawerJour(dateKey, jourNom){
       if(clientEstAbsentCeJour(c.id, dateKey)) return false;
       if(_filtreCoGerant){
         const interv = (c.interventions||[]).find(i=>i.jour===jourNom);
-        return interv && interv.intervenant === _filtreCoGerant;
+        return interv && interv.intervenant && interv.intervenant.toLowerCase() === _filtreCoGerant.toLowerCase();
       }
       return true;
     })
@@ -3689,12 +3689,10 @@ function renderPlanningMois(containerId, offset){
       if(!_getJoursClient(c, dateKey).includes(jourNom)) return false;
       if(clientEstAbsentCeJour(c.id, dateKey)) return false;
       if(_filtreCoGerant) {
-        // Chercher l'intervenant assigné pour ce jour
         const interv = (c.interventions||[]).find(i=>i.jour===jourNom);
-        if(interv && interv.intervenant === _filtreCoGerant) return true;
-        // Fallback : si pas d'intervention pour ce jour mais une autre avec cet intervenant
-        const intervAny = (c.interventions||[]).some(i=>i.intervenant === _filtreCoGerant);
-        return intervAny && !(c.interventions||[]).find(i=>i.jour===jourNom && i.intervenant && i.intervenant !== _filtreCoGerant);
+        if(interv && interv.intervenant && interv.intervenant.toLowerCase() === _filtreCoGerant.toLowerCase()) return true;
+        const intervAny = (c.interventions||[]).some(i=>i.intervenant && i.intervenant.toLowerCase() === _filtreCoGerant.toLowerCase());
+        return intervAny && !(c.interventions||[]).find(i=>i.jour===jourNom && i.intervenant && i.intervenant.toLowerCase() !== _filtreCoGerant.toLowerCase());
       }
       return true;
     });
