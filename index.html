@@ -3276,8 +3276,16 @@ function renderVueSemaine(offset){
     const isWeekend = i >= 5;
     const dateKey = date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
     const toMinS=t=>{const s=String(t||'00:00');const p=s.includes(':')?s.split(':'):['0','0'];return (parseInt(p[0])||0)*60+(parseInt(p[1])||0);};
-    const clientsHabS = isWeekend ? [] : clientsData.filter(c => _getJoursClientDate(c, dateKey).includes(jourNom) && !clientEstAbsentCeJour(c.id, dateKey));
-    const clientsDepS = deplacementsData.filter(d=>d.dateNouvelle===dateKey).map(d=>{const c=clientsData.find(x=>x.id===d.clientId);return c?{...c,heureDebut:d.heureNouvelle,_deplacement:d}:null;}).filter(Boolean);
+    const clientsHabS = isWeekend ? [] : clientsData.filter(c => {
+      if(!_getJoursClientDate(c, dateKey).includes(jourNom)) return false;
+      if(clientEstAbsentCeJour(c.id, dateKey)) return false;
+      if(_filtreCoGerant){
+        const interv = (c.interventions||[]).find(i=>i.jour===jourNom);
+        return interv && interv.intervenant === _filtreCoGerant;
+      }
+      return true;
+    });
+    const clientsDepS = _filtreCoGerant ? [] : deplacementsData.filter(d=>d.dateNouvelle===dateKey).map(d=>{const c=clientsData.find(x=>x.id===d.clientId);return c?{...c,heureDebut:d.heureNouvelle,_deplacement:d}:null;}).filter(Boolean);
     const clients = [...clientsHabS,...clientsDepS].sort((a,b)=>toMinS(a.heureDebut)-toMinS(b.heureDebut));
     const totalH = clients.reduce((s,c) => s + (parseFloat(c.heures)||0), 0);
     const totalCA = clients.reduce((s,c) => s + (parseFloat(c.heures)||0) * (parseFloat(c.tarif)||0), 0);
@@ -3321,11 +3329,19 @@ function ouvrirDrawerJour(dateKey, jourNom){
 
   // Clients habituels ce jour, sauf ceux déplacés depuis cette date
   const clientsHab = clientsData
-    .filter(c => _getJoursClientDate(c, dateKey).includes(jourNom) && !clientEstAbsentCeJour(c.id, dateKey))
+    .filter(c => {
+      if(!_getJoursClientDate(c, dateKey).includes(jourNom)) return false;
+      if(clientEstAbsentCeJour(c.id, dateKey)) return false;
+      if(_filtreCoGerant){
+        const interv = (c.interventions||[]).find(i=>i.jour===jourNom);
+        return interv && interv.intervenant === _filtreCoGerant;
+      }
+      return true;
+    })
     .map(c => ({...c, _deplaceVers: false}));
 
   // Clients déplacés VERS cette date
-  const clientsDep = deplacementsData
+  const clientsDep = _filtreCoGerant ? [] : deplacementsData
     .filter(d => d.dateNouvelle === dateKey)
     .map(d => {
       const c = clientsData.find(x => x.id === d.clientId);
@@ -12921,6 +12937,12 @@ function assignerIntervenant(clientId, jour, intervenant){
   if(!i){ i={jour,activite:'domicile',intervenant:''}; c.interventions.push(i); }
   i.intervenant = intervenant;
   sauvegarderTout(true);
+  // Remettre le filtre à "Tous" après assignation pour ne pas masquer les autres clients
+  _filtreCoGerant = '';
+  const btnTous = document.getElementById('btnVueTous');
+  const btnOwen = document.getElementById('btnVueOwen');
+  if(btnTous){ btnTous.style.background='var(--accent)'; btnTous.style.color='#fff'; }
+  if(btnOwen){ btnOwen.style.background='transparent'; btnOwen.style.color='var(--purple)'; }
   renderPlanningMois('planningMoisCalendar', planningMoisOffset);
   toast(intervenant ? intervenant+' assigné ✓' : 'Gérant assigné ✓','success');
 }
