@@ -849,8 +849,12 @@ tr:hover td{background:rgba(74,124,247,.02);}
               <button id="btnVueSemaine" class="btn btn-sm" onclick="setVuePlanning('semaine')" style="border-radius:0;border:none;background:transparent;color:var(--text2);font-size:11px;padding:4px 10px;"><i class="fas fa-calendar-week"></i> Semaine</button>
             </div>
             <button class="btn btn-success btn-sm" onclick="ouvrirModalIntervention()"><i class="fas fa-plus"></i> Planifier</button>
+            <button class="btn btn-sm" style="background:#f97316;color:#fff;font-size:11px;padding:4px 10px;" onclick="ouvrirModalAirbnb()"><i class="fas fa-bolt"></i> Airbnb</button>
             <button class="btn btn-primary btn-sm" onclick="exportPlanningMoisPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
-            <div id="filtresSalaries" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;"></div>
+            <button id="btnVueTous" class="btn btn-sm" onclick="setFiltreCoGerant('')" style="background:var(--accent);color:#fff;font-size:11px;padding:4px 10px;"><i class="fas fa-users"></i> Tous</button>
+            <button id="btnVueOwen" class="btn btn-sm" onclick="setFiltreCoGerant('Owen')" style="background:transparent;border:1px solid var(--purple);color:var(--purple);font-size:11px;padding:4px 10px;"><i class="fas fa-user-tie"></i> Owen</button>
+            <button class="btn btn-sm" style="background:var(--teal);color:#fff;" onclick="ouvrirTableauAssignation()"><i class="fas fa-table"></i> Assigner</button>
+            <button class="btn btn-sm" style="background:var(--purple);color:#fff;" onclick="ouvrirModalPlanningCoGerant()"><i class="fas fa-file-pdf"></i> PDF co-gérant</button>
           </div>
         </div>
         <!-- Récap interventions planifiées -->
@@ -3615,57 +3619,25 @@ function renderVueSemaineEmp(offset){
   cont.innerHTML = html;
 }
 
-// Palette couleurs salariés
-const _COULEURS_SAL = [
-  {bg:'rgba(74,124,247,.18)',color:'#1a56db',border:'#1a56db'},   // bleu
-  {bg:'rgba(139,92,246,.18)',color:'#7c3aed',border:'#7c3aed'},   // violet
-  {bg:'rgba(16,185,129,.18)',color:'#059669',border:'#059669'},   // vert
-  {bg:'rgba(245,158,11,.18)',color:'#d97706',border:'#d97706'},   // ambre
-  {bg:'rgba(239,68,68,.18)', color:'#dc2626',border:'#dc2626'},   // rouge
-  {bg:'rgba(20,184,166,.18)',color:'#0d9488',border:'#0d9488'},   // teal
-];
-function _getCouleurSal(nom){
-  if(!nom) return {bg:'rgba(74,124,247,.12)',color:'var(--accent)',border:'var(--accent)'};
-  const idx = [...nom].reduce((s,c)=>s+c.charCodeAt(0),0) % _COULEURS_SAL.length;
-  return _COULEURS_SAL[idx];
-}
-
-function _renderFiltresSalaries(){
-  const wrap = document.getElementById('filtresSalaries'); if(!wrap) return;
-  // Salariés qui ont au moins une intervention assignée
-  const nomsSal = [...new Set(
-    clientsData.flatMap(c=>(c.interventions||[]).map(i=>i.intervenant).filter(Boolean))
-  )];
-  let html = `<button id="btnFiltreTous" onclick="setFiltreCoGerant('')" style="background:var(--accent);color:#fff;border:2px solid var(--accent);border-radius:7px;font-size:11px;padding:4px 12px;cursor:pointer;font-weight:700;"><i class="fas fa-users"></i> Tous</button>`;
-  nomsSal.forEach(nom=>{
-    const cl = _getCouleurSal(nom);
-    html += `<button onclick="setFiltreCoGerant('${nom}')" data-sal="${nom}" style="background:transparent;color:${cl.color};border:1px solid ${cl.border};border-radius:7px;font-size:11px;padding:4px 10px;cursor:pointer;font-weight:600;"><i class="fas fa-user-tie"></i> ${nom}</button>`;
-  });
-  wrap.innerHTML = html;
-  // Mettre en surbrillance le filtre actif
-  _updateFiltresBtns();
-}
-
-function _updateFiltresBtns(){
-  const wrap = document.getElementById('filtresSalaries'); if(!wrap) return;
-  wrap.querySelectorAll('button').forEach(btn=>{
-    const sal = btn.dataset.sal||'';
-    if(sal === _filtreCoGerant){
-      const cl = _getCouleurSal(sal);
-      btn.style.background = cl.bg;
-      btn.style.fontWeight = '800';
-    } else if(!sal && _filtreCoGerant===''){
-      btn.style.background = 'var(--accent)';
-    } else {
-      btn.style.background = 'transparent';
-      btn.style.fontWeight = '600';
-    }
-  });
-}
-
 function setFiltreCoGerant(nom){
   _filtreCoGerant = nom;
-  _updateFiltresBtns();
+  // Mettre à jour visuellement les boutons
+  const btnTous = document.getElementById('btnVueTous');
+  const btnOwen = document.getElementById('btnVueOwen');
+  if(btnTous){
+    btnTous.style.background = nom==='' ? 'var(--accent)' : 'transparent';
+    btnTous.style.color = nom==='' ? '#fff' : 'var(--accent)';
+    btnTous.style.border = nom==='' ? 'none' : '1px solid var(--accent)';
+  }
+  if(btnOwen){
+    btnOwen.style.background = nom!=='' ? 'var(--purple)' : 'transparent';
+    btnOwen.style.color = nom!=='' ? '#fff' : 'var(--purple)';
+    btnOwen.style.border = nom!=='' ? 'none' : '1px solid var(--purple)';
+    // Mettre à jour le label selon le co-gérant sélectionné
+    if(nom) btnOwen.innerHTML = '<i class="fas fa-user-tie"></i> '+nom;
+    else btnOwen.innerHTML = '<i class="fas fa-user-tie"></i> Owen';
+  }
+  // Rafraîchir le planning
   renderPlanningMois('planningMoisCalendar', planningMoisOffset);
 }
 
@@ -3715,7 +3687,7 @@ function renderPlanningMois(containerId, offset){
       }
       return true;
     });
-    const clientsDep = _filtreCoGerant ? [] : deplacementsData.filter(d=>d.dateNouvelle===dateKey).map(d=>{const c=clientsData.find(x=>x.id===d.clientId);return c?{...c,heureDebut:d.heureNouvelle,_deplacement:d}:null;}).filter(Boolean);
+    const clientsDep = _filtreCoGerant ? [] : deplacementsData.filter(d=>d.dateNouvelle===dateKey).map(d=>{const c=clientsData.find(x=>x.id===d.clientId);return c?{...c,heureDebut:d.heureNouvelle,_deplacement:d,_airbnb:d.airbnb||false}:null;}).filter(Boolean);
     const clients = [...clientsHab,...clientsDep].sort((a,b)=>toMinM(a.heureDebut)-toMinM(b.heureDebut));
     const bg = isToday ? 'rgba(74,124,247,.12)' : isWeekend ? 'rgba(0,0,0,.03)' : 'var(--bg3)';
     const border = isToday ? '2px solid var(--accent)' : '1px solid var(--border)';
@@ -3723,11 +3695,12 @@ function renderPlanningMois(containerId, offset){
     html += `<div ${clickable?`onclick="ouvrirDrawerJour('${dateKey}','${jourNom}')" onmouseover="this.style.boxShadow='0 2px 12px rgba(74,124,247,.2)'" onmouseout="this.style.boxShadow=''"`:''} style="background:${bg};border:${border};border-radius:8px;padding:5px 6px;min-height:140px;${clickable?'cursor:pointer;':''}transition:box-shadow .15s;">
       <div style="font-size:11px;font-weight:${isToday?'800':'600'};color:${isToday?'var(--accent)':isWeekend?'var(--text3)':'var(--text)'};margin-bottom:3px;">${d}${isToday?' <span style=\'font-size:9px;\'>●</span>':''}</div>
       ${clients.slice(0,6).map(c=>{
-        const interv=(c.interventions||[]).find(i=>i.jour===jourNom);
-        const assigné=interv?.intervenant||'';
-        const cl=c._deplacement?{bg:'rgba(245,158,11,.15)',color:'var(--amber)'}:_getCouleurSal(assigné);
-        const prefix=c._deplacement?'🔄 ':assigné?'👤 ':'';
-        return `<div style="font-size:9px;background:${cl.bg};color:${cl.color};border-radius:4px;padding:1px 4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${c.nom}${assigné?' · '+assigné:''}${c._deplacement?' 🔄':''}"><span style="font-weight:700;">${c.heureDebut||''}</span>${c.heureDebut?' ':''}${prefix}${c.nom}</div>`;
+        const _interv=(c.interventions||[]).find(i=>i.jour===jourNom);
+        const _assigné=_interv?.intervenant||'';
+        const _isAirbnb=c._airbnb||(c._deplacement&&(c.typeClient==='airbnb_particulier'||c.typeClient==='airbnb_agence'));
+        const _cl=_isAirbnb?{bg:'rgba(249,115,22,.18)',color:'#c2410c'}:c._deplacement?{bg:'rgba(245,158,11,.15)',color:'var(--amber)'}:_getCouleurSal(_assigné);
+        const _prefix=_isAirbnb?'🏠 ':c._deplacement?'🔄 ':_assigné?'👤 ':'';
+        return `<div style="font-size:9px;background:${_cl.bg};color:${_cl.color};border-radius:4px;padding:1px 4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${c.nom}${_assigné?' · '+_assigné:''}${_isAirbnb?' · Airbnb':''}"><span style="font-weight:700;">${c.heureDebut||''}</span>${c.heureDebut?' ':''}${_prefix}${c.nom}</div>`;
       }).join('')}
     </div>`;
   }
@@ -4364,7 +4337,6 @@ function chargerSelectClients(){
 // TOURNÉES
 // ══════════════════════════════════════════════════════════
 function chargerTournees(){
-  _renderFiltresSalaries();
   const jours=['lundi','mardi','mercredi','jeudi','vendredi'];
   const depotVal=document.getElementById('depotTournees')?.value||'';
   const depotDist=depotVal?communesAube.find(c=>c.nom===depotVal)?.distance||0:0;
@@ -12706,6 +12678,66 @@ function _cgGetPlage(){
   return {debut, fin};
 }
 
+// ═══ AIRBNB URGENCE ═══
+function ouvrirModalAirbnb(){
+  const modal = document.getElementById('modalAirbnb');
+  if(!modal) return;
+  const sel = document.getElementById('airbnbClient');
+  const clients = clientsData.filter(c=>c.typeClient==='airbnb_particulier'||c.typeClient==='airbnb_agence');
+  sel.innerHTML = '<option value="">— Sélectionner —</option>' +
+    clients.map(c=>`<option value="${c.id}">${c.nom}${c.commune?' · '+c.commune:''} (${c.typeClient==='airbnb_agence'?'Agence':'Particulier'})</option>`).join('');
+  const selInt = document.getElementById('airbnbIntervenant');
+  selInt.innerHTML = '<option value="">— Gérant —</option>' +
+    salariesData.map(s=>`<option value="${s.nom}">${s.nom}</option>`).join('');
+  document.getElementById('airbnbDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('airbnbRecap').style.display = 'none';
+  modal.style.display = 'flex';
+}
+
+function fermerModalAirbnb(){
+  document.getElementById('modalAirbnb').style.display = 'none';
+}
+
+function remplirAirbnbInfos(){
+  const id = document.getElementById('airbnbClient').value;
+  const c = clientsData.find(x=>x.id===id);
+  const recap = document.getElementById('airbnbRecap');
+  if(!c){ recap.style.display='none'; return; }
+  const tarif = c.tarif||0;
+  const duree = parseFloat(document.getElementById('airbnbDuree').value)||2;
+  const ht = tarif * duree;
+  const tvaP = getTVAClient(c)||0;
+  const tva = ht * tvaP / 100;
+  recap.style.display = 'block';
+  recap.innerHTML = `<strong>${c.nom}</strong> · ${c.commune||'—'} · Tarif : ${tarif}€/h<br>
+    Estimé : <strong>${duree}h × ${tarif}€ = ${ht.toFixed(2)}€ HT</strong> · TVA ${tvaP}% : ${tva.toFixed(2)}€ · TTC : ${(ht+tva).toFixed(2)}€`;
+}
+
+function sauvegarderAirbnb(){
+  const clientId = document.getElementById('airbnbClient').value;
+  const date = document.getElementById('airbnbDate').value;
+  const heure = document.getElementById('airbnbHeure').value;
+  const duree = parseFloat(document.getElementById('airbnbDuree').value)||2;
+  const note = document.getElementById('airbnbNote').value.trim();
+  const intervenant = document.getElementById('airbnbIntervenant').value;
+  if(!clientId){ toast('Sélectionnez un client Airbnb','warning'); return; }
+  if(!date){ toast('Sélectionnez une date','warning'); return; }
+  const c = clientsData.find(x=>x.id===clientId);
+  if(!c){ toast('Client introuvable','error'); return; }
+  deplacementsData.push({
+    id: 'airbnb_'+Date.now(),
+    clientId, dateOrigine: null, heureOrigine: null,
+    dateNouvelle: date, heureNouvelle: heure,
+    dureeEstimee: duree, dureeReelle: null,
+    intervenant, note, airbnb: true,
+    motif: 'Intervention Airbnb'+(note?' — '+note:'')
+  });
+  sauvegarderTout(true);
+  fermerModalAirbnb();
+  renderPlanningMois('planningMoisCalendar', planningMoisOffset);
+  toast(`Airbnb planifié : ${c.nom} le ${new Date(date+'T12:00').toLocaleDateString('fr-FR')} à ${heure} ✓`, 'success');
+}
+
 function _cgGetLignes(intervenant, activiteFiltre){
   if(!intervenant) return [];
   const {debut, fin} = _cgGetPlage();
@@ -12993,6 +13025,58 @@ function assignerActivite(clientId, jour, activite){
 }
 
 </script>
+<!-- ═══ MODAL AIRBNB URGENCE ═══ -->
+<div id="modalAirbnb" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);align-items:center;justify-content:center;">
+  <div style="background:var(--bg);border-radius:16px;padding:24px;width:min(480px,95vw);box-shadow:var(--shadow);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:var(--text);"><i class="fas fa-bolt" style="color:#f97316;margin-right:6px;"></i>Intervention Airbnb</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px;">Planification urgente à l'acte</div>
+      </div>
+      <button onclick="fermerModalAirbnb()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:20px;">&#x2715;</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="form-group">
+        <label>Client Airbnb</label>
+        <select id="airbnbClient" onchange="remplirAirbnbInfos()" style="width:100%;">
+          <option value="">— Sélectionner —</option>
+        </select>
+      </div>
+      <div class="rg-2">
+        <div class="form-group">
+          <label>Date d'intervention</label>
+          <input type="date" id="airbnbDate">
+        </div>
+        <div class="form-group">
+          <label>Heure de début</label>
+          <input type="time" id="airbnbHeure" value="09:00">
+        </div>
+      </div>
+      <div class="rg-2">
+        <div class="form-group">
+          <label>Durée estimée (h)</label>
+          <input type="number" id="airbnbDuree" value="2" step="0.5" min="0.5">
+        </div>
+        <div class="form-group">
+          <label>Intervenant</label>
+          <select id="airbnbIntervenant" style="width:100%;">
+            <option value="">— Gérant —</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Note / Description</label>
+        <input type="text" id="airbnbNote" placeholder="Ex: Départ locataire, ménage complet...">
+      </div>
+      <div id="airbnbRecap" style="display:none;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:10px;padding:10px 12px;font-size:11px;color:#c2410c;"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end;">
+      <button onclick="fermerModalAirbnb()" class="btn btn-ghost btn-sm">Annuler</button>
+      <button onclick="sauvegarderAirbnb()" class="btn btn-sm" style="background:#f97316;color:#fff;"><i class="fas fa-bolt"></i> Planifier l'urgence</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ MODAL PLANNING CO-GÉRANT ═══ -->
 <div id="modalPlanningCoGerant" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);align-items:center;justify-content:center;">
   <div style="background:var(--bg);border-radius:16px;padding:28px 28px 22px;width:min(460px,95vw);box-shadow:var(--shadow);">
