@@ -4347,6 +4347,7 @@ function chargerSelectClients(){
 // ══════════════════════════════════════════════════════════
 function chargerTournees(){
   _renderFiltresSalaries();
+  setTimeout(_renderFiltresSalaries, 2000); // Re-render après sync Supabase
   const jours=['lundi','mardi','mercredi','jeudi','vendredi'];
   const depotVal=document.getElementById('depotTournees')?.value||'';
   const depotDist=depotVal?communesAube.find(c=>c.nom===depotVal)?.distance||0:0;
