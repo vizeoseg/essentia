@@ -850,10 +850,7 @@ tr:hover td{background:rgba(74,124,247,.02);}
             </div>
             <button class="btn btn-success btn-sm" onclick="ouvrirModalIntervention()"><i class="fas fa-plus"></i> Planifier</button>
             <button class="btn btn-primary btn-sm" onclick="exportPlanningMoisPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
-            <button id="btnVueTous" class="btn btn-sm" onclick="setFiltreCoGerant('')" style="background:var(--accent);color:#fff;font-size:11px;padding:4px 10px;"><i class="fas fa-users"></i> Tous</button>
-            <button id="btnVueOwen" class="btn btn-sm" onclick="setFiltreCoGerant((salariesData.find(s=>s.id==='sal_owen_default'||s.poste==='Co-gérant / Nettoyage vitres')||{nom:'Owen'}).nom)" style="background:transparent;border:1px solid var(--purple);color:var(--purple);font-size:11px;padding:4px 10px;"><i class="fas fa-user-tie"></i> Owen</button>
-            <button class="btn btn-sm" style="background:var(--teal);color:#fff;" onclick="ouvrirTableauAssignation()"><i class="fas fa-table"></i> Assigner</button>
-            <button class="btn btn-sm" style="background:var(--purple);color:#fff;" onclick="ouvrirModalPlanningCoGerant()"><i class="fas fa-file-pdf"></i> PDF co-gérant</button>
+            <div id="filtresSalaries" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;"></div>
           </div>
         </div>
         <!-- Récap interventions planifiées -->
@@ -3618,26 +3615,57 @@ function renderVueSemaineEmp(offset){
   cont.innerHTML = html;
 }
 
+// Palette couleurs salariés
+const _COULEURS_SAL = [
+  {bg:'rgba(74,124,247,.18)',color:'#1a56db',border:'#1a56db'},   // bleu
+  {bg:'rgba(139,92,246,.18)',color:'#7c3aed',border:'#7c3aed'},   // violet
+  {bg:'rgba(16,185,129,.18)',color:'#059669',border:'#059669'},   // vert
+  {bg:'rgba(245,158,11,.18)',color:'#d97706',border:'#d97706'},   // ambre
+  {bg:'rgba(239,68,68,.18)', color:'#dc2626',border:'#dc2626'},   // rouge
+  {bg:'rgba(20,184,166,.18)',color:'#0d9488',border:'#0d9488'},   // teal
+];
+function _getCouleurSal(nom){
+  if(!nom) return {bg:'rgba(74,124,247,.12)',color:'var(--accent)',border:'var(--accent)'};
+  const idx = [...nom].reduce((s,c)=>s+c.charCodeAt(0),0) % _COULEURS_SAL.length;
+  return _COULEURS_SAL[idx];
+}
+
+function _renderFiltresSalaries(){
+  const wrap = document.getElementById('filtresSalaries'); if(!wrap) return;
+  // Salariés qui ont au moins une intervention assignée
+  const nomsSal = [...new Set(
+    clientsData.flatMap(c=>(c.interventions||[]).map(i=>i.intervenant).filter(Boolean))
+  )];
+  let html = `<button id="btnFiltreTous" onclick="setFiltreCoGerant('')" style="background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:11px;padding:4px 10px;cursor:pointer;font-weight:600;"><i class="fas fa-users"></i> Tous</button>`;
+  nomsSal.forEach(nom=>{
+    const cl = _getCouleurSal(nom);
+    html += `<button onclick="setFiltreCoGerant('${nom}')" data-sal="${nom}" style="background:transparent;color:${cl.color};border:1px solid ${cl.border};border-radius:7px;font-size:11px;padding:4px 10px;cursor:pointer;font-weight:600;"><i class="fas fa-user-tie"></i> ${nom}</button>`;
+  });
+  wrap.innerHTML = html;
+  // Mettre en surbrillance le filtre actif
+  _updateFiltresBtns();
+}
+
+function _updateFiltresBtns(){
+  const wrap = document.getElementById('filtresSalaries'); if(!wrap) return;
+  wrap.querySelectorAll('button').forEach(btn=>{
+    const sal = btn.dataset.sal||'';
+    if(sal === _filtreCoGerant){
+      const cl = _getCouleurSal(sal);
+      btn.style.background = cl.bg;
+      btn.style.fontWeight = '800';
+    } else if(!sal && _filtreCoGerant===''){
+      btn.style.background = 'var(--accent)';
+    } else {
+      btn.style.background = 'transparent';
+      btn.style.fontWeight = '600';
+    }
+  });
+}
+
 function setFiltreCoGerant(nom){
   _filtreCoGerant = nom;
-  const btnTous = document.getElementById('btnVueTous');
-  const btnOwen = document.getElementById('btnVueOwen');
-  const coGerant = salariesData.find(s=>s.id==='sal_owen_default'||s.poste==='Co-gérant / Nettoyage vitres');
-  const nomCoGerant = coGerant ? coGerant.nom : 'Co-gérant';
-  if(btnTous){
-    btnTous.style.background = nom==='' ? 'var(--accent)' : 'transparent';
-    btnTous.style.color = nom==='' ? '#fff' : 'var(--accent)';
-    btnTous.style.border = nom==='' ? 'none' : '1px solid var(--accent)';
-  }
-  if(btnOwen){
-    btnOwen.style.background = nom!=='' ? 'var(--purple)' : 'transparent';
-    btnOwen.style.color = nom!=='' ? '#fff' : 'var(--purple)';
-    btnOwen.style.border = nom!=='' ? 'none' : '1px solid var(--purple)';
-    // Mettre à jour le label selon le co-gérant sélectionné
-    if(nom) btnOwen.innerHTML = '<i class="fas fa-user-tie"></i> '+nomCoGerant;
-    else btnOwen.innerHTML = '<i class="fas fa-user-tie"></i> '+nomCoGerant;
-  }
-  // Rafraîchir le planning
+  _updateFiltresBtns();
   renderPlanningMois('planningMoisCalendar', planningMoisOffset);
 }
 
@@ -3694,7 +3722,13 @@ function renderPlanningMois(containerId, offset){
     const clickable = !isWeekend && clients.length > 0;
     html += `<div ${clickable?`onclick="ouvrirDrawerJour('${dateKey}','${jourNom}')" onmouseover="this.style.boxShadow='0 2px 12px rgba(74,124,247,.2)'" onmouseout="this.style.boxShadow=''"`:''} style="background:${bg};border:${border};border-radius:8px;padding:5px 6px;min-height:140px;${clickable?'cursor:pointer;':''}transition:box-shadow .15s;">
       <div style="font-size:11px;font-weight:${isToday?'800':'600'};color:${isToday?'var(--accent)':isWeekend?'var(--text3)':'var(--text)'};margin-bottom:3px;">${d}${isToday?' <span style=\'font-size:9px;\'>●</span>':''}</div>
-      ${clients.slice(0,6).map(c=>`<div style="font-size:9px;background:${c._deplacement?'rgba(245,158,11,.15)':'rgba(74,124,247,.12)'};color:${c._deplacement?'var(--amber)':'var(--accent)'};border-radius:4px;padding:1px 4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${c.nom} — ${c.heureDebut||''}${c._deplacement?' 🔄 Déplacé':''}"><span style="font-weight:700;">${c.heureDebut||''}</span>${c.heureDebut?' ':''}${c._deplacement?'🔄 ':''}${c.nom}</div>`).join('')}
+      ${clients.slice(0,6).map(c=>{
+        const interv=(c.interventions||[]).find(i=>i.jour===jourNom);
+        const assigné=interv?.intervenant||'';
+        const cl=c._deplacement?{bg:'rgba(245,158,11,.15)',color:'var(--amber)'}:_getCouleurSal(assigné);
+        const prefix=c._deplacement?'🔄 ':assigné?'👤 ':'';
+        return `<div style="font-size:9px;background:${cl.bg};color:${cl.color};border-radius:4px;padding:1px 4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${c.nom}${assigné?' · '+assigné:''}${c._deplacement?' 🔄':''}"><span style="font-weight:700;">${c.heureDebut||''}</span>${c.heureDebut?' ':''}${prefix}${c.nom}</div>`;
+      }).join('')}
     </div>`;
   }
   html += `</div>`;
@@ -4330,10 +4364,7 @@ function chargerSelectClients(){
 // TOURNÉES
 // ══════════════════════════════════════════════════════════
 function chargerTournees(){
-  // Mettre à jour le label du bouton co-gérant avec le vrai nom du salarié
-  const coGerant = salariesData.find(s=>s.id==='sal_owen_default'||s.poste==='Co-gérant / Nettoyage vitres');
-  const btnOwen = document.getElementById('btnVueOwen');
-  if(btnOwen && coGerant) btnOwen.innerHTML = '<i class="fas fa-user-tie"></i> '+coGerant.nom;
+  _renderFiltresSalaries();
   const jours=['lundi','mardi','mercredi','jeudi','vendredi'];
   const depotVal=document.getElementById('depotTournees')?.value||'';
   const depotDist=depotVal?communesAube.find(c=>c.nom===depotVal)?.distance||0:0;
