@@ -2590,8 +2590,16 @@ function _getCouleurSal(nom){
 }
 function _renderFiltresSalaries(){
   var wrap = document.getElementById('filtresSalaries'); if(!wrap) return;
-  var noms = [];
-  clientsData.forEach(function(c){ (c.interventions||[]).forEach(function(i){ if(i.intervenant && noms.indexOf(i.intervenant)===-1) noms.push(i.intervenant); }); });
+  // Uniquement les salariés réellement enregistrés dans salariesData
+  var nomsSalaries = salariesData.map(function(s){ return s.nom; });
+  // Filtrer ceux qui ont au moins une intervention assignée
+  var noms = nomsSalaries.filter(function(nom){
+    return clientsData.some(function(c){
+      return (c.interventions||[]).some(function(i){
+        return i.intervenant && i.intervenant.toLowerCase()===nom.toLowerCase();
+      });
+    });
+  });
   var html = '<button id="btnFiltreTous" onclick="setFiltreCoGerant(\'\')" style="background:var(--accent);color:#fff;border:2px solid var(--accent);border-radius:7px;font-size:11px;padding:4px 12px;cursor:pointer;font-weight:700;"><i class="fas fa-users"></i> Tous</button>';
   noms.forEach(function(nom){
     var cl = _getCouleurSal(nom);
