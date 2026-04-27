@@ -852,7 +852,7 @@ tr:hover td{background:rgba(74,124,247,.02);}
             <button class="btn btn-sm" style="background:#f97316;color:#fff;font-size:11px;padding:4px 10px;" onclick="ouvrirModalAirbnb()"><i class="fas fa-bolt"></i> Airbnb</button>
             <button class="btn btn-primary btn-sm" onclick="exportPlanningMoisPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
             <button id="btnVueTous" class="btn btn-sm" onclick="setFiltreCoGerant('')" style="background:var(--accent);color:#fff;font-size:11px;padding:4px 10px;"><i class="fas fa-users"></i> Tous</button>
-            <div id="filtresSalaries" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;"></div>
+            <button id="btnVueOwen" class="btn btn-sm" onclick="setFiltreCoGerant('Owen')" style="background:transparent;border:1px solid var(--purple);color:var(--purple);font-size:11px;padding:4px 10px;"><i class="fas fa-user-tie"></i> Owen</button>
             
             
           </div>
@@ -2596,6 +2596,7 @@ function _renderFiltresSalaries(){
   noms.forEach(function(nom){
     var cl = _getCouleurSal(nom);
     html += '<button onclick="setFiltreCoGerant(\''+nom+'\')" data-sal="'+nom+'" style="background:transparent;color:'+cl.color+';border:1px solid '+cl.color+';border-radius:7px;font-size:11px;padding:4px 10px;cursor:pointer;font-weight:600;"><i class="fas fa-user-tie"></i> '+nom+'</button>';
+    html += '<button onclick="exportPlanningSelSalariePDF(\''+nom+'\')" title="PDF planning '+nom+'" style="background:'+cl.color+';color:#fff;border:none;border-radius:7px;font-size:11px;padding:4px 8px;cursor:pointer;margin-left:-3px;"><i class="fas fa-file-pdf"></i></button>';
   });
   wrap.innerHTML = html;
   _updateFiltresBtns();
@@ -12649,6 +12650,79 @@ function cgTogglePeriode(){
   const p = document.getElementById('cgPeriode')?.value;
   const wrap = document.getElementById('cgCustomDates');
   if(wrap) wrap.style.display = p==='custom' ? 'flex' : 'none';
+}
+
+function exportPlanningSelSalariePDF(nomSal){
+  const {jsPDF}=window.jspdf; if(!jsPDF){toast('PDF non disponible','error');return;}
+  const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
+  const now=new Date();
+  const debutMois=new Date(now.getFullYear(),now.getMonth(),1);
+  const finMois=new Date(now.getFullYear(),now.getMonth()+1,0);
+  const JOURS_IDX={lundi:1,mardi:2,mercredi:3,jeudi:4,vendredi:5,samedi:6,dimanche:0};
+  const ACTIVITE_LABELS={domicile:'Domicile',nettoyage_vitres:'Vitres',repassage:'Repassage',autre:'Autre'};
+  // Collecter toutes les interventions du salarié ce mois
+  const lignes=[];
+  const cur=new Date(debutMois);
+  while(cur<=finMois){
+    const dow=cur.getDay();
+    const jourNom=Object.keys(JOURS_IDX).find(j=>JOURS_IDX[j]===dow);
+    if(jourNom&&jourNom!=='dimanche'){
+      const dateKey=cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0');
+      clientsData.forEach(function(c){
+        const jours=_getJoursClientDate?_getJoursClientDate(c,dateKey):(c.jours||[]);
+        if(!jours.includes(jourNom)) return;
+        if(clientEstAbsentCeJour&&clientEstAbsentCeJour(c.id,dateKey)) return;
+        const interv=(c.interventions||[]).find(i=>i.jour===jourNom);
+        if(!interv||!interv.intervenant||interv.intervenant.toLowerCase()!==nomSal.toLowerCase()) return;
+        lignes.push({
+          date:new Date(cur),
+          dateKey,
+          client:c.nom,
+          commune:c.commune||'—',
+          heure:c.heureDebut||'—',
+          duree:(c.heures||0)+'h',
+          activite:ACTIVITE_LABELS[interv.activite||'domicile']||interv.activite||'Domicile'
+        });
+      });
+    }
+    cur.setDate(cur.getDate()+1);
+  }
+  if(!lignes.length){toast('Aucune intervention pour '+nomSal+' ce mois','warning');return;}
+  const doc=new jsPDF();
+  const cl=_getCouleurSal(nomSal);
+  const M=14; const W=210;
+  // En-tête
+  const rgb=cl.color.match(/\d+/g)||[74,124,247];
+  doc.setFillColor(parseInt(rgb[0]),parseInt(rgb[1]),parseInt(rgb[2]));
+  doc.rect(0,0,W,22,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(14);doc.setFont('helvetica','bold');
+  doc.text(p.nomSociete||'Essentia Services',M,9);
+  doc.setFontSize(10);doc.setFont('helvetica','normal');
+  doc.text('Planning — '+nomSal,M,15);
+  doc.setFontSize(8);
+  doc.text('Généré le '+now.toLocaleDateString('fr-FR'),W-M,15,{align:'right'});
+  // Période & total
+  doc.setTextColor(40,40,40);doc.setFontSize(9);doc.setFont('helvetica','bold');
+  const periodeLabel=debutMois.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  doc.text('Période : '+periodeLabel.charAt(0).toUpperCase()+periodeLabel.slice(1),M,30);
+  const totalH=lignes.reduce(function(s,l){return s+parseFloat(l.duree)||0;},0);
+  doc.text('Total : '+lignes.length+' intervention'+(lignes.length>1?'s':'')+' · '+totalH+'h',M,36);
+  // Tableau
+  doc.autoTable({
+    head:[['Date','Heure','Client','Commune','Activité','Durée']],
+    body:lignes.map(function(l){
+      return [l.date.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}),l.heure,l.client,l.commune,l.activite,l.duree];
+    }),
+    startY:40,
+    styles:{fontSize:9,cellPadding:3},
+    headStyles:{fillColor:[parseInt(rgb[0]),parseInt(rgb[1]),parseInt(rgb[2])],textColor:[255,255,255],fontStyle:'bold'},
+    alternateRowStyles:{fillColor:[248,248,255]},
+    columnStyles:{0:{cellWidth:50},1:{cellWidth:16},2:{cellWidth:42},3:{cellWidth:30},4:{cellWidth:28},5:{cellWidth:16}}
+  });
+  const fname='planning_'+nomSal.replace(/\s+/g,'_')+'_'+now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'.pdf';
+  doc.save(fname);
+  toast('PDF généré : '+fname,'success');
 }
 
 function _cgGetPlage(){
