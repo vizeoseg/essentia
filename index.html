@@ -7064,10 +7064,6 @@ function chargerDonnees(){
       return c;
     }).map(normaliserClient);
     chargerClients();chargerSalaries();mettreAJourFinances();chargerNotesFrais();calculerStats();chargerAccueil();chargerTournees();chargerStock();chargerFournisseurs();
-    // Injecter Owen dans salariesData si absent
-    if(!salariesData.find(function(s){ return s.nom && s.nom.toLowerCase().includes('owen'); })){
-      salariesData.push({id:'sal_owen_default',nom:'Owen',poste:'Co-gérant / Nettoyage vitres',contrat:'Gérant',brut:0,chargesSalariales:0,chargesPatronales:0,net:0,coutTotal:0,coefPatronal:0,coefSalarial:0});
-    }
     toast('Données chargées','info');
   }catch(e){console.error(e);}
   // Charger paramètres
@@ -7277,19 +7273,6 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(!saved) return;
     try {
       const d = JSON.parse(saved);
-      if(d.salaries && !d.salaries.find(s => s.nom && s.nom.toLowerCase().includes('owen'))) {
-        d.salaries.push({
-          id: 'sal_owen_default',
-          nom: 'Owen',
-          poste: 'Co-gérant / Nettoyage vitres',
-          contrat: 'Gérant',
-          brut: 0, chargesSalariales: 0, chargesPatronales: 0, net: 0, coutTotal: 0,
-          coefPatronal: 0, coefSalarial: 0
-        });
-        localStorage.setItem('progestV10', JSON.stringify(d));
-        // Recharger salariesData en mémoire immédiatement
-        if(typeof salariesData !== 'undefined') salariesData = d.salaries;
-      }
     } catch(e) {}
   })();
   (function(){
