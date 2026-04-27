@@ -3636,7 +3636,7 @@ function _renderFiltresSalaries(){
   const nomsSal = [...new Set(
     clientsData.flatMap(c=>(c.interventions||[]).map(i=>i.intervenant).filter(Boolean))
   )];
-  let html = `<button id="btnFiltreTous" onclick="setFiltreCoGerant('')" style="background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:11px;padding:4px 10px;cursor:pointer;font-weight:600;"><i class="fas fa-users"></i> Tous</button>`;
+  let html = `<button id="btnFiltreTous" onclick="setFiltreCoGerant('')" style="background:var(--accent);color:#fff;border:2px solid var(--accent);border-radius:7px;font-size:11px;padding:4px 12px;cursor:pointer;font-weight:700;"><i class="fas fa-users"></i> Tous</button>`;
   nomsSal.forEach(nom=>{
     const cl = _getCouleurSal(nom);
     html += `<button onclick="setFiltreCoGerant('${nom}')" data-sal="${nom}" style="background:transparent;color:${cl.color};border:1px solid ${cl.border};border-radius:7px;font-size:11px;padding:4px 10px;cursor:pointer;font-weight:600;"><i class="fas fa-user-tie"></i> ${nom}</button>`;
