@@ -2573,6 +2573,42 @@ let pinBuffer    = '';
 var planningMoisOffset = 0;
 var planningMoisOffsetEmp = 0;
 var _vuePlanning = 'mois';
+
+// ── Couleurs salariés ──────────────────────────────────────
+var _COULEURS_SAL = [
+  {bg:'rgba(74,124,247,.18)',color:'#1a56db'},
+  {bg:'rgba(139,92,246,.18)',color:'#7c3aed'},
+  {bg:'rgba(16,185,129,.18)',color:'#059669'},
+  {bg:'rgba(245,158,11,.18)',color:'#d97706'},
+  {bg:'rgba(239,68,68,.18)', color:'#dc2626'},
+  {bg:'rgba(20,184,166,.18)',color:'#0d9488'},
+];
+function _getCouleurSal(nom){
+  if(!nom) return {bg:'rgba(74,124,247,.12)',color:'var(--accent)'};
+  var idx = [...nom].reduce(function(s,c){return s+c.charCodeAt(0);},0) % _COULEURS_SAL.length;
+  return _COULEURS_SAL[idx];
+}
+function _renderFiltresSalaries(){
+  var wrap = document.getElementById('filtresSalaries'); if(!wrap) return;
+  var noms = [];
+  clientsData.forEach(function(c){ (c.interventions||[]).forEach(function(i){ if(i.intervenant && noms.indexOf(i.intervenant)===-1) noms.push(i.intervenant); }); });
+  var html = '<button id="btnFiltreTous" onclick="setFiltreCoGerant(\'\')" style="background:var(--accent);color:#fff;border:2px solid var(--accent);border-radius:7px;font-size:11px;padding:4px 12px;cursor:pointer;font-weight:700;"><i class="fas fa-users"></i> Tous</button>';
+  noms.forEach(function(nom){
+    var cl = _getCouleurSal(nom);
+    html += '<button onclick="setFiltreCoGerant(\''+nom+'\')" data-sal="'+nom+'" style="background:transparent;color:'+cl.color+';border:1px solid '+cl.color+';border-radius:7px;font-size:11px;padding:4px 10px;cursor:pointer;font-weight:600;"><i class="fas fa-user-tie"></i> '+nom+'</button>';
+  });
+  wrap.innerHTML = html;
+  _updateFiltresBtns();
+}
+function _updateFiltresBtns(){
+  var wrap = document.getElementById('filtresSalaries'); if(!wrap) return;
+  wrap.querySelectorAll('button').forEach(function(btn){
+    var sal = btn.dataset.sal||'';
+    if(sal === _filtreCoGerant){ var cl=_getCouleurSal(sal); btn.style.background=cl.bg; btn.style.fontWeight='800'; }
+    else if(!sal && _filtreCoGerant===''){ btn.style.background='var(--accent)'; btn.style.fontWeight='700'; }
+    else { btn.style.background='transparent'; btn.style.fontWeight='600'; }
+  });
+}
 var _filtreCoGerant = ''; // '' = tous, 'Owen' = filtre co-gérant
 var _semaineOffset = 0;
 let pinTarget    = 'gerant'; // 'gerant' | 'employe' | 'switch'
@@ -3621,23 +3657,7 @@ function renderVueSemaineEmp(offset){
 
 function setFiltreCoGerant(nom){
   _filtreCoGerant = nom;
-  // Mettre à jour visuellement les boutons
-  const btnTous = document.getElementById('btnVueTous');
-  const btnOwen = document.getElementById('btnVueOwen');
-  if(btnTous){
-    btnTous.style.background = nom==='' ? 'var(--accent)' : 'transparent';
-    btnTous.style.color = nom==='' ? '#fff' : 'var(--accent)';
-    btnTous.style.border = nom==='' ? 'none' : '1px solid var(--accent)';
-  }
-  if(btnOwen){
-    btnOwen.style.background = nom!=='' ? 'var(--purple)' : 'transparent';
-    btnOwen.style.color = nom!=='' ? '#fff' : 'var(--purple)';
-    btnOwen.style.border = nom!=='' ? 'none' : '1px solid var(--purple)';
-    // Mettre à jour le label selon le co-gérant sélectionné
-    if(nom) btnOwen.innerHTML = '<i class="fas fa-user-tie"></i> '+nom;
-    else btnOwen.innerHTML = '<i class="fas fa-user-tie"></i> Owen';
-  }
-  // Rafraîchir le planning
+  _updateFiltresBtns();
   renderPlanningMois('planningMoisCalendar', planningMoisOffset);
 }
 
@@ -4337,6 +4357,7 @@ function chargerSelectClients(){
 // TOURNÉES
 // ══════════════════════════════════════════════════════════
 function chargerTournees(){
+  _renderFiltresSalaries();
   const jours=['lundi','mardi','mercredi','jeudi','vendredi'];
   const depotVal=document.getElementById('depotTournees')?.value||'';
   const depotDist=depotVal?communesAube.find(c=>c.nom===depotVal)?.distance||0:0;
