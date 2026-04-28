@@ -851,11 +851,6 @@ tr:hover td{background:rgba(74,124,247,.02);}
             <button class="btn btn-success btn-sm" onclick="ouvrirModalIntervention()"><i class="fas fa-plus"></i> Planifier</button>
             <button class="btn btn-sm" style="background:#f97316;color:#fff;font-size:11px;padding:4px 10px;" onclick="ouvrirModalAirbnb()"><i class="fas fa-bolt"></i> Airbnb</button>
             <button class="btn btn-primary btn-sm" onclick="exportPlanningMoisPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
-            <div id="filtresSalaries" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;"></div>
-            <button id="btnVueTous" class="btn btn-sm" onclick="setFiltreCoGerant('')" style="background:var(--accent);color:#fff;font-size:11px;padding:4px 10px;"><i class="fas fa-users"></i> Tous</button>
-            
-            
-            
           </div>
         </div>
         <!-- Récap interventions planifiées -->
@@ -2612,7 +2607,7 @@ function _renderFiltresSalaries(){
   noms.forEach(function(nom){
     var cl = _getCouleurSal(nom);
     html += '<button onclick="setFiltreCoGerant(\''+nom+'\')" data-sal="'+nom+'" style="background:transparent;color:'+cl.color+';border:1px solid '+cl.color+';border-radius:7px;font-size:11px;padding:4px 10px;cursor:pointer;font-weight:600;"><i class="fas fa-user-tie"></i> '+nom+'</button>';
-    html += '<button onclick="exportPlanningSelSalariePDF(\''+nom+'\')" title="PDF planning '+nom+'" style="background:'+cl.color+';color:#fff;border:none;border-radius:7px;font-size:11px;padding:4px 8px;cursor:pointer;margin-left:-3px;"><i class="fas fa-file-pdf"></i></button>';
+    html += '<button onclick="exportPlanningSelSalariePDF(\''+nom+'\')" title="PDF planning '+nom+'" style="background:'+cl.color+';color:#fff;border:none;border-radius:0 7px 7px 0;font-size:11px;padding:4px 8px;cursor:pointer;border-left:1px solid rgba(255,255,255,.3);"><i class="fas fa-file-pdf"></i></button>';
   });
   wrap.innerHTML = html;
   _updateFiltresBtns();
