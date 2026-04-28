@@ -2591,16 +2591,22 @@ function _getCouleurSal(nom){
 }
 function _renderFiltresSalaries(){
   var wrap = document.getElementById('filtresSalaries'); if(!wrap) return;
-  // Uniquement les salariés réellement enregistrés dans salariesData
-  var nomsSalaries = salariesData.map(function(s){ return s.nom; });
-  // Filtrer ceux qui ont au moins une intervention assignée
-  var noms = nomsSalaries.filter(function(nom){
-    return clientsData.some(function(c){
-      return (c.interventions||[]).some(function(i){
-        return i.intervenant && i.intervenant.toLowerCase()===nom.toLowerCase();
-      });
+  // Tous les noms d'intervenants dans les interventions clients
+  var nomsInterv = [];
+  clientsData.forEach(function(c){
+    (c.interventions||[]).forEach(function(i){
+      if(i.intervenant && nomsInterv.indexOf(i.intervenant)===-1) nomsInterv.push(i.intervenant);
     });
   });
+  // Filtrer : uniquement ceux qui sont aussi dans salariesData (comparaison insensible casse)
+  var nomsSal = salariesData.map(function(s){ return s.nom; });
+  var noms = nomsInterv.filter(function(nom){
+    return nomsSal.some(function(s){ return s.toLowerCase()===nom.toLowerCase(); });
+  });
+  // Si pas d'assignation mais des salariés existent, montrer quand même les salariés
+  if(noms.length===0 && nomsSal.length>0){
+    noms = nomsSal;
+  }
   var html = '<button id="btnFiltreTous" onclick="setFiltreCoGerant(\'\')" style="background:var(--accent);color:#fff;border:2px solid var(--accent);border-radius:7px;font-size:11px;padding:4px 12px;cursor:pointer;font-weight:700;"><i class="fas fa-users"></i> Tous</button>';
   noms.forEach(function(nom){
     var cl = _getCouleurSal(nom);
