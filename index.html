@@ -12673,8 +12673,10 @@ function exportPlanningSelSalariePDF(nomSal){
   const {jsPDF}=window.jspdf; if(!jsPDF){toast('PDF non disponible','error');return;}
   const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
   const now=new Date();
-  const debutMois=new Date(now.getFullYear(),now.getMonth(),1);
-  const finMois=new Date(now.getFullYear(),now.getMonth()+1,0);
+  // Utiliser le mois affiché dans le calendrier
+  const refMois=new Date(now.getFullYear(),now.getMonth()+planningMoisOffset,1);
+  const debutMois=new Date(refMois.getFullYear(),refMois.getMonth(),1);
+  const finMois=new Date(refMois.getFullYear(),refMois.getMonth()+1,0);
   const JOURS_IDX={lundi:1,mardi:2,mercredi:3,jeudi:4,vendredi:5,samedi:6,dimanche:0};
   const ACTIVITE_LABELS={domicile:'Domicile',nettoyage_vitres:'Vitres',repassage:'Repassage',autre:'Autre'};
   // Collecter toutes les interventions du salarié ce mois
@@ -12708,9 +12710,13 @@ function exportPlanningSelSalariePDF(nomSal){
   const doc=new jsPDF();
   const cl=_getCouleurSal(nomSal);
   const M=14; const W=210;
-  // En-tête
-  const rgb=cl.color.match(/\d+/g)||[74,124,247];
-  doc.setFillColor(parseInt(rgb[0]),parseInt(rgb[1]),parseInt(rgb[2]));
+  // Convertir la couleur en RGB pour jsPDF
+  const _colorMap = {
+    '#1a56db':[26,86,219], '#7c3aed':[124,58,237], '#059669':[5,150,105],
+    '#d97706':[217,119,6], '#dc2626':[220,38,38], '#0d9488':[13,148,136]
+  };
+  const rgb = _colorMap[cl.color] || [74,124,247];
+  doc.setFillColor(rgb[0],rgb[1],rgb[2]);
   doc.rect(0,0,W,22,'F');
   doc.setTextColor(255,255,255);
   doc.setFontSize(14);doc.setFont('helvetica','bold');
@@ -12733,7 +12739,7 @@ function exportPlanningSelSalariePDF(nomSal){
     }),
     startY:40,
     styles:{fontSize:9,cellPadding:3},
-    headStyles:{fillColor:[parseInt(rgb[0]),parseInt(rgb[1]),parseInt(rgb[2])],textColor:[255,255,255],fontStyle:'bold'},
+    headStyles:{fillColor:[rgb[0],rgb[1],rgb[2]],textColor:[255,255,255],fontStyle:'bold'},
     alternateRowStyles:{fillColor:[248,248,255]},
     columnStyles:{0:{cellWidth:50},1:{cellWidth:16},2:{cellWidth:42},3:{cellWidth:30},4:{cellWidth:28},5:{cellWidth:16}}
   });
