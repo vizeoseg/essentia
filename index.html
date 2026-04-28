@@ -851,7 +851,7 @@ tr:hover td{background:rgba(74,124,247,.02);}
             <button class="btn btn-success btn-sm" onclick="ouvrirModalIntervention()"><i class="fas fa-plus"></i> Planifier</button>
             <button class="btn btn-sm" style="background:#f97316;color:#fff;font-size:11px;padding:4px 10px;" onclick="ouvrirModalAirbnb()"><i class="fas fa-bolt"></i> Airbnb</button>
             <button class="btn btn-primary btn-sm" onclick="exportPlanningMoisPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
-            <div style="display:flex;align-items:center;gap:6px;background:rgba(74,124,247,.08);border:1px solid rgba(74,124,247,.2);border-radius:10px;padding:4px 8px;"><div id="filtresSalaries" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;"></div></div>
+            <div id="filtresSalaries" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;"></div>
           </div>
         </div>
         <!-- Récap interventions planifiées -->
@@ -3292,15 +3292,16 @@ function setVuePlanning(vue){
   document.getElementById('planningMoisCalendar').style.display = vue==='mois' ? '' : 'none';
   document.getElementById('planningVueSemaine').style.display = vue==='semaine' ? '' : 'none';
   if(vue==='semaine'){
-    // Synchroniser la vue semaine avec le mois affiché dans la vue mensuelle
-    if(planningMoisOffset !== 0){
-      const today = new Date(); today.setHours(0,0,0,0);
-      const refMois = new Date(today.getFullYear(), today.getMonth() + planningMoisOffset, 1);
-      // Calculer le nombre de semaines entre aujourd'hui et le 1er du mois affiché
-      const diffMs = refMois - today;
-      const diffSem = Math.round(diffMs / (7 * 24 * 3600 * 1000));
-      _semaineOffset = diffSem;
-    }
+    // Synchroniser : aller à la semaine qui contient le 1er jour du mois affiché
+    const today = new Date(); today.setHours(0,0,0,0);
+    const refMois = new Date(today.getFullYear(), today.getMonth() + planningMoisOffset, 1);
+    const dowRef = refMois.getDay() === 0 ? 6 : refMois.getDay() - 1;
+    const lundiRef = new Date(refMois); lundiRef.setDate(refMois.getDate() - dowRef);
+    const lundiToday = new Date(today); 
+    const dowToday = today.getDay() === 0 ? 6 : today.getDay() - 1;
+    lundiToday.setDate(today.getDate() - dowToday);
+    const diffMs = lundiRef - lundiToday;
+    _semaineOffset = Math.round(diffMs / (7 * 24 * 3600 * 1000));
     renderVueSemaine(_semaineOffset);
   }
 }
@@ -3480,7 +3481,7 @@ function ouvrirDrawerJour(dateKey, jourNom){
           return _interv?`<div style="margin-top:6px;padding:4px 8px;background:${_cl.bg};border-radius:6px;font-size:10px;color:${_cl.color};font-weight:600;"><i class="fas fa-user-tie"></i> ${_interv} · ${_activ}</div>`:'';
         })()}
         <div style="display:flex;gap:6px;margin-top:8px;">
-          ${!c._deplaceVers ? `<button class="btn btn-warning btn-sm" onclick="ouvrirModalDeplacement('${c.id}','${dateKey}','${c.heureDebut||'09:00'}','${c.nom}')"><i class="fas fa-arrows-alt"></i> Déplacer</button>` : ''}
+          ${!c._deplaceVers ? `<button class="btn btn-warning btn-sm" data-cid="${c.id}" data-date="${dateKey}" data-heure="${c.heureDebut||'09:00'}" data-nom="${c.nom.replace(/"/g,'&quot;')}" onclick="ouvrirModalDeplacement(this.dataset.cid,this.dataset.date,this.dataset.heure,this.dataset.nom)"><i class="fas fa-arrows-alt"></i> Déplacer</button>` : ''}
           ${c._deplaceVers && c._deplacement ? `<button class="btn btn-ghost btn-sm" onclick="annulerDeplacement('${c._deplacement.id}')"><i class="fas fa-undo"></i> Annuler dépl.</button>` : ''}
         </div>
       </div>`;
@@ -7319,7 +7320,12 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Select2 — avec fallback vanilla si jQuery/Select2 indisponible
   try{
     if(typeof $==='function' && typeof $.fn.select2==='function'){
-      $('.commune-select').select2({width:'100%',placeholder:'Choisir...'});
+      const _normalizeStr = s => s ? s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase() : '';
+      $('.commune-select').select2({width:'100%',placeholder:'Choisir...',matcher:function(params,data){
+        if(!params.term) return data;
+        if(_normalizeStr(data.text).includes(_normalizeStr(params.term))) return data;
+        return null;
+      }});
       $('.jours-select').select2({width:'100%',placeholder:'Choisir...'});
     }
   }catch(e){ console.warn('Select2 init skipped:', e.message); }
