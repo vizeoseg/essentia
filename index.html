@@ -9537,7 +9537,7 @@ function initPlanPrevSelectors(){
   }
   // FIX: toujours s'assurer que le mois courant est sélectionné au premier chargement
   var moisSel = document.getElementById('planPrevMoisSel');
-  if(moisSel && (!moisSel.value || moisSel.value === '0')) {
+  if(moisSel && !moisSel.dataset.init) { moisSel.dataset.init=true;
     moisSel.value = now.getMonth()+1;
   }
 }
