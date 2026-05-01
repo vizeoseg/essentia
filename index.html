@@ -3326,7 +3326,7 @@ function renderVueSemaine(offset){
     const isWeekend = i >= 5;
     const dateKey = date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
     const toMinS=t=>{const s=String(t||'00:00');const p=s.includes(':')?s.split(':'):['0','0'];return (parseInt(p[0])||0)*60+(parseInt(p[1])||0);};
-    const clientsHabS = isWeekend ? [] : clientsData.filter(c => {
+    const clientsHabS = clientsData.filter(c => {
       if(!_getJoursClientDate(c, dateKey).includes(jourNom)) return false;
       if(clientEstAbsentCeJour(c.id, dateKey)) return false;
       if(_filtreCoGerant){
@@ -3622,7 +3622,7 @@ function renderVueSemaineEmp(offset){
     const date = new Date(lundi); date.setDate(lundi.getDate() + i);
     const isToday = date.getTime() === today.getTime();
     const isWeekend = i >= 5;
-    const clients = isWeekend ? [] : clientsData.filter(c => c.jours && c.jours.includes(jourNom))
+    const clients = clientsData.filter(c => c.jours && c.jours.includes(jourNom))
       .sort((a,b) => { const toMin=t=>{const s=String(t||'00:00');const p=s.includes(':')?s.split(':'):['0','0'];return (parseInt(p[0])||0)*60+(parseInt(p[1])||0);}; return toMin(a.heureDebut)-toMin(b.heureDebut); });
     const totalH = clients.reduce((s,c) => s + (parseFloat(c.heures)||0), 0);
     totalHSem += totalH;
