@@ -3698,7 +3698,7 @@ function renderPlanningMois(containerId, offset){
       }
       return c.jours||[];
     };
-    const clientsHab = isWeekend ? [] : clientsData.filter(c => {
+    const clientsHab = clientsData.filter(c => {
       if(!_getJoursClient(c, dateKey).includes(jourNom)) return false;
       if(clientEstAbsentCeJour(c.id, dateKey)) return false;
       if(_filtreCoGerant) {
