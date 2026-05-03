@@ -8128,7 +8128,7 @@ window._genererContratPDF=_genererContratPDF;
 function _envoyerContratAvecPDF(email, nom, contratId, mode){
   const contrat=contratsData.find(c=>c.id===contratId);
   const fname=contrat?_genererContratPDF(contrat):null;
-  if(fname) toast('📎 PDF généré : '+fname+' — attachez-le à l\'email','info');
+  if(fname) toast('📎 PDF généré : '+fname,'info');
   const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
   _envoyerEmailContratAvecCopie(email, nom, contrat?.ref||'', contrat?.type||'prestation', p, mode);
 }
@@ -8138,7 +8138,7 @@ function _envoyerEmailContratAvecCopie(dest, nom, ref, type, p, mode){
   const typeLabel={prestation:'Contrat de prestation de services',cdi:'Contrat de travail CDI',cdd:'Contrat de travail CDD',temps_partiel:'Contrat de travail — Temps partiel',avenant:'Avenant au contrat'}[type]||'Contrat';
   const emailSoc=p.email||'';
   const sujet=`${typeLabel} — ${ref} — ${p.nomSociete||''}`;
-  const corps=`Bonjour ${nom},\n\nVeuillez trouver ci-joint votre ${typeLabel.toLowerCase()} référence ${ref}.\n\n📎 Le PDF du contrat a été téléchargé automatiquement sur votre appareil — merci de l'attacher à cet email avant l'envoi.\n\nCe document est établi en deux exemplaires originaux. Merci de le signer, de le parapher sur chaque page et de nous retourner un exemplaire signé par voie postale ou en nous le remettant en main propre.\n\nN'hésitez pas à nous contacter pour toute question.\n\nCordialement,\n${p.nomSociete||''}\n${p.tel||''} ${p.email?'· '+p.email:''}`;
+  const corps=`Bonjour ${nom},\n\nVeuillez trouver ci-joint votre ${typeLabel.toLowerCase()} référence ${ref}.\n\nCe document est établi en deux exemplaires originaux. Merci de le signer, de le parapher sur chaque page et de nous retourner un exemplaire signé par voie postale ou en nous le remettant en main propre.\n\nN'hésitez pas à nous contacter pour toute question.\n\nCordialement,\n${p.nomSociete||''}\n${p.tel||''} ${p.email?'· '+p.email:''}`;
 
   if(mode==='gmail'){
     const url=`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(dest)}&cc=${encodeURIComponent(emailSoc)}&su=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
@@ -12963,7 +12963,6 @@ function envoyerPlanningSalarieMail(nomSal){
   let body='Bonjour '+nomSal+',\n\nVeuillez trouver votre planning en pièce jointe';
   if(pdfFname) body+=' (fichier : '+pdfFname+')';
   body+='.\n\n';
-  if(pdfFname) body+='📎 Le PDF a été téléchargé automatiquement sur votre appareil — merci de l\'attacher à cet email avant l\'envoi.\n\n';
   body+='Détail des interventions — '+periodeLabel+' :\n\n';
   lignes.forEach(function(l){
     body+='• '+l.date.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})+' à '+l.heure+' — '+l.client+' ('+l.commune+') — '+l.activite+' — '+l.duree+'h\n';
@@ -12972,7 +12971,7 @@ function envoyerPlanningSalarieMail(nomSal){
   body+='\n\nCordialement,\n'+(p.nomSociete||'Essentia Services')+(p.tel?'\n'+p.tel:'')+(p.email?'\n'+p.email:'');
   if(!emailTo) toast('⚠ Aucun email enregistré pour '+nomSal+' — renseignez-le dans la fiche salarié','warning');
   const mode=confirm('Envoyer via Gmail ?\n(Annuler = client mail local)')?'gmail':'mailto';
-  if(pdfFname) toast('📎 PDF téléchargé : '+pdfFname+' — attachez-le à l\'email','info');
+  if(pdfFname) toast('📎 PDF téléchargé : '+pdfFname,'info');
   if(mode==='gmail'){
     const url='https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(emailTo)+'&su='+encodeURIComponent(sujet)+'&body='+encodeURIComponent(body);
     window.open(url,'_blank');
