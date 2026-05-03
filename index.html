@@ -5551,7 +5551,7 @@ document.addEventListener('change',e=>{if(e.target.id==='facTauxTVA')calculerTot
 // Droite : zone signature autre partie
 // sigData : base64 PNG signature électronique (optionnel)
 function _blocSignaturePDF(doc, y, W, M, nomPartie, labelPartie, sigData){
-  const BH=46;
+  const BH=sigData?60:46; // plus de hauteur si signature électronique
   const pageH=doc.internal.pageSize.getHeight();
   if(y>pageH-BH-15){doc.addPage();y=M;}
   const mid=M+(W-2*M)/2;
@@ -5575,16 +5575,16 @@ function _blocSignaturePDF(doc, y, W, M, nomPartie, labelPartie, sigData){
   doc.text('Pour la société :',M+4,y+13);
   doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(26,58,143);
   doc.text(nomSoc,M+4,y+19);
-  // Nom en times italic (équivalent Georgia italic dans jsPDF)
+  // Nom + titre TOUJOURS en premier, avant la zone signature
   doc.setFontSize(12); doc.setFont('times','italic'); doc.setTextColor(26,58,143);
-  doc.text('Amandine Sautière',M+4,y+28);
+  doc.text('Amandine Sautière',M+4,y+27);
   doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(70,70,70);
-  doc.text('Présidente',M+4,y+34);
-  // Signature électronique ou ligne de signature
+  doc.text('Présidente',M+4,y+33);
+  // Signature électronique : image SOUS le nom, avec marge suffisante
   if(sigData){
-    try{doc.addImage(sigData,'PNG',M+4,y+20,52,18);}catch(e){}
+    try{doc.addImage(sigData,'PNG',M+4,y+37,52,18);}catch(e){}
     doc.setFontSize(6); doc.setFont('helvetica','italic'); doc.setTextColor(5,150,105);
-    doc.text('✓ Signé électroniquement',M+4,y+42);
+    doc.text('✓ Signé électroniquement',M+4,y+57);
   } else {
     doc.setDrawColor(26,58,143); doc.setLineWidth(0.5);
     doc.line(M+4,y+42,mid-6,y+42);
@@ -5599,7 +5599,7 @@ function _blocSignaturePDF(doc, y, W, M, nomPartie, labelPartie, sigData){
   doc.text('Date : _______________________________',mid+4,y+28);
   doc.text('Signature :',mid+4,y+35);
   doc.setDrawColor(160,160,160); doc.setLineWidth(0.3);
-  doc.rect(mid+28,y+31,55,13);
+  doc.rect(mid+28,y+31,55,sigData?27:13);
 
   return y+BH;
 }
