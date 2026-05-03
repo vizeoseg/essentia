@@ -1721,7 +1721,7 @@ tr:hover td{background:rgba(74,124,247,.02);}
           <div class="form-group"><label>Objet du devis</label><input type="text" id="devisObjet" placeholder="ex: Entretien locaux — Mensuel"></div>
           <div class="form-group"><label>Surface (m²)</label><input type="number" id="devisSurface" placeholder="ex: 65" oninput="calculerDevisAuto()"></div>
           <div class="form-group"><label>Passages / sem.</label><input type="number" id="devisFrequence" value="1" min="1" max="7" oninput="calculerDevisAuto()"></div>
-          <div class="form-group" style="grid-column:1/-1;"><label>Jours d'intervention</label><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;" id="devisJoursBtns"><button type="button" id="devisJourBtn_Lundi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Lundi</button><button type="button" id="devisJourBtn_Mardi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Mardi</button><button type="button" id="devisJourBtn_Mercredi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Mercredi</button><button type="button" id="devisJourBtn_Jeudi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Jeudi</button><button type="button" id="devisJourBtn_Vendredi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Vendredi</button><button type="button" id="devisJourBtn_Samedi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Samedi</button></div></div>
+          <div class="form-group" style="grid-column:1/-1;"><label>Jours d'intervention</label><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;" id="devisJoursBtns"><button type="button" id="devisJourBtn_Lundi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Lundi</button><button type="button" id="devisJourBtn_Mardi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Mardi</button><button type="button" id="devisJourBtn_Mercredi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Mercredi</button><button type="button" id="devisJourBtn_Jeudi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Jeudi</button><button type="button" id="devisJourBtn_Vendredi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Vendredi</button><button type="button" id="devisJourBtn_Samedi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Samedi</button><button type="button" id="devisJourBtn_Dimanche" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Dimanche</button></div></div>
           <div class="form-group"><label>Heure d'intervention</label><input type="time" id="devisHeureIntervention" value="09:00"></div>
         </div>
         <!-- Type logement -->
@@ -1862,7 +1862,7 @@ tr:hover td{background:rgba(74,124,247,.02);}
           <div class="form-group"><label>Préavis résiliation</label><select id="contratPreavis"><option value="1">1 mois</option><option value="2">2 mois</option><option value="3">3 mois</option></select></div>
           <div class="form-group"><label>Email client</label><input type="email" id="contratEmailClient" placeholder="client@email.fr"></div>
           <div class="form-group"><label>Fréquence</label><select id="contratFrequence"><option value="hebdomadaire">Hebdomadaire</option><option value="bihebdomadaire">2x / semaine</option><option value="mensuelle">Mensuelle</option><option value="ponctuelle">Ponctuelle</option></select></div>
-          <div class="form-group" style="grid-column:1/-1;"><label>Jours d'intervention <span style="color:var(--red);">*</span></label><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;"><button type="button" id="contratJourBtn_Lundi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Lundi</button><button type="button" id="contratJourBtn_Mardi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Mardi</button><button type="button" id="contratJourBtn_Mercredi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Mercredi</button><button type="button" id="contratJourBtn_Jeudi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Jeudi</button><button type="button" id="contratJourBtn_Vendredi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Vendredi</button><button type="button" id="contratJourBtn_Samedi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Samedi</button></div></div>
+          <div class="form-group" style="grid-column:1/-1;"><label>Jours d'intervention <span style="color:var(--red);">*</span></label><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;"><button type="button" id="contratJourBtn_Lundi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Lundi</button><button type="button" id="contratJourBtn_Mardi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Mardi</button><button type="button" id="contratJourBtn_Mercredi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Mercredi</button><button type="button" id="contratJourBtn_Jeudi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Jeudi</button><button type="button" id="contratJourBtn_Vendredi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Vendredi</button><button type="button" id="contratJourBtn_Samedi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Samedi</button><button type="button" id="contratJourBtn_Dimanche" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Dimanche</button></div></div>
           <div class="form-group"><label>Heure d'intervention <span style="color:var(--red);">*</span></label><input type="time" id="contratHeureIntervention" value="09:00"></div>
         </div>
         <div style="margin-top:13px;">
@@ -2969,7 +2969,7 @@ function chargerAccueilEmp(){
   setEl('empAlertCount', alertes.length);
 
   // Planning semaine
-  const jours = ['lundi','mardi','mercredi','jeudi','vendredi'];
+  const jours = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
   const grid = document.getElementById('empPlanningGrid');
   if(grid) grid.innerHTML = jours.map(j=>{
     const cj = clientsData.filter(c=>c.jours&&c.jours.includes(j));
@@ -2983,7 +2983,7 @@ function chargerAccueilEmp(){
 }
 
 function chargerTourneesEmp(){
-  const jours = ['lundi','mardi','mercredi','jeudi','vendredi'];
+  const jours = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
   const prix = parseFloat(document.getElementById('empPrixCarburant')?.value)||1.95;
   const conso = parseFloat(document.getElementById('empConsommation')?.value)||6.5;
   const depotVal = document.getElementById('empDepotTournees')?.value||'';
@@ -3584,7 +3584,7 @@ function clientEstAbsentCeJour(clientId, dateKey){
 }
 
 const JOURS_NOMS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
-const JOURS_MAP = {lundi:1,mardi:2,mercredi:3,jeudi:4,vendredi:5};
+const JOURS_MAP = {lundi:1,mardi:2,mercredi:3,jeudi:4,vendredi:5,samedi:6,dimanche:0};
 const MOIS_NOMS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 
 function navPlanningMois(dir){
@@ -3773,7 +3773,7 @@ function exportPlanningMoisPDF(){
   doc.text('Généré le '+now.toLocaleDateString('fr-FR'),283,12,{align:'right'});
   // Table récurrents
   const rows=[];
-  ['lundi','mardi','mercredi','jeudi','vendredi','samedi'].forEach(j=>{
+  ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].forEach(j=>{
     const clients=clientsData.filter(c=>c.jours&&c.jours.includes(j));
     if(clients.length){
       clients.forEach(c=>{
@@ -4104,7 +4104,7 @@ function injecterTourneesEnFrais(){
   const conso=parseFloat(document.getElementById('consommation')?.value)||6.5;
   const depotVal=document.getElementById('depotTournees')?.value||'';
   const depotDist=depotVal?communesAube.find(c=>c.nom===depotVal)?.distance||0:0;
-  const jours=['lundi','mardi','mercredi','jeudi','vendredi'];
+  const jours=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
   let totalDist=0, totalCout=0, detailJours=[];
   jours.forEach(jour=>{
     const cj=clientsData.filter(c=>c.jours&&c.jours.includes(jour)&&c.commune);
@@ -4195,7 +4195,7 @@ function trierClients(col){
 function modifierClient(id){
   const c=clientsData.find(x=>x.id===id);if(!c)return;
   const communes=communesAube.map(x=>`<option value="${x.nom}" ${x.nom===c.commune?'selected':''}>${x.nom}</option>`).join('');
-  const joursBtns=['lundi','mardi','mercredi','jeudi','vendredi','samedi'].map(j=>{
+  const joursBtns=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].map(j=>{
     const on=c.jours?.includes(j);
     return `<button type="button" id="jourBtn_${j}" onclick="this.classList.toggle('jour-on');_detecterChangementJours('${c.id}')" class="jour-day-btn${on?' jour-on':''}">${j[0].toUpperCase()+j.slice(1)}</button>`;
   }).join('');
@@ -4220,7 +4220,7 @@ function modifierClient(id){
       <label>Intervenant / Activité <span style="font-size:10px;color:var(--text3);font-weight:400;">— optionnel, pour le planning co-gérant</span></label>
       <div id="editIntervenantsWrap" style="margin-top:6px;display:flex;flex-direction:column;gap:6px;">
         ${(()=>{
-          const jSel=['lundi','mardi','mercredi','jeudi','vendredi','samedi'].filter(j=>c.jours&&c.jours.includes(j));
+          const jSel=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].filter(j=>c.jours&&c.jours.includes(j));
           if(!jSel.length) return '<p style=\"font-size:11px;color:var(--text3);\">Sélectionnez d\'abord les jours d\'intervention</p>';
           const salOpts='<option value=\"\">— Gérant —</option>'+salariesData.map(s=>'<option value=\"'+s.nom+'\"'+(((c.interventions||[]).find(i=>i.jour===s.nom)||{}).intervenant===s.nom?' selected':'')+'>'+s.nom+'</option>').join('');
           const activiteLabels={domicile:'🏠 Domicile',nettoyage_vitres:'🪟 Vitres',repassage:'👔 Repassage',autre:'📦 Autre'};
@@ -4259,7 +4259,7 @@ function _getJoursClientDate(c, dateKey){
 function _detecterChangementJours(clientId){
   const c = clientsData.find(x=>x.id===clientId); if(!c) return;
   const joursActuels = c.jours||[];
-  const joursNouveaux = ['lundi','mardi','mercredi','jeudi','vendredi','samedi'].filter(j=>document.getElementById('jourBtn_'+j)?.classList.contains('jour-on'));
+  const joursNouveaux = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].filter(j=>document.getElementById('jourBtn_'+j)?.classList.contains('jour-on'));
   const changed = JSON.stringify(joursActuels.sort()) !== JSON.stringify(joursNouveaux.sort());
   const wrap = document.getElementById('editChangementJoursWrap');
   if(wrap) {
@@ -4287,7 +4287,7 @@ function sauvegarderModificationClient(){
   c.dateArrivee=document.getElementById('editDateArrivee').value;
   c.dateSortie=document.getElementById('editDateSortie').value;
   c.commune=document.getElementById('editCommune').value;
-  const joursNouveaux = ['lundi','mardi','mercredi','jeudi','vendredi','samedi'].filter(j=>document.getElementById('jourBtn_'+j)?.classList.contains('jour-on'));
+  const joursNouveaux = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].filter(j=>document.getElementById('jourBtn_'+j)?.classList.contains('jour-on'));
   const dateEffet = document.getElementById('editDateEffetJours')?.value;
   const joursAnciensAvantChangement = c.jours||[];
   const joursChanges = JSON.stringify(joursAnciensAvantChangement.sort()) !== JSON.stringify([...joursNouveaux].sort());
@@ -4367,7 +4367,7 @@ function chargerSelectClients(){
 function chargerTournees(){
   _renderFiltresSalaries();
   setTimeout(_renderFiltresSalaries, 2000); // Re-render après sync Supabase
-  const jours=['lundi','mardi','mercredi','jeudi','vendredi'];
+  const jours=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
   const depotVal=document.getElementById('depotTournees')?.value||'';
   const depotDist=depotVal?communesAube.find(c=>c.nom===depotVal)?.distance||0:0;
   const prix=parseFloat(document.getElementById('prixCarburant').value)||1.95;
@@ -6533,7 +6533,7 @@ function importNormaliserLigne(row){
 function importAfficherApercu(rawRows, fileName){
   importClientsBuffer=[];
   const erreurs=[];
-  const joursValides=['lundi','mardi','mercredi','jeudi','vendredi'];
+  const joursValides=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
 
   rawRows.forEach((row,i)=>{
     const l=importNormaliserLigne(row);
@@ -6996,7 +6996,7 @@ function exportCalendrierEmpPDF(){
   try{
     const {jsPDF}=window.jspdf;
     const doc=new jsPDF();
-    const jours=['lundi','mardi','mercredi','jeudi','vendredi'];
+    const jours=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
     doc.setFillColor(26,46,74);doc.rect(0,0,210,22,'F');
     doc.setTextColor(255,255,255);doc.setFontSize(14);doc.setFont('helvetica','bold');
     doc.text('Essentia Services — Planning semaine',14,14);
@@ -13200,7 +13200,7 @@ function exportPlanningCoGerantMail(){
 // ══════════════════════════════════════════════════════════
 // TABLEAU ASSIGNATION INTERVENANTS
 // ══════════════════════════════════════════════════════════
-const JOURS_SEMAINE = ['lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+const JOURS_SEMAINE = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
 const ACTIVITE_OPTS = [
   {v:'domicile',    l:'🏠 Domicile'},
   {v:'nettoyage_vitres', l:'🪟 Vitres'},
