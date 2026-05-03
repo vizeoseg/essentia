@@ -3850,6 +3850,7 @@ let devisData = [], lignesDevisData = [];
 let pointageData = [];
 let contratsData = [];
 let devisAutoIncrement = 1;
+let clientAutoIncrement = 1;
 let tachesChecklist = [
   {texte:"── CUISINE ──", client:""},
   {texte:"Plans nettoyés", client:""},
@@ -4035,8 +4036,10 @@ function ajouterClient(){
   const tva=(()=>{if(typeClient==='exonere_0')return 0;const v=parseFloat(document.getElementById('newTVAClient')?.value);return isNaN(v)?(typeClient==='entreprise'||typeClient==='airbnb_agence'?20:10):v;})();
   const totalMoisHT=tarif*heures*4.33*freq;
   const totalMoisTTC=totalMoisHT*(1+tva/100);
+  const refClient='CLI-'+String(clientAutoIncrement).padStart(4,'0');
+  clientAutoIncrement++;
   clientsData.push(normaliserClient({
-    id:'c'+Date.now(),nom,entreprise:document.getElementById('newEntreprise').value||'',
+    id:'c'+Date.now(),nom,refClient,entreprise:document.getElementById('newEntreprise').value||'',
     typeClient,tva,
     dateArrivee:document.getElementById('newDateArrivee').value,
     dateSortie:document.getElementById('newDateSortie').value,
@@ -4154,7 +4157,7 @@ function afficherClients(clients){
     const wfColor = wfColors[wfStatut]||'var(--text3)';
     const wfLabel = wfLabels[wfStatut]||wfStatut;
     return `<tr>
-      <td><strong>${c.nom}</strong><div style="font-size:10px;font-weight:600;color:${wfColor};margin-top:2px;">● ${wfLabel}</div>${c.email?`<div style="font-size:10px;color:var(--text3);">${c.email}</div>`:''}</td>
+      <td><strong>${c.nom}</strong>${c.refClient?`<span style="margin-left:6px;font-size:9px;font-weight:700;color:var(--accent);background:rgba(74,124,247,.1);border-radius:4px;padding:1px 5px;">${c.refClient}</span>`:''}<div style="font-size:10px;font-weight:600;color:${wfColor};margin-top:2px;">● ${wfLabel}</div>${c.email?`<div style="font-size:10px;color:var(--text3);">${c.email}</div>`:''}</td>
       <td style="font-size:11px;color:var(--text2);">${c.tel||c.entreprise||'—'}</td>
       <td>${typeBadge}</td>
       <td>${tvaBadge}</td>
@@ -5717,6 +5720,7 @@ function genererFacturePDF(){
   doc.roundedRect(W/2,y,W/2-M,clientBlockH,2,2,'F');
   doc.setTextColor(80,100,140);doc.setFontSize(7);doc.setFont('helvetica','bold');
   doc.text('FACTURÉ À',W/2+3,y+5);
+  if(c.refClient){doc.setFont('helvetica','normal');doc.text(c.refClient,W-M-2,y+5,{align:'right'});}
   doc.setTextColor(20,37,64);doc.setFontSize(10);doc.setFont('helvetica','bold');
   doc.text(clientNom,W/2+3,y+12);
   doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(80,100,140);
@@ -7041,7 +7045,7 @@ function sauvegarderTout(auto=false){
       localStorage.setItem('progestV10', JSON.stringify({
         clients:clientsData, salaries:salariesData, recettes:recettesData,
         depenses:depensesData, notesFrais:notesFraisData, factures:facturesData,
-        facNumeroAutoIncrement, charges, taches:tachesChecklist,
+        facNumeroAutoIncrement, clientAutoIncrement, charges, taches:tachesChecklist,
         stock:stockData, historiqueStock:historiqueStockData,
         fournisseurs:fournisseursData, devis:devisData, devisAutoIncrement,
         pointage:pointageData, contrats:contratsData, planningPrev:planningPrevData,
@@ -7118,6 +7122,7 @@ function chargerDonnees(){
     if(d.recettes)recettesData=d.recettes;if(d.depenses)depensesData=d.depenses;
     if(d.notesFrais)notesFraisData=d.notesFrais;if(d.factures)facturesData=d.factures;
     if(d.facNumeroAutoIncrement)facNumeroAutoIncrement=d.facNumeroAutoIncrement;
+    if(d.clientAutoIncrement)clientAutoIncrement=d.clientAutoIncrement;
     if(d.taches)tachesChecklist=d.taches.map(t=>typeof t==='string'?{texte:t,client:''}:t);
     if(d.stock)stockData=d.stock;
     if(d.historiqueStock)historiqueStockData=d.historiqueStock;
@@ -7137,6 +7142,22 @@ function chargerDonnees(){
       }
       return c;
     });
+    // #0b — Migration refClient : assigner CLI-XXXX aux clients sans référence
+    (function(){
+      const sanRef=clientsData.filter(function(c){return !c.refClient;});
+      if(!sanRef.length) return;
+      const tries=[...clientsData].sort(function(a,b){
+        return (parseInt(String(a.id).replace(/\D/g,''))||0)-(parseInt(String(b.id).replace(/\D/g,''))||0);
+      });
+      var next=clientAutoIncrement;
+      tries.forEach(function(c){
+        if(c.refClient) return;
+        var idx=clientsData.findIndex(function(x){return x.id===c.id;});
+        if(idx>=0) clientsData[idx].refClient='CLI-'+String(next).padStart(4,'0');
+        next++;
+      });
+      clientAutoIncrement=next;
+    })();
     // #1 — Recalcul des champs dérivés + migration TVA corrompue (exonere_0 avec tva!=0, ou particulier avec tva:0)
     clientsData = clientsData.map(function(c){
       var tvaN = parseFloat(c.tva);
@@ -7286,6 +7307,7 @@ function importerJSON(input){
       if(d.planningPrev) planningPrevData = d.planningPrev;
       if(d.facNumeroAutoIncrement) facNumeroAutoIncrement = d.facNumeroAutoIncrement;
       if(d.devisAutoIncrement)     devisAutoIncrement     = d.devisAutoIncrement;
+      if(d.clientAutoIncrement)    clientAutoIncrement    = d.clientAutoIncrement;
 
       // ── 5. Charges financières ──
       if(d.charges) {
@@ -8137,7 +8159,8 @@ window._envoyerContratAvecPDF=_envoyerContratAvecPDF;
 function _envoyerEmailContratAvecCopie(dest, nom, ref, type, p, mode){
   const typeLabel={prestation:'Contrat de prestation de services',cdi:'Contrat de travail CDI',cdd:'Contrat de travail CDD',temps_partiel:'Contrat de travail — Temps partiel',avenant:'Avenant au contrat'}[type]||'Contrat';
   const emailSoc=p.email||'';
-  const sujet=`${typeLabel} — ${ref} — ${p.nomSociete||''}`;
+  const _refCli=(clientsData||[]).find(function(c){return c.nom===nom;})?.refClient||'';
+  const sujet=`${typeLabel} — ${ref}${_refCli?' · '+_refCli:''} — ${p.nomSociete||''}`;
   const corps=`Bonjour ${nom},\n\nVeuillez trouver ci-joint votre ${typeLabel.toLowerCase()} référence ${ref}.\n\nCe document est établi en deux exemplaires originaux. Merci de le signer, de le parapher sur chaque page et de nous retourner un exemplaire signé par voie postale ou en nous le remettant en main propre.\n\nN'hésitez pas à nous contacter pour toute question.\n\nCordialement,\n${p.nomSociete||''}\n${p.tel||''} ${p.email?'· '+p.email:''}`;
 
   if(mode==='gmail'){
@@ -8331,6 +8354,7 @@ function genererContratPrestation(){
   doc.rect(M,y,87,30); doc.rect(W/2+2,y,87,30);
   doc.setTextColor(0,0,0); doc.setFontSize(7); doc.setFont('helvetica','bold');
   doc.text('LE PRESTATAIRE',M+3,y+5); doc.text('LE CLIENT',W/2+5,y+5);
+  if(c.refClient){doc.setFont('helvetica','normal');doc.setTextColor(100,120,160);doc.text(c.refClient,W-M-3,y+5,{align:'right'});doc.setTextColor(0,0,0);}
   doc.setFontSize(10); doc.setFont('helvetica','bold');
   doc.text(nomSoc,M+3,y+12); doc.text(c.nom||'—',W/2+5,y+12);
   doc.setFontSize(8); doc.setFont('helvetica','normal');
@@ -9189,6 +9213,7 @@ function genererDevisPDF(){
   if(c.entreprise) _destH+=5; if(c.adresse) _destH+=5; if(c.commune) _destH+=5; if(c.email) _destH+=5;
   doc.setDrawColor(0,0,0); doc.setLineWidth(0.3); doc.rect(W/2,y,W/2-M,_destH);
   doc.setTextColor(0,0,0); doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.text('DESTINATAIRE',W/2+3,y+5);
+  if(c.refClient){doc.setFont('helvetica','normal');doc.setTextColor(100,120,160);doc.text(c.refClient,W-M-2,y+5,{align:'right'});doc.setTextColor(0,0,0);}
   doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.text(c.nom||'—',W/2+3,y+12);
   doc.setFontSize(8); doc.setFont('helvetica','normal');
   let _dy=y+18;
@@ -12403,6 +12428,7 @@ console.log('Essentia v13 charge OK - Airbnb | Linge | Fournitures client');
       if (d.fournisseurs) fournisseursData = d.fournisseurs;
       if (d.facNumeroAutoIncrement) facNumeroAutoIncrement = d.facNumeroAutoIncrement;
       if (d.devisAutoIncrement)     devisAutoIncrement     = d.devisAutoIncrement;
+      if (d.clientAutoIncrement)    clientAutoIncrement    = d.clientAutoIncrement;
       // Fix sync: taches checklist et charges financières
       if (d.taches) tachesChecklist = d.taches.map(function(t){ return typeof t==='string'?{texte:t,client:''}:t; });
       if (d.checkEtat) {
