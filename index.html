@@ -5623,6 +5623,29 @@ window._blocSignaturePDF=_blocSignaturePDF;
 
 // Extrait la partie numérique de CLI-XXXX → '0042'
 function _numCli(c){ return (c?.refClient||'CLI-0000').replace('CLI-',''); }
+
+// Attribution automatique CLI-XXXX aux clients sans refClient
+// Appelée après chaque chargement de données (localStorage + Supabase)
+function _migrerRefClients(){
+  var sanRef=clientsData.filter(function(c){return !c.refClient;});
+  if(!sanRef.length) return false;
+  var tries=[...clientsData].sort(function(a,b){
+    return (parseInt(String(a.id).replace(/\D/g,''))||0)-(parseInt(String(b.id).replace(/\D/g,''))||0);
+  });
+  var next=clientAutoIncrement||1;
+  tries.forEach(function(c){
+    if(c.refClient) return;
+    var idx=clientsData.findIndex(function(x){return x.id===c.id;});
+    if(idx>=0) clientsData[idx].refClient='CLI-'+String(next).padStart(4,'0');
+    next++;
+  });
+  clientAutoIncrement=next;
+  console.info('[Migration refClient] '+sanRef.length+' client(s) → CLI-XXXX attribué(s)');
+  // Sauvegarder immédiatement + tentative différée pour Supabase
+  try{ sauvegarderTout(true); }catch(e){}
+  setTimeout(function(){ try{ sauvegarderTout(true); }catch(e){}; }, 2500);
+  return true;
+}
 // Génère la référence document selon le type
 function _refDoc(type, c, annee){
   const y=annee||new Date().getFullYear(); const n=_numCli(c);
@@ -7176,27 +7199,8 @@ function chargerDonnees(){
       }
       return c;
     });
-    // #0b — Migration refClient : assigner CLI-XXXX aux clients sans référence
-    (function(){
-      var sanRef=clientsData.filter(function(c){return !c.refClient;});
-      if(!sanRef.length) return;
-      var tries=[...clientsData].sort(function(a,b){
-        return (parseInt(String(a.id).replace(/\D/g,''))||0)-(parseInt(String(b.id).replace(/\D/g,''))||0);
-      });
-      var next=clientAutoIncrement;
-      tries.forEach(function(c){
-        if(c.refClient) return;
-        var idx=clientsData.findIndex(function(x){return x.id===c.id;});
-        if(idx>=0) clientsData[idx].refClient='CLI-'+String(next).padStart(4,'0');
-        next++;
-      });
-      clientAutoIncrement=next;
-      // Sauvegarder immédiatement (localStorage sync + Supabase)
-      try{ sauvegarderTout(true); }catch(e){}
-      // 2e tentative différée pour s'assurer que Supabase est connecté
-      setTimeout(function(){ try{ sauvegarderTout(true); }catch(e){} }, 3000);
-      console.info('[Migration] '+sanRef.length+' client(s) ont reçu un refClient CLI-XXXX');
-    })();
+    // #0b — Migration refClient (localStorage)
+    _migrerRefClients();
     // #1 — Recalcul des champs dérivés + migration TVA corrompue (exonere_0 avec tva!=0, ou particulier avec tva:0)
     clientsData = clientsData.map(function(c){
       var tvaN = parseFloat(c.tva);
@@ -7331,6 +7335,7 @@ function importerJSON(input){
 
       // ── 4. Données métier ──
       if(d.clients)    clientsData    = d.clients.map(normaliserClient);
+      _migrerRefClients(); // Attribution CLI-XXXX si manquant après chargement Supabase
       if(d.salaries)   salariesData   = d.salaries;
       if(d.recettes)   recettesData   = d.recettes;
       if(d.depenses)   depensesData   = d.depenses;
@@ -12380,6 +12385,7 @@ console.log('Essentia v13 charge OK - Airbnb | Linge | Fournitures client');
           return c;
         });
         clientsData = _clientsFiltres.map(normaliserClient);
+        _migrerRefClients(); // Attribution CLI-XXXX si manquant après sync Supabase
         // Si des TVA étaient corrompues, re-pousser immédiatement le snapshot propre vers Supabase
         if (_needResync) {
           console.log('[TVA] Correction snapshot corrompu — resync Supabase');
