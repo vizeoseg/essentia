@@ -4203,6 +4203,7 @@ function modifierClient(id){
     return `<button type="button" id="jourBtn_${j}" onclick="this.classList.toggle('jour-on');_detecterChangementJours('${c.id}')" class="jour-day-btn${on?' jour-on':''}">${j[0].toUpperCase()+j.slice(1)}</button>`;
   }).join('');
   document.getElementById('editClientForm').innerHTML=`<div class="form-row">
+    <div class="form-group"><label>Référence client</label><input type="text" value="${c.refClient||'—'}" readonly style="background:var(--bg);color:var(--accent);font-weight:700;cursor:default;"></div>
     <div class="form-group"><label>Nom</label><input type="text" id="editNom" value="${c.nom}"></div>
     <div class="form-group"><label>Téléphone</label><input type="tel" id="editTel" value="${c.tel||''}"></div>
     <div class="form-group"><label>Email</label><input type="email" id="editEmail" value="${c.email||''}"></div>
@@ -5484,7 +5485,7 @@ function exporterTarifsPDF(){
 function initFactures(){
   chargerSelectClients();
   const annee=new Date().getFullYear();
-  document.getElementById('facNumero').value=`FAC-${annee}-${String(facNumeroAutoIncrement).padStart(3,'0')}`;
+  document.getElementById('facNumero').placeholder=`FAC-${annee}-XXXX-01`;
   document.getElementById('facDate').valueAsDate=new Date();
   const moisNoms=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
   const now=new Date();document.getElementById('facPeriode').value=`${moisNoms[now.getMonth()]} ${now.getFullYear()}`;
@@ -5496,6 +5497,9 @@ function initFactures(){
 function remplirInfosFacture(){
   const id=document.getElementById('facClient').value;
   const c=clientsData.find(x=>x.id===id);if(!c)return;
+  // Auto-fill référence facture FAC-2026-XXXX-NN
+  const numEl=document.getElementById('facNumero');
+  if(numEl && c.refClient) numEl.value=_refDoc('facture',c);
   const taux=getTVAClient(c);
   document.getElementById('facTauxTVA').value=String(taux);
   document.getElementById('facTVADisplay').value=taux+'% ('+(c.typeClient==='entreprise'||c.typeClient==='airbnb_agence'?'Entreprise':c.typeClient==='exonere_0'?'Exonéré SAP/Franchise':'Particulier')+')';
@@ -5607,6 +5611,27 @@ function _blocSignaturePDF(doc, y, W, M, nomPartie, labelPartie, sigData){
   return y+BH;
 }
 window._blocSignaturePDF=_blocSignaturePDF;
+
+// Extrait la partie numérique de CLI-XXXX → '0042'
+function _numCli(c){ return (c?.refClient||'CLI-0000').replace('CLI-',''); }
+// Génère la référence document selon le type
+function _refDoc(type, c, annee){
+  const y=annee||new Date().getFullYear(); const n=_numCli(c);
+  if(type==='contrat') return `CONT-${y}-${n}`;
+  if(type==='devis'){
+    const cnt=(devisData||[]).filter(function(d){return d.clientId===c?.id;}).length+1;
+    return `DEV-${y}-${n}-${String(cnt).padStart(2,'0')}`;
+  }
+  if(type==='facture'){
+    const cnt=(facturesData||[]).filter(function(f){return f.clientId===c?.id;}).length+1;
+    return `FAC-${y}-${n}-${String(cnt).padStart(2,'0')}`;
+  }
+  if(type==='planning'){
+    const m=String(new Date().getMonth()+1).padStart(2,'0');
+    return `PLAN-${y}-${n}-${m}`;
+  }
+  return '';
+}
 
 function genererFacturePDF(){
   // ── Validation ────────────────────────────────────────────
@@ -7928,9 +7953,9 @@ function initContrats(){
   // Date par défaut
   const d=new Date().toISOString().split('T')[0];
   ['contratDebut','ctDateEmbauche','avenantDate'].forEach(id=>{const el=document.getElementById(id);if(el&&!el.value)el.value=d;});
-  // Ref auto
+  // Ref auto-remplie quand client sélectionné (via remplirInfosContrat)
   const refEl=document.getElementById('contratRef');
-  if(refEl&&!refEl.value) refEl.value=`CONT-${new Date().getFullYear()}-${String(contratsData.filter(c=>c.type==='prestation').length+1).padStart(3,'0')}`;
+  if(refEl&&!refEl.value) refEl.placeholder=`CONT-${new Date().getFullYear()}-XXXX`;
   if(_lignesContrat.length===0) ajouterLigneContrat();
   renderLignesContrat();
   renderHistoriqueContrats();
@@ -7968,7 +7993,8 @@ function setTypeContrat(type){
     const refEl=document.getElementById('ctRef');
     if(refEl&&!refEl.value){
       const prefix={cdi:'CDI',cdd:'CDD',temps_partiel:'CTP'}[type];
-      refEl.value=`${prefix}-${new Date().getFullYear()}-${String(contratsData.filter(c=>c.type===type).length+1).padStart(3,'0')}`;
+      const y=new Date().getFullYear();
+      refEl.value=`${prefix}-${y}-${String(contratsData.filter(c=>c.type===type).length+1).padStart(3,'0')}`;
     }
   }
   // Init signature canvas
@@ -8160,7 +8186,7 @@ function _envoyerEmailContratAvecCopie(dest, nom, ref, type, p, mode){
   const typeLabel={prestation:'Contrat de prestation de services',cdi:'Contrat de travail CDI',cdd:'Contrat de travail CDD',temps_partiel:'Contrat de travail — Temps partiel',avenant:'Avenant au contrat'}[type]||'Contrat';
   const emailSoc=p.email||'';
   const _refCli=(clientsData||[]).find(function(c){return c.nom===nom;})?.refClient||'';
-  const sujet=`${typeLabel} — ${ref}${_refCli?' · '+_refCli:''} — ${p.nomSociete||''}`;
+  const sujet=(_refCli?`[${_refCli}] `:'')+`${typeLabel} — ${ref} — ${p.nomSociete||''}`;
   const corps=`Bonjour ${nom},\n\nVeuillez trouver ci-joint votre ${typeLabel.toLowerCase()} référence ${ref}.\n\nCe document est établi en deux exemplaires originaux. Merci de le signer, de le parapher sur chaque page et de nous retourner un exemplaire signé par voie postale ou en nous le remettant en main propre.\n\nN'hésitez pas à nous contacter pour toute question.\n\nCordialement,\n${p.nomSociete||''}\n${p.tel||''} ${p.email?'· '+p.email:''}`;
 
   if(mode==='gmail'){
@@ -8192,6 +8218,9 @@ function toggleContratFin(){
 function remplirInfosContrat(){
   const id=document.getElementById('contratClient')?.value;
   const c=clientsData.find(x=>x.id===id); if(!c) return;
+  // Auto-fill référence contrat au format CONT-2026-XXXX
+  const refEl=document.getElementById('contratRef');
+  if(refEl && c.refClient) refEl.value=_refDoc('contrat',c);
   const tvaSel=document.getElementById('contratTVA');
   if(tvaSel){
     const tvaCli = parseFloat(c.tva);
@@ -9062,7 +9091,7 @@ function initDevis(){
   chargerSelectClientsDevis();
   const annee=new Date().getFullYear();
   const numEl=document.getElementById('devisNumero');
-  if(numEl) numEl.value=`DEV-${annee}-${String(devisAutoIncrement).padStart(3,'0')}`;
+  if(numEl&&!numEl.value) numEl.placeholder=`DEV-${annee}-XXXX-01`;
   const dateEl=document.getElementById('devisDate');
   if(dateEl) dateEl.valueAsDate=new Date();
   if(lignesDevisData.length===0) ajouterLigneDevis();
@@ -9081,6 +9110,9 @@ function chargerSelectClientsDevis(){
 function remplirInfosDevis(){
   const id=document.getElementById('devisClient')?.value;
   const c=clientsData.find(x=>x.id===id); if(!c) return;
+  // Auto-fill référence devis DEV-2026-XXXX-NN
+  const numEl=document.getElementById('devisNumero');
+  if(numEl && c.refClient) numEl.value=_refDoc('devis',c);
   const taux=getTVAClient(c);
   const tvaSel=document.getElementById('devisTauxTVA');
   if(tvaSel) tvaSel.value=String(taux);
@@ -12916,7 +12948,8 @@ function exportPlanningSelSalariePDF(nomSal){
     alternateRowStyles:{fillColor:[248,248,255]},
     columnStyles:{0:{cellWidth:50},1:{cellWidth:16},2:{cellWidth:42},3:{cellWidth:30},4:{cellWidth:28},5:{cellWidth:16}}
   });
-  const fname='planning_'+nomSal.replace(/\s+/g,'_')+'_'+now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'.pdf';
+  const _mm=String(now.getMonth()+1).padStart(2,'0');
+  const fname='PLAN-'+now.getFullYear()+'-'+_mm+'_'+nomSal.replace(/\s+/g,'_')+'.pdf';
   doc.save(fname);
   toast('PDF généré : '+fname,'success');
 }
@@ -12980,12 +13013,13 @@ function envoyerPlanningSalarieMail(nomSal){
         alternateRowStyles:{fillColor:[248,248,255]},
         columnStyles:{0:{cellWidth:52},1:{cellWidth:15},2:{cellWidth:42},3:{cellWidth:30},4:{cellWidth:28},5:{cellWidth:15}}
       });
-      pdfFname='planning_'+nomSal.replace(/\s+/g,'_')+'_'+now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'.pdf';
+      const _mmM=String(now.getMonth()+1).padStart(2,'0');
+      pdfFname='PLAN-'+now.getFullYear()+'-'+_mmM+'_'+nomSal.replace(/\s+/g,'_')+'.pdf';
       doc.save(pdfFname);
     }
   }catch(pdfErr){ console.warn('PDF planning mail:',pdfErr); }
 
-  const sujet='Planning '+(p.nomSociete||'Essentia')+' — '+nomSal+' — '+periodeLabel.charAt(0).toUpperCase()+periodeLabel.slice(1);
+  const sujet='Planning — '+nomSal+' — '+periodeLabel.charAt(0).toUpperCase()+periodeLabel.slice(1)+' — '+(p.nomSociete||'Essentia');
   let body='Bonjour '+nomSal+',\n\nVeuillez trouver votre planning en pièce jointe';
   if(pdfFname) body+=' (fichier : '+pdfFname+')';
   body+='.\n\n';
