@@ -917,6 +917,7 @@ tr:hover td{background:rgba(74,124,247,.02);}
         <div class="form-row">
           <div class="form-group"><label>Nom complet *</label><input type="text" id="newSalNom" placeholder="Dupont Marie"></div>
           <div class="form-group"><label>Poste</label><input type="text" id="newSalPoste" placeholder="Agent de nettoyage"></div>
+          <div class="form-group"><label>Email</label><input type="email" id="newSalEmail" placeholder="employe@email.fr"></div>
           <div class="form-group"><label>Type contrat</label><select id="newSalContrat"><option value="CDI">CDI</option><option value="CDD">CDD</option><option value="Temps partiel">Temps partiel</option><option value="Alternance">Alternance</option></select></div>
           <div class="form-group"><label>Date entrée</label><input type="date" id="newSalDateEntree"></div>
           <div class="form-group"><label>Date fin contrat</label><input type="date" id="newSalDateFin"></div>
@@ -2608,7 +2609,8 @@ function _renderFiltresSalaries(){
   noms.forEach(function(nom){
     var cl = _getCouleurSal(nom);
     html += '<button onclick="setFiltreCoGerant(\''+nom+'\')" data-sal="'+nom+'" style="background:transparent;color:'+cl.color+';border:1px solid '+cl.color+';border-radius:7px;font-size:11px;padding:4px 10px;cursor:pointer;font-weight:600;"><i class="fas fa-user-tie"></i> '+nom+'</button>';
-    html += '<button onclick="exportPlanningSelSalariePDF(\''+nom+'\')" title="PDF planning '+nom+'" style="background:'+cl.color+';color:#fff;border:none;border-radius:0 7px 7px 0;font-size:11px;padding:4px 8px;cursor:pointer;border-left:1px solid rgba(255,255,255,.3);"><i class="fas fa-file-pdf"></i></button>';
+    html += '<button onclick="exportPlanningSelSalariePDF(\''+nom+'\')" title="PDF planning '+nom+'" style="background:'+cl.color+';color:#fff;border:none;border-radius:0 0 0 0;font-size:11px;padding:4px 8px;cursor:pointer;border-left:1px solid rgba(255,255,255,.3);"><i class="fas fa-file-pdf"></i></button>';
+    html += '<button onclick="envoyerPlanningSalarieMail(\''+nom+'\')" title="Envoyer planning '+nom+' par email" style="background:var(--teal);color:#fff;border:none;border-radius:0 7px 7px 0;font-size:11px;padding:4px 8px;cursor:pointer;border-left:1px solid rgba(255,255,255,.3);"><i class="fas fa-envelope"></i></button>';
   });
   wrap.innerHTML = html;
   _updateFiltresBtns();
@@ -3356,7 +3358,7 @@ function renderVueSemaine(offset){
   joursData.forEach(({jourNom, date, isToday, isWeekend, dateKey, clients, totalH, totalCA}) => {
     const bg = isToday ? 'rgba(74,124,247,.1)' : isWeekend ? 'rgba(0,0,0,.03)' : 'var(--bg3)';
     const border = isToday ? '2px solid var(--accent)' : '1px solid var(--border)';
-    const clickable = !isWeekend && clients.length > 0;
+    const clickable = clients.length > 0;
     html += `<div onclick="${clickable ? `ouvrirDrawerJour('${dateKey}','${jourNom}')` : ''}"
       style="background:${bg};border:${border};border-radius:9px;padding:8px 7px;min-height:120px;${clickable?'cursor:pointer;':''}transition:box-shadow .15s;"
       ${clickable ? `onmouseover="this.style.boxShadow='0 2px 12px rgba(74,124,247,.2)'" onmouseout="this.style.boxShadow=''"` : ''}>
@@ -3480,9 +3482,11 @@ function ouvrirDrawerJour(dateKey, jourNom){
           const _cl=_getCouleurSal(_interv);
           return _interv?`<div style="margin-top:6px;padding:4px 8px;background:${_cl.bg};border-radius:6px;font-size:10px;color:${_cl.color};font-weight:600;"><i class="fas fa-user-tie"></i> ${_interv} · ${_activ}</div>`:'';
         })()}
-        <div style="display:flex;gap:6px;margin-top:8px;">
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
           ${!c._deplaceVers ? `<button class="btn btn-warning btn-sm" data-cid="${c.id}" data-date="${dateKey}" data-heure="${c.heureDebut||'09:00'}" data-nom="${c.nom.replace(/"/g,'&quot;')}" onclick="ouvrirModalDeplacement(this.dataset.cid,this.dataset.date,this.dataset.heure,this.dataset.nom)"><i class="fas fa-arrows-alt"></i> Déplacer</button>` : ''}
           ${c._deplaceVers && c._deplacement ? `<button class="btn btn-ghost btn-sm" onclick="annulerDeplacement('${c._deplacement.id}')"><i class="fas fa-undo"></i> Annuler dépl.</button>` : ''}
+          ${entryPrev?.statut !== 'absent' ? `<button class="btn btn-danger btn-sm" onclick="setPlanStatut('${c.id}','${dateKey}','absent');ouvrirDrawerJour('${dateKey}','${jourNom}');"><i class="fas fa-times-circle"></i> Absent</button>` : `<button class="btn btn-ghost btn-sm" onclick="setPlanStatut('${c.id}','${dateKey}','prevu');ouvrirDrawerJour('${dateKey}','${jourNom}');"><i class="fas fa-undo"></i> Rétablir</button>`}
+          ${(!entryPrev || entryPrev.statut==='prevu' || entryPrev.statut==='prevu_passe') ? `<button class="btn btn-success btn-sm" onclick="setPlanStatut('${c.id}','${dateKey}','confirme');ouvrirDrawerJour('${dateKey}','${jourNom}');"><i class="fas fa-check"></i> Confirmer</button>` : ''}
         </div>
       </div>`;
     });
@@ -3713,15 +3717,16 @@ function renderPlanningMois(containerId, offset){
     const clients = [...clientsHab,...clientsDep].sort((a,b)=>toMinM(a.heureDebut)-toMinM(b.heureDebut));
     const bg = isToday ? 'rgba(74,124,247,.12)' : isWeekend ? 'rgba(0,0,0,.03)' : 'var(--bg3)';
     const border = isToday ? '2px solid var(--accent)' : '1px solid var(--border)';
-    const clickable = !isWeekend && clients.length > 0;
+    const clickable = clients.length > 0;
     html += `<div ${clickable?`onclick="ouvrirDrawerJour('${dateKey}','${jourNom}')" onmouseover="this.style.boxShadow='0 2px 12px rgba(74,124,247,.2)'" onmouseout="this.style.boxShadow=''"`:''} style="background:${bg};border:${border};border-radius:8px;padding:5px 6px;min-height:140px;${clickable?'cursor:pointer;':''}transition:box-shadow .15s;">
       <div style="font-size:11px;font-weight:${isToday?'800':'600'};color:${isToday?'var(--accent)':isWeekend?'var(--text3)':'var(--text)'};margin-bottom:3px;">${d}${isToday?' <span style=\'font-size:9px;\'>●</span>':''}</div>
       ${clients.slice(0,6).map(c=>{
         const _interv=(c.interventions||[]).find(i=>i.jour===jourNom);
         const _assigné=_interv?.intervenant||'';
         const _isAirbnb=c._airbnb||(c._deplacement&&(c.typeClient==='airbnb_particulier'||c.typeClient==='airbnb_agence'));
-        const _cl=_isAirbnb?{bg:'rgba(249,115,22,.18)',color:'#c2410c'}:c._deplacement?{bg:'rgba(245,158,11,.15)',color:'var(--amber)'}:_getCouleurSal(_assigné);
-        const _prefix=_isAirbnb?'🏠 ':c._deplacement?'🔄 ':_assigné?'👤 ':'';
+        const _estAbsent=planningPrevData[c.id]?.[dateKey]?.statut==='absent';
+        const _cl=_estAbsent?{bg:'rgba(239,68,68,.18)',color:'#dc2626'}:_isAirbnb?{bg:'rgba(249,115,22,.18)',color:'#c2410c'}:c._deplacement?{bg:'rgba(245,158,11,.15)',color:'var(--amber)'}:_getCouleurSal(_assigné);
+        const _prefix=_estAbsent?'✗ ':_isAirbnb?'🏠 ':c._deplacement?'🔄 ':_assigné?'👤 ':'';
         return `<div style="font-size:9px;background:${_cl.bg};color:${_cl.color};border-radius:4px;padding:1px 4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${c.nom}${_assigné?' · '+_assigné:''}${_isAirbnb?' · Airbnb':''}"><span style="font-weight:700;">${c.heureDebut||''}</span>${c.heureDebut?' ':''}${_prefix}${c.nom}</div>`;
       }).join('')}
     </div>`;
@@ -4162,6 +4167,7 @@ function afficherClients(clients){
       <td><span style="font-weight:600;color:var(--teal);">${caMoisTTC.toFixed(2)} €</span></td>
       <td><span style="font-weight:600;">${caAnHT.toFixed(2)} €</span></td>
       <td style="white-space:nowrap;">
+        <button class="icon-btn" style="color:var(--purple);" title="Envoyer un contrat par email" onclick="envoyerContratClient('${c.id}')"><i class="fas fa-file-contract"></i></button>
         <button class="icon-btn" style="color:var(--green);" title="Générer facture mensuelle" onclick="genererFactureDepuisClient('${c.id}')"><i class="fas fa-file-invoice-dollar"></i></button>
         <button class="icon-btn" style="color:var(--accent);" title="Créer un devis" onclick="creerDevisDepuisClient('${c.id}')"><i class="fas fa-file-signature"></i></button>
         <button class="icon-btn edit" onclick="modifierClient('${c.id}')"><i class="fas fa-edit"></i></button>
@@ -4430,6 +4436,7 @@ function ajouterSalarie(){
   salariesData.push({
     id:'s'+Date.now(),nom,
     poste:document.getElementById('newSalPoste').value||'',
+    email:document.getElementById('newSalEmail')?.value||'',
     contrat:document.getElementById('newSalContrat').value||'CDI',
     dateEntree:document.getElementById('newSalDateEntree').value||'',
     dateFin:document.getElementById('newSalDateFin').value||'',
@@ -4441,7 +4448,7 @@ function ajouterSalarie(){
     net:Math.round((brut-chSal)*100)/100,
     coutTotal:Math.round((brut+chPat)*100)/100
   });
-  ['newSalNom','newSalPoste','newSalDateEntree','newSalDateFin'].forEach(id=>document.getElementById(id).value='');
+  ['newSalNom','newSalPoste','newSalEmail','newSalDateEntree','newSalDateFin'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('newSalBrut').value='1800';
   chargerSalaries();calculerStats();toast('Salarié ajouté !','success');
 }
@@ -7968,10 +7975,52 @@ function envoyerContratEmail(source, mode){
 function envoyerContratEmailId(id){
   const c=contratsData.find(x=>x.id===id); if(!c) return;
   const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
-  // Demander le mode via un quick confirm
   const mode=confirm('Envoyer via Gmail ?\n(Cliquez Annuler pour utiliser votre client mail local)')?'gmail':'mailto';
   _envoyerEmailContratAvecCopie(c.emailClient||c.emailSalarie||'', c.clientOuSalarie, c.ref, c.type, p, mode);
 }
+
+function envoyerContratClient(clientId){
+  const client=clientsData.find(c=>c.id===clientId); if(!client) return;
+  if(!client.email){ toast('Aucun email enregistré pour '+client.nom, 'warning'); return; }
+  const contrats=contratsData.filter(c=>c.clientOuSalarie===client.nom);
+  if(!contrats.length){ toast('Aucun contrat trouvé pour '+client.nom+'. Générez-en un depuis l\'onglet Contrats.', 'warning'); return; }
+  const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
+  const tLabels={prestation:'Contrat prestation',cdi:'CDI',cdd:'CDD',temps_partiel:'Temps partiel',avenant:'Avenant'};
+  // Supprimer un éventuel picker déjà ouvert
+  const old=document.getElementById('modalContratPicker'); if(old) old.remove();
+  const items=contrats.map(c=>{
+    const cid=c.id, cref=c.ref.replace(/'/g,"\\'"), ctype=c.type;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--bg3);">
+      <div>
+        <div style="font-weight:600;font-size:12px;">${c.ref}</div>
+        <div style="font-size:10px;color:var(--text3);">${tLabels[c.type]||c.type} · ${c.date||''}${c.statut?' · '+c.statut:''}</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-primary btn-sm" onclick="_envoyerEmailContratAvecCopie('${client.email}','${client.nom.replace(/'/g,"\\'")}','${c.ref}','${c.type}',JSON.parse(localStorage.getItem('progestParams')||'{}'),'gmail');document.getElementById('modalContratPicker').remove();">
+          <i class="fab fa-google"></i> Gmail
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="_envoyerEmailContratAvecCopie('${client.email}','${client.nom.replace(/'/g,"\\'")}','${c.ref}','${c.type}',JSON.parse(localStorage.getItem('progestParams')||'{}'),'mailto');document.getElementById('modalContratPicker').remove();">
+          <i class="fas fa-envelope"></i> Mail
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+  const modal=document.createElement('div');
+  modal.id='modalContratPicker'; modal.className='modal'; modal.style.display='flex';
+  modal.innerHTML=`<div class="modal-box modal-sm">
+    <div class="modal-header">
+      <span class="modal-title"><i class="fas fa-file-contract" style="color:var(--purple);margin-right:6px;"></i>Envoyer contrat — ${client.nom}</span>
+      <button class="modal-close" onclick="this.closest('.modal').remove()"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:12px;padding:6px 10px;background:rgba(0,0,0,.04);border-radius:6px;">
+      <i class="fas fa-envelope" style="margin-right:4px;"></i>Destinataire : <strong>${client.email}</strong>
+    </div>
+    ${items}
+  </div>`;
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+window.envoyerContratClient=envoyerContratClient;
 
 function _envoyerEmailContratAvecCopie(dest, nom, ref, type, p, mode){
   const typeLabel={prestation:'Contrat de prestation de services',cdi:'Contrat de travail CDI',cdd:'Contrat de travail CDD',temps_partiel:'Contrat de travail — Temps partiel',avenant:'Avenant au contrat'}[type]||'Contrat';
@@ -8641,8 +8690,19 @@ function supprimerIntervention(id) {
 }
 window.supprimerIntervention = supprimerIntervention;
 
-const statutColors = { planifie: 'var(--amber)', confirme: 'var(--accent)', realise: 'var(--green)' };
-const statutLabels = { planifie: 'Planifié', confirme: 'Confirmé', realise: 'Réalisé' };
+function annulerIntervention(id) {
+  const interv = interventionsData.find(i => i.id === id);
+  if (!interv) return;
+  interv.statut = interv.statut === 'annule' ? 'planifie' : 'annule';
+  localStorage.setItem('essentiaInterventions', JSON.stringify(interventionsData));
+  afficherInterventionsList();
+  if (typeof chargerTournees === 'function') chargerTournees();
+  toast(interv.statut === 'annule' ? 'Intervention annulée' : 'Intervention rétablie', interv.statut === 'annule' ? 'warning' : 'success');
+}
+window.annulerIntervention = annulerIntervention;
+
+const statutColors = { planifie: 'var(--amber)', confirme: 'var(--accent)', realise: 'var(--green)', annule: 'var(--red)' };
+const statutLabels = { planifie: 'Planifié', confirme: 'Confirmé', realise: 'Réalisé', annule: '✗ Annulé' };
 const typeColors = { 'Ménage': '#3b82f6', 'Repassage': '#ec4899', 'Airbnb': '#10b981', 'Ponctuel': '#f59e0b' };
 
 function afficherInterventionsList() {
@@ -8661,14 +8721,16 @@ function afficherInterventionsList() {
   cont.innerHTML = upcoming.map(i => {
     const d = new Date(i.date + 'T00:00:00');
     const dateStr = d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
-    const col = typeColors[i.type] || 'var(--accent)';
-    return `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.95);border:1px solid ${col};border-left:3px solid ${col};border-radius:8px;padding:5px 10px;font-size:11px;box-shadow:0 1px 4px rgba(0,0,0,.08);">
-      <span style="color:${col};font-weight:700;">${i.heure}</span>
+    const col = i.statut === 'annule' ? 'var(--red)' : (typeColors[i.type] || 'var(--accent)');
+    const opacity = i.statut === 'annule' ? 'opacity:.55;' : '';
+    return `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.95);border:1px solid ${col};border-left:3px solid ${col};border-radius:8px;padding:5px 10px;font-size:11px;box-shadow:0 1px 4px rgba(0,0,0,.08);${opacity}">
+      <span style="color:${col};font-weight:700;${i.statut==='annule'?'text-decoration:line-through;':''}">${i.heure}</span>
       <span style="font-weight:600;">${dateStr}</span>
       <span style="color:var(--text2);">${i.clientNom||i.type}</span>
       ${i.intervenante?`<span style="color:var(--text3);">· ${i.intervenante}</span>`:''}
       <span style="background:${statutColors[i.statut]||'var(--accent)'};color:#fff;padding:1px 7px;border-radius:20px;font-size:9px;font-weight:700;">${statutLabels[i.statut]||i.statut}</span>
-      <button onclick="supprimerIntervention('${i.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;padding:0 2px;" title="Supprimer">×</button>
+      ${i.statut!=='annule'?`<button onclick="annulerIntervention('${i.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;padding:0 2px;font-weight:700;" title="Annuler">✗</button>`:`<button onclick="annulerIntervention('${i.id}')" style="background:none;border:none;color:var(--green);cursor:pointer;font-size:11px;padding:0 2px;" title="Rétablir">↩</button>`}
+      <button onclick="supprimerIntervention('${i.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:0 2px;" title="Supprimer">×</button>
     </div>`;
   }).join('');
 }
@@ -9737,15 +9799,16 @@ function chargerPlanningPrevisionnel(){
       var jourAff = joursN2[dt.getDay()];
       var dateAff = String(dt.getDate()).padStart(2,'0')+'/'+String(mois).padStart(2,'0');
       var hPrevI = parseFloat(interv.duree)||0;
-      totalIntPrev += hPrevI;
+      var isAnnule = interv.statut === 'annule';
+      if(!isAnnule) totalIntPrev += hPrevI;
       var isRealise = interv.statut === 'realise' || interv.statut === 'confirme';
       if(isRealise) totalIntReal += hPrevI;
-      var statutOptI = ['planifie','confirme','realise'].map(function(s){
-        var lbl = {planifie:'⧖ Planifié', confirme:'✓ Confirmé', realise:'✓ Réalisé'}[s];
+      var statutOptI = ['planifie','confirme','realise','annule'].map(function(s){
+        var lbl = {planifie:'⧖ Planifié', confirme:'✓ Confirmé', realise:'✓ Réalisé', annule:'✗ Annulé'}[s];
         return '<option value="'+s+'"'+(interv.statut===s?' selected':'')+'>'+lbl+'</option>';
       }).join('');
       var typeCol = {'Ménage':'#3b82f6','Repassage':'#ec4899','Airbnb':'#10b981','Ponctuel':'#f59e0b'}[interv.type]||'var(--accent)';
-      intHtml += '<tr>'
+      intHtml += '<tr style="'+(isAnnule?'opacity:.5;text-decoration:line-through;background:rgba(220,38,38,.04);':'')+'">'
         + '<td style="padding:5px 8px;font-size:11px;white-space:nowrap;">'
           + dateAff+' <span style="color:var(--text3);font-size:10px;">'+jourAff+'</span>'
           + (interv.heure?' <span style="color:var(--accent);font-size:10px;font-weight:700;">'+interv.heure+'</span>':'')
@@ -12747,6 +12810,57 @@ function exportPlanningSelSalariePDF(nomSal){
   doc.save(fname);
   toast('PDF généré : '+fname,'success');
 }
+
+function envoyerPlanningSalarieMail(nomSal){
+  const sal=salariesData.find(s=>s.nom===nomSal);
+  const emailTo=sal?.email||'';
+  const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
+  const now=new Date();
+  const refMois=new Date(now.getFullYear(),now.getMonth()+planningMoisOffset,1);
+  const debutMois=new Date(refMois.getFullYear(),refMois.getMonth(),1);
+  const finMois=new Date(refMois.getFullYear(),refMois.getMonth()+1,0);
+  const JOURS_IDX={lundi:1,mardi:2,mercredi:3,jeudi:4,vendredi:5,samedi:6,dimanche:0};
+  const ACTIVITE_LABELS={domicile:'Domicile',nettoyage_vitres:'Vitres',repassage:'Repassage',autre:'Autre'};
+  const lignes=[];
+  const cur=new Date(debutMois);
+  while(cur<=finMois){
+    const dow=cur.getDay();
+    const jourNom=Object.keys(JOURS_IDX).find(j=>JOURS_IDX[j]===dow);
+    if(jourNom){
+      const dateKey=cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0');
+      clientsData.forEach(function(c){
+        const jours=typeof _getJoursClientDate==='function'?_getJoursClientDate(c,dateKey):(c.jours||[]);
+        if(!jours.includes(jourNom)) return;
+        if(typeof clientEstAbsentCeJour==='function'&&clientEstAbsentCeJour(c.id,dateKey)) return;
+        const interv=(c.interventions||[]).find(i=>i.jour===jourNom);
+        if(!interv||!interv.intervenant||interv.intervenant.toLowerCase()!==nomSal.toLowerCase()) return;
+        lignes.push({date:new Date(cur),client:c.nom,commune:c.commune||'—',heure:c.heureDebut||'—',duree:parseFloat(c.heures)||0,activite:ACTIVITE_LABELS[interv.activite||'domicile']||'Domicile'});
+      });
+    }
+    cur.setDate(cur.getDate()+1);
+  }
+  if(!lignes.length){toast('Aucune intervention pour '+nomSal+' ce mois','warning');return;}
+  const periodeLabel=debutMois.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  const totalH=lignes.reduce(function(s,l){return s+l.duree;},0);
+  const sujet='Planning '+(p.nomSociete||'Essentia')+' — '+nomSal+' — '+periodeLabel.charAt(0).toUpperCase()+periodeLabel.slice(1);
+  let body='Bonjour '+nomSal+',\n\nVoici votre planning pour '+periodeLabel+' :\n\n';
+  lignes.forEach(function(l){
+    body+='• '+l.date.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})+' à '+l.heure+' — '+l.client+' ('+l.commune+') — '+l.activite+' — '+l.duree+'h\n';
+  });
+  body+='\nTotal : '+lignes.length+' intervention'+(lignes.length>1?'s':'')+' · '+totalH+'h';
+  body+='\n\nCordialement,\n'+(p.nomSociete||'Essentia Services')+(p.tel?'\n'+p.tel:'')+(p.email?'\n'+p.email:'');
+  if(!emailTo) toast('⚠ Aucun email enregistré pour '+nomSal+' — renseignez-le dans la fiche salarié','warning');
+  const mode=confirm('Envoyer via Gmail ?\n(Annuler = client mail local)')?'gmail':'mailto';
+  if(mode==='gmail'){
+    const url='https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(emailTo)+'&su='+encodeURIComponent(sujet)+'&body='+encodeURIComponent(body);
+    window.open(url,'_blank');
+    toast('Gmail ouvert — planning '+nomSal+(emailTo?' → '+emailTo:''),'success');
+  } else {
+    window.location.href='mailto:'+encodeURIComponent(emailTo)+'?subject='+encodeURIComponent(sujet)+'&body='+encodeURIComponent(body);
+    toast('Client mail ouvert — planning '+nomSal,'info');
+  }
+}
+window.envoyerPlanningSalarieMail=envoyerPlanningSalarieMail;
 
 function _cgGetPlage(){
   const p = document.getElementById('cgPeriode')?.value || 'mois';
