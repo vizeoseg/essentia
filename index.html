@@ -801,6 +801,7 @@ tr:hover td{background:rgba(74,124,247,.02);}
         </div>
         <div class="table-wrap">
           <table><thead><tr>
+            <th style="width:85px;">Réf. client</th>
             <th style="cursor:pointer;" onclick="trierClients('nom')">Nom ⇅</th>
             <th>Tél / Contact</th>
             <th style="cursor:pointer;" onclick="trierClients('typeClient')">Type ⇅</th>
@@ -4157,7 +4158,8 @@ function afficherClients(clients){
     const wfColor = wfColors[wfStatut]||'var(--text3)';
     const wfLabel = wfLabels[wfStatut]||wfStatut;
     return `<tr>
-      <td><strong>${c.nom}</strong>${c.refClient?`<span style="margin-left:6px;font-size:9px;font-weight:700;color:var(--accent);background:rgba(74,124,247,.1);border-radius:4px;padding:1px 5px;">${c.refClient}</span>`:''}<div style="font-size:10px;font-weight:600;color:${wfColor};margin-top:2px;">● ${wfLabel}</div>${c.email?`<div style="font-size:10px;color:var(--text3);">${c.email}</div>`:''}</td>
+      <td style="text-align:center;"><span style="display:inline-block;font-size:10px;font-weight:800;color:var(--accent);background:rgba(74,124,247,.12);border:1px solid rgba(74,124,247,.25);border-radius:6px;padding:3px 7px;letter-spacing:.5px;white-space:nowrap;">${c.refClient||'—'}</span></td>
+      <td><strong>${c.nom}</strong><div style="font-size:10px;font-weight:600;color:${wfColor};margin-top:2px;">● ${wfLabel}</div>${c.email?`<div style="font-size:10px;color:var(--text3);">${c.email}</div>`:''}</td>
       <td style="font-size:11px;color:var(--text2);">${c.tel||c.entreprise||'—'}</td>
       <td>${typeBadge}</td>
       <td>${tvaBadge}</td>
@@ -4202,8 +4204,15 @@ function modifierClient(id){
     const on=c.jours?.includes(j);
     return `<button type="button" id="jourBtn_${j}" onclick="this.classList.toggle('jour-on');_detecterChangementJours('${c.id}')" class="jour-day-btn${on?' jour-on':''}">${j[0].toUpperCase()+j.slice(1)}</button>`;
   }).join('');
-  document.getElementById('editClientForm').innerHTML=`<div class="form-row">
-    <div class="form-group"><label>Référence client</label><input type="text" value="${c.refClient||'—'}" readonly style="background:var(--bg);color:var(--accent);font-weight:700;cursor:default;"></div>
+  document.getElementById('editClientForm').innerHTML=`
+    <div style="grid-column:1/-1;display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,rgba(74,124,247,.1),rgba(74,124,247,.04));border:1.5px solid rgba(74,124,247,.3);border-radius:12px;padding:13px 18px;margin-bottom:6px;">
+      <i class="fas fa-id-card" style="font-size:22px;color:var(--accent);flex-shrink:0;"></i>
+      <div>
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin-bottom:2px;">Référence client — permanente &amp; unique</div>
+        <div style="font-size:22px;font-weight:900;color:var(--accent);letter-spacing:2px;line-height:1;">${c.refClient||'—'}</div>
+      </div>
+    </div>
+    <div class="form-row">
     <div class="form-group"><label>Nom</label><input type="text" id="editNom" value="${c.nom}"></div>
     <div class="form-group"><label>Téléphone</label><input type="tel" id="editTel" value="${c.tel||''}"></div>
     <div class="form-group"><label>Email</label><input type="email" id="editEmail" value="${c.email||''}"></div>
@@ -7169,9 +7178,9 @@ function chargerDonnees(){
     });
     // #0b — Migration refClient : assigner CLI-XXXX aux clients sans référence
     (function(){
-      const sanRef=clientsData.filter(function(c){return !c.refClient;});
+      var sanRef=clientsData.filter(function(c){return !c.refClient;});
       if(!sanRef.length) return;
-      const tries=[...clientsData].sort(function(a,b){
+      var tries=[...clientsData].sort(function(a,b){
         return (parseInt(String(a.id).replace(/\D/g,''))||0)-(parseInt(String(b.id).replace(/\D/g,''))||0);
       });
       var next=clientAutoIncrement;
@@ -7182,6 +7191,11 @@ function chargerDonnees(){
         next++;
       });
       clientAutoIncrement=next;
+      // Sauvegarder immédiatement (localStorage sync + Supabase)
+      try{ sauvegarderTout(true); }catch(e){}
+      // 2e tentative différée pour s'assurer que Supabase est connecté
+      setTimeout(function(){ try{ sauvegarderTout(true); }catch(e){} }, 3000);
+      console.info('[Migration] '+sanRef.length+' client(s) ont reçu un refClient CLI-XXXX');
     })();
     // #1 — Recalcul des champs dérivés + migration TVA corrompue (exonere_0 avec tva!=0, ou particulier avec tva:0)
     clientsData = clientsData.map(function(c){
