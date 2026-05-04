@@ -6514,19 +6514,40 @@ ${(text||'').split('\n').map(function(l){return '<p style="margin:0 0 8px;">'+l.
 ${soc}${p.tel?' · '+p.tel:''}${p.email?' · '+p.email:''}</div>
 </div></body></html>`;
   const body={from:_RESEND_FROM,to:Array.isArray(to)?to:[to],subject,html};
-  if(cc){body.reply_to=Array.isArray(cc)?cc[0]:cc;}
+  if(cc&&cc!==to){body.reply_to=Array.isArray(cc)?cc[0]:cc;}
   if(attachments&&attachments.length) body.attachments=attachments;
-  const res=await fetch('https://api.resend.com/emails',{
-    method:'POST',
-    headers:{'Authorization':'Bearer '+_RESEND_KEY,'Content-Type':'application/json'},
-    body:JSON.stringify(body)
-  });
-  if(!res.ok){
-    const err=await res.json().catch(function(){return{message:'Erreur '+res.status};});
-    throw new Error(err.message||'Erreur Resend '+res.status);
+  console.log('[Resend] Envoi vers',to,'sujet:',subject,'pièces jointes:',attachments?.length||0);
+  let res;
+  try{
+    res=await fetch('https://api.resend.com/emails',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+_RESEND_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+  }catch(netErr){
+    console.error('[Resend] Erreur réseau/CORS:',netErr);
+    throw new Error('Erreur réseau : '+netErr.message+' (vérifiez la console F12)');
   }
-  return res.json();
+  const data=await res.json().catch(function(){return{};});
+  console.log('[Resend] Réponse HTTP',res.status,data);
+  if(!res.ok){
+    throw new Error((data.message||data.name||JSON.stringify(data)||'Erreur Resend')+' (HTTP '+res.status+')');
+  }
+  return data;
 }
+
+// Test rapide Resend depuis la console : _testResend('votre@email.fr')
+async function _testResend(dest){
+  if(!dest){alert('Usage : _testResend("votre@email.fr")');return;}
+  try{
+    const r=await _envoyerEmailResend({to:dest,subject:'Test Resend — Essentia',text:'Test de connexion Resend. Si vous recevez cet email, l\'intégration fonctionne.'});
+    alert('✅ TEST OK — Email envoyé ! ID : '+r.id);
+  }catch(e){
+    alert('❌ ERREUR : '+e.message+'\n\nOuvrez la console (F12) pour plus de détails.');
+    console.error('[Resend test]',e);
+  }
+}
+window._testResend=_testResend;
 
 async function envoyerFactureEmail(){
   const d=_getFactureData();
