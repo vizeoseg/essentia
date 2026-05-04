@@ -6543,21 +6543,42 @@ function _regenererContratPDFb64(contrat){
     doc.text('Réf. : '+ref+'  |  Date : '+debut,W-M,y+15,{align:'right'});
     doc.setLineWidth(0.5); doc.line(M,y+24,W-M,y+24); y+=30;
 
-    // ── Parties ──
+    // ── Parties — hauteur dynamique pour textes longs ──
+    var colW=87; var colGap=W/2+2; var maxTxt=colW-8;
+    doc.setFontSize(9); doc.setFont('helvetica','bold');
+    var nomSocLines=doc.splitTextToSize(nomSoc,maxTxt);
+    var clientNom=c.nom||contrat.clientOuSalarie||'—';
+    var clientNomLines=doc.splitTextToSize(clientNom,maxTxt);
+    var adresseSoc=(p.adresse||'').split('\n')[0]||'';
+    var adresseSocLines=doc.splitTextToSize(adresseSoc,maxTxt);
+    var communeClient=c.commune||c.adresse||'—';
+    var communeLines=doc.splitTextToSize(communeClient,maxTxt);
+    var emailLines=c.email?doc.splitTextToSize(c.email,maxTxt):[];
+    var lh=5; // line height mm
+    var leftH=8+(nomSocLines.length*lh)+(p.siret?lh:0)+(adresseSocLines.length*lh)+2;
+    var rightH=8+(clientNomLines.length*lh)+(communeLines.length*lh)+(emailLines.length*lh)+(c.tel?lh:0)+2;
+    var boxH=Math.max(leftH,rightH,30);
     doc.setDrawColor(0,0,0); doc.setLineWidth(0.3);
-    doc.rect(M,y,87,30); doc.rect(W/2+2,y,87,30);
-    doc.setTextColor(0,0,0); doc.setFontSize(7); doc.setFont('helvetica','bold');
-    doc.text('LE PRESTATAIRE',M+3,y+5); doc.text('LE CLIENT',W/2+5,y+5);
+    doc.rect(M,y,colW,boxH); doc.rect(colGap,y,colW,boxH);
+    doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(0,0,0);
+    doc.text('LE PRESTATAIRE',M+3,y+5); doc.text('LE CLIENT',colGap+3,y+5);
     if(c.refClient){doc.setFont('helvetica','normal');doc.setTextColor(100,120,160);doc.text(c.refClient,W-M-3,y+5,{align:'right'});doc.setTextColor(0,0,0);}
-    doc.setFontSize(10); doc.setFont('helvetica','bold');
-    doc.text(nomSoc,M+3,y+12); doc.text(c.nom||contrat.clientOuSalarie||'—',W/2+5,y+12);
+    // Colonne gauche : prestataire
+    var yL=y+10;
+    doc.setFontSize(9); doc.setFont('helvetica','bold');
+    nomSocLines.forEach(function(l){doc.text(l,M+3,yL);yL+=lh;});
     doc.setFontSize(8); doc.setFont('helvetica','normal');
-    if(p.siret) doc.text('SIRET : '+p.siret,M+3,y+18);
-    if(p.adresse) doc.text((p.adresse.split('\n')[0]||''),M+3,y+23);
-    doc.text(c.commune||c.adresse||'—',W/2+5,y+18);
-    if(c.email) doc.text(c.email,W/2+5,y+23);
-    if(c.tel) doc.text('Tél : '+c.tel,W/2+5,y+27);
-    y+=36;
+    if(p.siret){doc.text('SIRET : '+p.siret,M+3,yL);yL+=lh;}
+    adresseSocLines.forEach(function(l){doc.text(l,M+3,yL);yL+=lh;});
+    // Colonne droite : client
+    var yR=y+10;
+    doc.setFontSize(9); doc.setFont('helvetica','bold');
+    clientNomLines.forEach(function(l){doc.text(l,colGap+3,yR);yR+=lh;});
+    doc.setFontSize(8); doc.setFont('helvetica','normal');
+    communeLines.forEach(function(l){doc.text(l,colGap+3,yR);yR+=lh;});
+    emailLines.forEach(function(l){doc.text(l,colGap+3,yR);yR+=lh;});
+    if(c.tel){doc.text('Tél : '+c.tel,colGap+3,yR);}
+    y+=boxH+6;
 
     // ── Objet & conditions financières ──
     var section=function(titre,contenu,rgb){
