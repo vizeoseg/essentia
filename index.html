@@ -6492,48 +6492,110 @@ function telechargerXMLFacture(id){
   toast(`XML Factur-X téléchargé ✓`,'success');
 }
 
-function envoyerFactureEmail(){
-  const d=_getFactureData();
-  if(!d.client.nom){toast('Sélectionnez un client','warning');return;}
-  const p=d.societe;
-  const dest=d.emailClient;
-  const sujet=`Facture ${d.numero} - ${p.nomSociete||'Votre prestataire'}`;
-  const fmt2=v=>parseFloat(v||0).toFixed(2).replace('.',',');
-  const corps=`Bonjour${d.client.nom?' '+d.client.nom:''},
+// ════════════════════════════════════════════════════════════
+// RESEND — Envoi email avec pièce jointe PDF
+// ════════════════════════════════════════════════════════════
+const _RESEND_KEY='re_V6J5HiEK_LJ4dvJaADGTFnKdUrajLd6oQ';
+const _RESEND_FROM='Essentia Services <contact@essentia-services.fr>';
 
-Veuillez trouver ci-jointe votre facture ${d.numero} du ${d.date}.
+function _pdfB64(doc){ return doc.output('datauristring').split(',')[1]; }
 
-Récapitulatif :
-- Montant HT : ${fmt2(d.sousTotal)} €
-- TVA ${d.tauxTVA}% : ${fmt2(d.montantTVA)} €
-- Total TTC : ${fmt2(d.totalTTC)} €
-${d.periode?'- Période : '+d.periode:''}
-
-Règlement à effectuer avant le ${d.dateEch||'date d\'échéance'}.${p.iban?'\nIBAN : '+p.iban:''}
-
-Cordialement,
-${p.nomSociete||''}
-${p.tel||''}`;
-
-  const mailto=`mailto:${encodeURIComponent(dest)}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
-  window.open(mailto,'_blank');
-  toast('Client email ouvert dans votre messagerie','info');
+async function _envoyerEmailResend({to,cc,subject,text,attachments}){
+  if(!to||!(Array.isArray(to)?to[0]:to)) throw new Error('Destinataire manquant');
+  const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
+  const soc=p.nomSociete||'Essentia Services';
+  const html=`<!DOCTYPE html><html><body style="margin:0;padding:20px;background:#f5f7fa;font-family:Arial,sans-serif;">
+<div style="max-width:600px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1);">
+<div style="background:#1a2e4a;padding:22px 30px;"><h1 style="color:#fff;margin:0;font-size:18px;">${soc}</h1></div>
+<div style="padding:28px 30px;color:#333;font-size:14px;line-height:1.7;">
+${(text||'').split('\n').map(function(l){return '<p style="margin:0 0 8px;">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</p>';}).join('')}
+</div>
+<div style="background:#f5f7fa;padding:14px 30px;font-size:11px;color:#888;text-align:center;">
+${soc}${p.tel?' · '+p.tel:''}${p.email?' · '+p.email:''}</div>
+</div></body></html>`;
+  const body={from:_RESEND_FROM,to:Array.isArray(to)?to:[to],subject,html};
+  if(cc){body.reply_to=Array.isArray(cc)?cc[0]:cc;}
+  if(attachments&&attachments.length) body.attachments=attachments;
+  const res=await fetch('https://api.resend.com/emails',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+_RESEND_KEY,'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
+  if(!res.ok){
+    const err=await res.json().catch(function(){return{message:'Erreur '+res.status};});
+    throw new Error(err.message||'Erreur Resend '+res.status);
+  }
+  return res.json();
 }
 
-function envoyerFactureEmailId(id){
-  const f=facturesData.find(x=>x.id===id);if(!f)return;
-  const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
-  const dest=f.emailClient||'';
-  const sujet=`Facture ${f.numero} - ${p.nomSociete||'Votre prestataire'}`;
+async function envoyerFactureEmail(){
+  const d=_getFactureData();
+  if(!d.client.nom){toast('Sélectionnez un client','warning');return;}
+  if(!d.emailClient){toast('Email client manquant — renseignez-le dans la fiche client','warning');return;}
+  const p=d.societe;
   const fmt2=v=>parseFloat(v||0).toFixed(2).replace('.',',');
-  const corps=`Bonjour ${f.client},\n\nVeuillez trouver ci-jointe la facture ${f.numero} du ${f.date}.\n\nTotal TTC : ${fmt2(f.totalTTC)} €\n\nCordialement,\n${p.nomSociete||''}`;
-  const mailto=`mailto:${encodeURIComponent(dest)}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
-  window.open(mailto,'_blank');
-  // Marquer comme envoyée
-  f.statut='envoyee';
-  sauvegarderTout(true);
-  renderHistoriqueFactures();
-  toast('Email ouvert — facture marquée "Envoyée"','success');
+  const subject='Facture '+d.numero+' — '+(p.nomSociete||'Votre prestataire');
+  const text='Bonjour'+(d.client.nom?' '+d.client.nom:'')+',\n\nVeuillez trouver ci-jointe votre facture '+d.numero+' du '+d.date+'.\n\nRécapitulatif :\n- Montant HT : '+fmt2(d.sousTotal)+' €\n- TVA '+d.tauxTVA+'% : '+fmt2(d.montantTVA)+' €\n- Total TTC : '+fmt2(d.totalTTC)+' €'+(d.periode?'\n- Période : '+d.periode:'')+'\n\nRèglement avant le '+(d.dateEch||'date d\'échéance')+'.'+(p.iban?'\nIBAN : '+p.iban:'')+'\n\nCordialement,\n'+(p.nomSociete||'')+(p.tel?'\n'+p.tel:'');
+  // Générer PDF facture
+  const {jsPDF}=window.jspdf||{};
+  let attachments=[];
+  if(jsPDF){try{
+    const doc=new jsPDF({unit:'mm',format:'a4'});
+    doc.setFillColor(26,46,74);doc.rect(0,0,210,22,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(13);doc.setFont('helvetica','bold');
+    doc.text(p.nomSociete||'Essentia Services',14,10);
+    doc.setFontSize(9);doc.setFont('helvetica','normal');
+    doc.text('FACTURE N° '+d.numero+' — '+d.date,14,17);
+    doc.setTextColor(40,40,40);doc.setFontSize(10);doc.setFont('helvetica','bold');
+    doc.text('Facturé à : '+d.client.nom,14,32);
+    doc.autoTable({
+      head:[['Description','Montant HT']],
+      body:[['Prestations — '+d.periode,fmt2(d.sousTotal)+' €'],['TVA '+d.tauxTVA+'%',fmt2(d.montantTVA)+' €'],['TOTAL TTC',fmt2(d.totalTTC)+' €']],
+      startY:38,styles:{fontSize:10},headStyles:{fillColor:[26,46,74],textColor:[255,255,255]},
+    });
+    doc.setFontSize(8);doc.setTextColor(100,100,100);
+    doc.text('Règlement avant le '+(d.dateEch||'—')+(p.iban?' · IBAN : '+p.iban:''),14,doc.lastAutoTable.finalY+10);
+    attachments=[{filename:'Facture_'+d.numero+'.pdf',content:_pdfB64(doc)}];
+  }catch(e){console.warn('PDF facture email:',e);}}
+  toast('Envoi en cours…','info');
+  try{
+    await _envoyerEmailResend({to:d.emailClient,cc:p.email,subject,text,attachments});
+    toast('✉ Facture '+d.numero+' envoyée à '+d.emailClient,'success');
+  }catch(err){toast('Erreur envoi : '+err.message,'error');}
+}
+
+async function envoyerFactureEmailId(id){
+  const f=facturesData.find(x=>x.id===id);if(!f)return;
+  const dest=f.emailClient||'';
+  if(!dest){toast('Email client manquant sur cette facture','warning');return;}
+  const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
+  const fmt2=v=>parseFloat(v||0).toFixed(2).replace('.',',');
+  const subject='Facture '+f.numero+' — '+(p.nomSociete||'Votre prestataire');
+  const text='Bonjour '+f.client+',\n\nVeuillez trouver ci-jointe la facture '+f.numero+' du '+f.date+'.\n\nTotal TTC : '+fmt2(f.totalTTC)+' €\n\nCordialement,\n'+(p.nomSociete||'')+(p.tel?'\n'+p.tel:'');
+  const {jsPDF}=window.jspdf||{};
+  let attachments=[];
+  if(jsPDF){try{
+    const doc=new jsPDF({unit:'mm',format:'a4'});
+    doc.setFillColor(26,46,74);doc.rect(0,0,210,22,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(13);doc.setFont('helvetica','bold');
+    doc.text(p.nomSociete||'Essentia Services',14,10);
+    doc.setFontSize(9);doc.setFont('helvetica','normal');
+    doc.text('FACTURE N° '+f.numero+' — '+f.date,14,17);
+    doc.setTextColor(40,40,40);doc.setFontSize(10);doc.setFont('helvetica','bold');
+    doc.text('Facturé à : '+f.client,14,32);
+    doc.autoTable({
+      head:[['Description','Montant']],
+      body:[['Prestations',fmt2(f.totalHT)+' € HT'],['TVA '+f.tva+'%',fmt2(f.totalHT*f.tva/100)+' €'],['TOTAL TTC',fmt2(f.totalTTC)+' €']],
+      startY:38,styles:{fontSize:10},headStyles:{fillColor:[26,46,74],textColor:[255,255,255]},
+    });
+    attachments=[{filename:'Facture_'+f.numero+'.pdf',content:_pdfB64(doc)}];
+  }catch(e){console.warn('PDF facture id email:',e);}}
+  toast('Envoi en cours…','info');
+  try{
+    await _envoyerEmailResend({to:dest,cc:p.email,subject,text,attachments});
+    f.statut='envoyee';sauvegarderTout(true);renderHistoriqueFactures();
+    toast('✉ Facture '+f.numero+' envoyée à '+dest,'success');
+  }catch(err){toast('Erreur envoi : '+err.message,'error');}
 }
 
 function marquerPayee(id){
@@ -8338,11 +8400,8 @@ function envoyerContratClient(clientId){
         <div style="font-size:10px;color:var(--text3);">${tLabels[c.type]||c.type} · ${c.date||''}${c.statut?' · '+c.statut:''}</div>
       </div>
       <div style="display:flex;gap:6px;">
-        <button class="btn btn-primary btn-sm" onclick="_envoyerContratAvecPDF('${client.email}','${client.nom.replace(/'/g,"\\'")}','${c.id}','gmail');document.getElementById('modalContratPicker').remove();">
-          <i class="fab fa-google"></i> Gmail
-        </button>
-        <button class="btn btn-ghost btn-sm" onclick="_envoyerContratAvecPDF('${client.email}','${client.nom.replace(/'/g,"\\'")}','${c.id}','mailto');document.getElementById('modalContratPicker').remove();">
-          <i class="fas fa-envelope"></i> Mail
+        <button class="btn btn-primary btn-sm" onclick="_envoyerContratAvecPDF('${client.email}','${client.nom.replace(/'/g,"\\'")}','${c.id}');document.getElementById('modalContratPicker').remove();">
+          <i class="fas fa-paper-plane"></i> Envoyer
         </button>
       </div>
     </div>`;
@@ -8399,36 +8458,51 @@ function _genererContratPDF(contrat){
     doc.setFontSize(8); doc.setTextColor(150,150,150);
     doc.text('Ce document est un résumé du contrat — le document complet a été généré séparément.',14,285);
     const fname='contrat_'+contrat.ref.replace(/[^a-zA-Z0-9_-]/g,'_')+'.pdf';
+    const b64=_pdfB64(doc);
     doc.save(fname);
-    return fname;
+    return {fname,b64};
   }catch(e){ console.warn('_genererContratPDF:',e); return null; }
 }
 window._genererContratPDF=_genererContratPDF;
 
-function _envoyerContratAvecPDF(email, nom, contratId, mode){
-  const contrat=contratsData.find(c=>c.id===contratId);
-  const fname=contrat?_genererContratPDF(contrat):null;
-  if(fname) toast('📎 PDF généré : '+fname,'info');
+async function _envoyerContratAvecPDF(email, nom, contratId){
+  const contrat=contratsData.find(function(c){return c.id===contratId;});
+  if(!contrat){toast('Contrat introuvable','error');return;}
+  if(!email){toast('Email destinataire manquant','warning');return;}
+  const result=contrat?_genererContratPDF(contrat):null;
   const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
-  _envoyerEmailContratAvecCopie(email, nom, contrat?.ref||'', contrat?.type||'prestation', p, mode);
+  const tLabels={prestation:'Contrat de prestation de services',cdi:'Contrat de travail CDI',cdd:'Contrat de travail CDD',temps_partiel:'Contrat de travail — Temps partiel',avenant:'Avenant au contrat'};
+  const typeLabel=tLabels[contrat.type]||'Contrat';
+  const _refCli=(clientsData||[]).find(function(c){return c.nom===nom;})?.refClient||'';
+  const subject=(_refCli?'['+_refCli+'] ':'')+typeLabel+' — '+contrat.ref+' — '+(p.nomSociete||'');
+  const text='Bonjour '+nom+',\n\nVeuillez trouver ci-joint votre '+typeLabel.toLowerCase()+' référence '+contrat.ref+'.\n\nCe document est établi en deux exemplaires originaux. Merci de le signer, de le parapher sur chaque page et de nous retourner un exemplaire signé.\n\nN\'hésitez pas à nous contacter pour toute question.\n\nCordialement,\n'+(p.nomSociete||'')+(p.tel?'\n'+p.tel:'')+(p.email?'\n'+p.email:'');
+  const attachments=result?.b64?[{filename:result.fname,content:result.b64}]:[];
+  toast('Envoi en cours…','info');
+  try{
+    await _envoyerEmailResend({to:email,cc:p.email,subject,text,attachments});
+    toast('✉ Email envoyé à '+email+(attachments.length?' avec PDF joint':''),'success');
+  }catch(err){
+    toast('Erreur envoi : '+err.message,'error');
+  }
 }
 window._envoyerContratAvecPDF=_envoyerContratAvecPDF;
 
-function _envoyerEmailContratAvecCopie(dest, nom, ref, type, p, mode){
+async function _envoyerEmailContratAvecCopie(dest, nom, ref, type, p){
+  if(!dest){toast('Email destinataire manquant — renseignez l\'email client','warning');return;}
   const typeLabel={prestation:'Contrat de prestation de services',cdi:'Contrat de travail CDI',cdd:'Contrat de travail CDD',temps_partiel:'Contrat de travail — Temps partiel',avenant:'Avenant au contrat'}[type]||'Contrat';
-  const emailSoc=p.email||'';
   const _refCli=(clientsData||[]).find(function(c){return c.nom===nom;})?.refClient||'';
-  const sujet=(_refCli?`[${_refCli}] `:'')+`${typeLabel} — ${ref} — ${p.nomSociete||''}`;
-  const corps=`Bonjour ${nom},\n\nVeuillez trouver ci-joint votre ${typeLabel.toLowerCase()} référence ${ref}.\n\nCe document est établi en deux exemplaires originaux. Merci de le signer, de le parapher sur chaque page et de nous retourner un exemplaire signé par voie postale ou en nous le remettant en main propre.\n\nN'hésitez pas à nous contacter pour toute question.\n\nCordialement,\n${p.nomSociete||''}\n${p.tel||''} ${p.email?'· '+p.email:''}`;
-
-  if(mode==='gmail'){
-    const url=`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(dest)}&cc=${encodeURIComponent(emailSoc)}&su=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
-    window.open(url,'_blank');
-    toast(`Gmail ouvert — ${ref} · Attachez le PDF téléchargé`,'success');
-  } else {
-    const url=`mailto:${encodeURIComponent(dest)}?cc=${encodeURIComponent(emailSoc)}&subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
-    window.location.href=url;
-    toast(`Client mail ouvert — attachez le PDF téléchargé`,'info');
+  const subject=(_refCli?'['+_refCli+'] ':'')+typeLabel+' — '+ref+' — '+(p.nomSociete||'');
+  const text='Bonjour '+nom+',\n\nVeuillez trouver ci-joint votre '+typeLabel.toLowerCase()+' référence '+ref+'.\n\nCe document est établi en deux exemplaires originaux. Merci de le signer, de le parapher sur chaque page et de nous retourner un exemplaire signé.\n\nN\'hésitez pas à nous contacter pour toute question.\n\nCordialement,\n'+(p.nomSociete||'')+(p.tel?'\n'+p.tel:'')+(p.email?'\n'+p.email:'');
+  // Tenter de générer le PDF depuis contratsData
+  const contrat=contratsData.find(function(c){return c.ref===ref;});
+  const pdfResult=contrat?_genererContratPDF(contrat):null;
+  const attachments=pdfResult?.b64?[{filename:pdfResult.fname,content:pdfResult.b64}]:[];
+  toast('Envoi en cours…','info');
+  try{
+    await _envoyerEmailResend({to:dest,cc:p.email,subject,text,attachments});
+    toast('✉ Email envoyé à '+dest+(attachments.length?' avec PDF joint':''),'success');
+  }catch(err){
+    toast('Erreur envoi : '+err.message,'error');
   }
 }
 
@@ -13210,7 +13284,7 @@ function exportPlanningSelSalariePDF(nomSal){
   toast('PDF généré : '+fname,'success');
 }
 
-function envoyerPlanningSalarieMail(nomSal){
+async function envoyerPlanningSalarieMail(nomSal){
   const sal=salariesData.find(s=>s.nom===nomSal);
   const emailTo=sal?.email||'';
   const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
@@ -13239,11 +13313,15 @@ function envoyerPlanningSalarieMail(nomSal){
     cur.setDate(cur.getDate()+1);
   }
   if(!lignes.length){toast('Aucune intervention pour '+nomSal+' ce mois','warning');return;}
+  if(!emailTo){toast('⚠ Aucun email enregistré pour '+nomSal+' — renseignez-le dans la fiche salarié','warning');return;}
   const periodeLabel=debutMois.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
   const totalH=lignes.reduce(function(s,l){return s+l.duree;},0);
-
-  // ── Génération PDF avant envoi mail ──────────────────────
-  var pdfFname='';
+  const subject='Planning — '+nomSal+' — '+periodeLabel.charAt(0).toUpperCase()+periodeLabel.slice(1)+' — '+(p.nomSociete||'Essentia');
+  let bodyText='Bonjour '+nomSal+',\n\nVeuillez trouver votre planning en pièce jointe.\n\nDétail — '+periodeLabel+' :\n\n';
+  lignes.forEach(function(l){bodyText+='• '+l.date.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})+' à '+l.heure+' — '+l.client+' ('+l.commune+') — '+l.activite+' — '+l.duree+'h\n';});
+  bodyText+='\nTotal : '+lignes.length+' intervention'+(lignes.length>1?'s':'')+' · '+totalH+'h\n\nCordialement,\n'+(p.nomSociete||'Essentia Services')+(p.tel?'\n'+p.tel:'')+(p.email?'\n'+p.email:'');
+  // Générer PDF
+  let attachments=[];
   try{
     const {jsPDF}=window.jspdf;
     if(jsPDF){
@@ -13251,49 +13329,25 @@ function envoyerPlanningSalarieMail(nomSal){
       const _colorMap={'#1a56db':[26,86,219],'#7c3aed':[124,58,237],'#059669':[5,150,105],'#d97706':[217,119,6],'#dc2626':[220,38,38],'#0d9488':[13,148,136]};
       const rgb=_colorMap[cl.color]||[74,124,247];
       const doc=new jsPDF();
-      doc.setFillColor(rgb[0],rgb[1],rgb[2]); doc.rect(0,0,210,22,'F');
-      doc.setTextColor(255,255,255); doc.setFontSize(14); doc.setFont('helvetica','bold');
+      doc.setFillColor(rgb[0],rgb[1],rgb[2]);doc.rect(0,0,210,22,'F');
+      doc.setTextColor(255,255,255);doc.setFontSize(14);doc.setFont('helvetica','bold');
       doc.text(p.nomSociete||'Essentia Services',14,9);
-      doc.setFontSize(10); doc.setFont('helvetica','normal');
-      doc.text('Planning — '+nomSal,14,16);
-      doc.setFontSize(8); doc.text('Généré le '+now.toLocaleDateString('fr-FR'),196,16,{align:'right'});
-      doc.setTextColor(40,40,40); doc.setFontSize(9); doc.setFont('helvetica','bold');
+      doc.setFontSize(10);doc.setFont('helvetica','normal');doc.text('Planning — '+nomSal,14,16);
+      doc.setFontSize(8);doc.text('Généré le '+now.toLocaleDateString('fr-FR'),196,16,{align:'right'});
+      doc.setTextColor(40,40,40);doc.setFontSize(9);doc.setFont('helvetica','bold');
       doc.text('Période : '+periodeLabel.charAt(0).toUpperCase()+periodeLabel.slice(1),14,30);
       doc.text('Total : '+lignes.length+' intervention'+(lignes.length>1?'s':'')+' · '+totalH+'h',14,36);
-      doc.autoTable({
-        head:[['Date','Heure','Client','Commune','Activité','Durée']],
-        body:lignes.map(function(l){return[l.date.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}),l.heure,l.client,l.commune,l.activite,l.duree+'h'];}),
-        startY:41,
-        styles:{fontSize:9,cellPadding:3},
-        headStyles:{fillColor:[rgb[0],rgb[1],rgb[2]],textColor:[255,255,255],fontStyle:'bold'},
-        alternateRowStyles:{fillColor:[248,248,255]},
-        columnStyles:{0:{cellWidth:52},1:{cellWidth:15},2:{cellWidth:42},3:{cellWidth:30},4:{cellWidth:28},5:{cellWidth:15}}
-      });
+      doc.autoTable({head:[['Date','Heure','Client','Commune','Activité','Durée']],body:lignes.map(function(l){return[l.date.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}),l.heure,l.client,l.commune,l.activite,l.duree+'h'];}),startY:41,styles:{fontSize:9,cellPadding:3},headStyles:{fillColor:[rgb[0],rgb[1],rgb[2]],textColor:[255,255,255],fontStyle:'bold'},alternateRowStyles:{fillColor:[248,248,255]},columnStyles:{0:{cellWidth:52},1:{cellWidth:15},2:{cellWidth:42},3:{cellWidth:30},4:{cellWidth:28},5:{cellWidth:15}}});
       const _mmM=String(now.getMonth()+1).padStart(2,'0');
-      pdfFname='PLAN-'+now.getFullYear()+'-'+_mmM+'_'+nomSal.replace(/\s+/g,'_')+'.pdf';
-      doc.save(pdfFname);
+      const pdfFname='PLAN-'+now.getFullYear()+'-'+_mmM+'_'+nomSal.replace(/\s+/g,'_')+'.pdf';
+      attachments=[{filename:pdfFname,content:_pdfB64(doc)}];
     }
-  }catch(pdfErr){ console.warn('PDF planning mail:',pdfErr); }
-
-  const sujet='Planning — '+nomSal+' — '+periodeLabel.charAt(0).toUpperCase()+periodeLabel.slice(1)+' — '+(p.nomSociete||'Essentia');
-  let body='Bonjour '+nomSal+',\n\nVeuillez trouver votre planning en pièce jointe';
-  if(pdfFname) body+=' (fichier : '+pdfFname+')';
-  body+='.\n\n';
-  body+='Détail des interventions — '+periodeLabel+' :\n\n';
-  lignes.forEach(function(l){
-    body+='• '+l.date.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})+' à '+l.heure+' — '+l.client+' ('+l.commune+') — '+l.activite+' — '+l.duree+'h\n';
-  });
-  body+='\nTotal : '+lignes.length+' intervention'+(lignes.length>1?'s':'')+' · '+totalH+'h';
-  body+='\n\nCordialement,\n'+(p.nomSociete||'Essentia Services')+(p.tel?'\n'+p.tel:'')+(p.email?'\n'+p.email:'');
-  if(!emailTo) toast('⚠ Aucun email enregistré pour '+nomSal+' — renseignez-le dans la fiche salarié','warning');
-  const mode=confirm('Envoyer via Gmail ?\n(Annuler = client mail local)')?'gmail':'mailto';
-  if(pdfFname) toast('📎 PDF téléchargé : '+pdfFname,'info');
-  if(mode==='gmail'){
-    const url='https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(emailTo)+'&su='+encodeURIComponent(sujet)+'&body='+encodeURIComponent(body);
-    window.open(url,'_blank');
-  } else {
-    window.location.href='mailto:'+encodeURIComponent(emailTo)+'?subject='+encodeURIComponent(sujet)+'&body='+encodeURIComponent(body);
-  }
+  }catch(pdfErr){console.warn('PDF planning mail:',pdfErr);}
+  toast('Envoi en cours…','info');
+  try{
+    await _envoyerEmailResend({to:emailTo,cc:p.email,subject,text:bodyText,attachments});
+    toast('✉ Planning envoyé à '+emailTo+(attachments.length?' avec PDF joint':''),'success');
+  }catch(err){toast('Erreur envoi : '+err.message,'error');}
 }
 window.envoyerPlanningSalarieMail=envoyerPlanningSalarieMail;
 
@@ -13485,7 +13539,7 @@ function exportPlanningCoGerantPDF(){
   toast('PDF généré : '+fname,'success');
 }
 
-function exportPlanningCoGerantMail(){
+async function exportPlanningCoGerantMail(){
   const intervenant = document.getElementById('cgSelectIntervenant')?.value;
   if(!intervenant){ toast('Sélectionnez un intervenant','warning'); return; }
   const activite = document.getElementById('cgActivite')?.value;
@@ -13494,21 +13548,18 @@ function exportPlanningCoGerantMail(){
   const p = JSON.parse(localStorage.getItem('progestParams')||'{}');
   const {debut, fin} = _cgGetPlage();
   const fmt = d=>d.toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
-  // Trouver email de l'intervenant dans salariesData
   const sal = salariesData.find(s=>s.nom===intervenant);
-  const emailTo = sal?.email || '';
-  const subject = encodeURIComponent('Planning '+(p.nomSociete||'Essentia')+' — '+intervenant+' — '+fmt(debut)+' au '+fmt(fin));
-  let body = 'Bonjour '+intervenant+',\n\n';
-  body += 'Voici votre planning du '+fmt(debut)+' au '+fmt(fin)+' :\n\n';
-  lignes.forEach(l=>{
-    body += '• '+l.date.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
-    body += ' à '+l.heure+' — '+l.client.nom+' ('+l.commune+') — '+l.activite+' — '+l.heures+'h\n';
-  });
-  body += '\nTotal : '+lignes.length+' intervention'+(lignes.length>1?'s':'')+' · '+lignes.reduce((s,l)=>s+l.heures,0).toFixed(1)+'h';
-  body += '\n\nCordialement,\n'+(p.nomSociete||'Essentia Services');
-  const mailtoLink = 'mailto:'+emailTo+'?subject='+subject+'&body='+encodeURIComponent(body);
-  window.location.href = mailtoLink;
-  toast('Client mail ouvert — pensez à joindre le PDF si nécessaire','info');
+  const emailTo = sal?.email||'';
+  if(!emailTo){toast('⚠ Aucun email enregistré pour '+intervenant,'warning');return;}
+  const subject='Planning '+(p.nomSociete||'Essentia')+' — '+intervenant+' — '+fmt(debut)+' au '+fmt(fin);
+  let bodyText='Bonjour '+intervenant+',\n\nVoici votre planning du '+fmt(debut)+' au '+fmt(fin)+' :\n\n';
+  lignes.forEach(l=>{bodyText+='• '+l.date.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})+' à '+l.heure+' — '+l.client.nom+' ('+l.commune+') — '+l.activite+' — '+l.heures+'h\n';});
+  bodyText+='\nTotal : '+lignes.length+' intervention'+(lignes.length>1?'s':'')+' · '+lignes.reduce((s,l)=>s+l.heures,0).toFixed(1)+'h\n\nCordialement,\n'+(p.nomSociete||'Essentia Services');
+  toast('Envoi en cours…','info');
+  try{
+    await _envoyerEmailResend({to:emailTo,cc:p.email,subject,text:bodyText});
+    toast('✉ Planning envoyé à '+emailTo,'success');
+  }catch(err){toast('Erreur envoi : '+err.message,'error');}
 }
 
 
