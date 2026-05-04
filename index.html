@@ -6519,11 +6519,13 @@ function _regenererContratPDFb64(contrat){
     const debut=contrat.date||new Date().toLocaleDateString('fr-FR');
     const tarif=parseFloat(c.tarif)||0;
     const heures=parseFloat(c.heures)||0;
-    const freqMult={'hebdomadaire':4.33,'bihebdomadaire':8.66,'mensuelle':1,'ponctuelle':1}[c.frequence||'hebdomadaire']||4.33;
-    const freqLabel={'hebdomadaire':'Hebdomadaire','bihebdomadaire':'2 fois/semaine','mensuelle':'Mensuelle','ponctuelle':'Ponctuelle'}[c.frequence||'hebdomadaire']||'Hebdomadaire';
+    // c.frequence est un nombre (passages/semaine) : 1=hebdo, 2=2x/semaine, etc.
+    const freq=parseFloat(c.frequence)||1;
+    const freqLabel=freq===1?'1 passage/semaine':freq===2?'2 passages/semaine':freq+' passages/semaine';
     const tva=parseFloat(c.tva)||10;
-    const montantHT=tarif*heures*freqMult;
-    const montantTTC=montantHT*(1+tva/100);
+    // Priorité : montantMensuel stocké dans contratsData (calculé à la génération du contrat)
+    const montantTTC=parseFloat(contrat.montantMensuel)||0;
+    const montantHT=montantTTC/(1+tva/100)||tarif*heures*freq*4.33;
     const fmt2=function(v){return v.toFixed(2).replace('.',',');};
     const logo=localStorage.getItem('progestLogo');
     const doc=new jsPDFCls({unit:'mm',format:'a4'}); const W=210,M=15; let y=M;
@@ -6545,18 +6547,21 @@ function _regenererContratPDFb64(contrat){
 
     // ── Parties — hauteur dynamique pour textes longs ──
     var colW=87; var colGap=W/2+2; var maxTxt=colW-8;
+    // Découper chaque champ avec la bonne police pour éviter les débordements
     doc.setFontSize(9); doc.setFont('helvetica','bold');
     var nomSocLines=doc.splitTextToSize(nomSoc,maxTxt);
     var clientNom=c.nom||contrat.clientOuSalarie||'—';
     var clientNomLines=doc.splitTextToSize(clientNom,maxTxt);
+    doc.setFontSize(8); doc.setFont('helvetica','normal');
     var adresseSoc=(p.adresse||'').split('\n')[0]||'';
-    var adresseSocLines=doc.splitTextToSize(adresseSoc,maxTxt);
-    var communeClient=c.commune||c.adresse||'—';
-    var communeLines=doc.splitTextToSize(communeClient,maxTxt);
+    var adresseSocLines=adresseSoc?doc.splitTextToSize(adresseSoc,maxTxt):[];
+    var communeClient=c.commune||c.adresse||'';
+    var communeLines=communeClient?doc.splitTextToSize(communeClient,maxTxt):[];
     var emailLines=c.email?doc.splitTextToSize(c.email,maxTxt):[];
+    var telStr=c.tel?doc.splitTextToSize('Tél : '+c.tel,maxTxt):[];
     var lh=5; // line height mm
     var leftH=8+(nomSocLines.length*lh)+(p.siret?lh:0)+(adresseSocLines.length*lh)+2;
-    var rightH=8+(clientNomLines.length*lh)+(communeLines.length*lh)+(emailLines.length*lh)+(c.tel?lh:0)+2;
+    var rightH=8+(clientNomLines.length*lh)+(communeLines.length*lh)+(emailLines.length*lh)+(telStr.length*lh)+2;
     var boxH=Math.max(leftH,rightH,30);
     doc.setDrawColor(0,0,0); doc.setLineWidth(0.3);
     doc.rect(M,y,colW,boxH); doc.rect(colGap,y,colW,boxH);
@@ -6577,7 +6582,7 @@ function _regenererContratPDFb64(contrat){
     doc.setFontSize(8); doc.setFont('helvetica','normal');
     communeLines.forEach(function(l){doc.text(l,colGap+3,yR);yR+=lh;});
     emailLines.forEach(function(l){doc.text(l,colGap+3,yR);yR+=lh;});
-    if(c.tel){doc.text('Tél : '+c.tel,colGap+3,yR);}
+    telStr.forEach(function(l){doc.text(l,colGap+3,yR);yR+=lh;});
     y+=boxH+6;
 
     // ── Objet & conditions financières ──
