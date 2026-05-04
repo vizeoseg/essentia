@@ -6499,8 +6499,13 @@ function telechargerXMLFacture(id){
 const _EMAIL_ENDPOINT='/.netlify/functions/send-email';
 const _RESEND_FROM='contact@essentia-services.fr';
 
-// Cache des PDFs générés : { [ref]: {b64, fname} } — réutilisé pour l'email
-var _pdfCache={};
+// Cache PDF persistant dans localStorage — survit aux rechargements de page
+function _savePDFCache(ref, b64, fname){
+  try{ localStorage.setItem('pdfcache_'+ref, JSON.stringify({b64,fname})); }catch(e){ console.warn('PDF cache localStorage plein'); }
+}
+function _loadPDFCache(ref){
+  try{ return JSON.parse(localStorage.getItem('pdfcache_'+ref)||'null'); }catch(e){ return null; }
+}
 
 // Extrait le base64 pur d'un doc jsPDF (sans le préfixe data:...;base64,)
 function _pdfB64(doc){
@@ -8501,12 +8506,12 @@ async function _envoyerContratAvecPDF(email, nom, contratId){
   const tLabels={prestation:'Contrat de prestation de services',cdi:'Contrat de travail CDI',cdd:'Contrat de travail CDD',temps_partiel:'Contrat de travail — Temps partiel',avenant:'Avenant au contrat'};
   const typeLabel=tLabels[contrat.type]||'Contrat';
 
-  // Utiliser le PDF complet en cache (généré par "Générer PDF") si disponible
+  // Utiliser le PDF complet depuis localStorage (généré par "Générer PDF") si disponible
   let attachments=[];
-  if(_pdfCache[contrat.ref]&&_pdfCache[contrat.ref].b64){
-    const cached=_pdfCache[contrat.ref];
-    attachments=[{filename:cached.fname,content:cached.b64}];
-    console.log('[Email] PDF complet depuis cache:',cached.fname,Math.round(cached.b64.length/1024)+'KB');
+  const _cached=_loadPDFCache(contrat.ref);
+  if(_cached&&_cached.b64){
+    attachments=[{filename:_cached.fname,content:_cached.b64}];
+    console.log('[Email] PDF complet depuis localStorage:',_cached.fname,Math.round(_cached.b64.length/1024)+'KB');
   } else {
   // Sinon générer un PDF résumé sans autoTable
   const jsPDFCls=(window.jspdf||{}).jsPDF;
@@ -8570,10 +8575,10 @@ async function _envoyerEmailContratAvecCopie(dest, nom, ref, type, p){
   const text='Bonjour '+nom+',\n\nVeuillez trouver ci-joint votre '+typeLabel.toLowerCase()+' référence '+ref+'.\n\nCe document est établi en deux exemplaires originaux. Merci de le signer, de le parapher sur chaque page et de nous retourner un exemplaire signé.\n\nN\'hésitez pas à nous contacter pour toute question.\n\nCordialement,\n'+(p.nomSociete||'')+(p.tel?'\n'+p.tel:'')+(p.email?'\n'+p.email:'');
   // Utiliser le PDF complet en cache si disponible, sinon PDF résumé
   var attachments=[];
-  if(_pdfCache[ref]&&_pdfCache[ref].b64){
-    const cached2=_pdfCache[ref];
-    attachments=[{filename:cached2.fname,content:cached2.b64}];
-    console.log('[Email] PDF complet depuis cache:',cached2.fname);
+  const _cached2=_loadPDFCache(ref);
+  if(_cached2&&_cached2.b64){
+    attachments=[{filename:_cached2.fname,content:_cached2.b64}];
+    console.log('[Email] PDF complet depuis localStorage:',_cached2.fname);
   } else {
     var jsPDFCls2=(window.jspdf||{}).jsPDF;
     var contratData=contratsData.find(function(c){return c.ref===ref;})||{ref:ref,type:type,clientOuSalarie:nom,date:new Date().toLocaleDateString('fr-FR'),statut:'en cours'};
@@ -8904,7 +8909,7 @@ function genererContratPrestation(){
   doc.text(`${nomSoc}${p.siret?' · SIRET : '+p.siret:''} — Réf. ${ref}`,W/2,pH-9,{align:'center'});
 
   const _fname1=`${ref}_contrat_prestation.pdf`;
-  _pdfCache[ref]={b64:_pdfB64(doc),fname:_fname1};
+  _savePDFCache(ref,_pdfB64(doc),_fname1);
   doc.save(_fname1);
 
   // Enregistrer dans l'historique
@@ -9130,7 +9135,7 @@ function genererContratTravail(){
   doc.text((p.nomSociete||'')+' — Réf. '+ref+' — Document indicatif, à valider par un juriste avant signature.',W/2,pH-6,{align:'center'});
 
   const _fname2=ref+'_contrat_'+type.toLowerCase()+'.pdf';
-  _pdfCache[ref]={b64:_pdfB64(doc),fname:_fname2};
+  _savePDFCache(ref,_pdfB64(doc),_fname2);
   doc.save(_fname2);
   contratsData.push({id:'CTR'+Date.now(),type:_typeContratActif,ref:ref,clientOuSalarie:s.nom,date:dateEmb,statut:'actif',emailSalarie:gv('ctEmailSalarie')});
   sauvegarderTout(true); renderHistoriqueContrats();
@@ -9178,7 +9183,7 @@ function genererAvenant(){
   doc.text('Toutes les autres clauses du contrat original restent inchangées.',M+4,y+5); y+=13;
   y=_blocSignaturePDF(doc,y,W,M,contratOriginal.clientOuSalarie||'');
   const _fname3=`${ref}_avenant.pdf`;
-  _pdfCache[ref]={b64:_pdfB64(doc),fname:_fname3};
+  _savePDFCache(ref,_pdfB64(doc),_fname3);
   doc.save(_fname3);
   contratsData.push({id:'CTR'+Date.now(),type:'avenant',ref,clientOuSalarie:contratOriginal.clientOuSalarie||'—',date,statut:'actif'});
   sauvegarderTout(true); renderHistoriqueContrats();
