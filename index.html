@@ -6499,40 +6499,60 @@ function telechargerXMLFacture(id){
 const _EMAIL_ENDPOINT='/.netlify/functions/send-email';
 const _RESEND_FROM='contact@essentia-services.fr';
 
-function _pdfB64(doc){ return doc.output('datauristring').split(',')[1]; }
+// Extrait le base64 pur d'un doc jsPDF (sans le préfixe data:...;base64,)
+function _pdfB64(doc){
+  const uri=doc.output('datauristring'); // "data:application/pdf;base64,JVBERi..."
+  return uri.split(',')[1];              // "JVBERi..."
+}
 
 async function _envoyerEmailResend({to,cc,subject,text,attachments}){
   if(!to||!(Array.isArray(to)?to[0]:to)) throw new Error('Destinataire manquant');
   const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
   const soc=p.nomSociete||'Essentia Services';
-  const html=`<!DOCTYPE html><html><body style="margin:0;padding:20px;background:#f5f7fa;font-family:Arial,sans-serif;">
-<div style="max-width:600px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1);">
-<div style="background:#1a2e4a;padding:22px 30px;"><h1 style="color:#fff;margin:0;font-size:18px;">${soc}</h1></div>
-<div style="padding:28px 30px;color:#333;font-size:14px;line-height:1.7;">
-${(text||'').split('\n').map(function(l){return '<p style="margin:0 0 8px;">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</p>';}).join('')}
-</div>
-<div style="background:#f5f7fa;padding:14px 30px;font-size:11px;color:#888;text-align:center;">
-${soc}${p.tel?' · '+p.tel:''}${p.email?' · '+p.email:''}</div>
-</div></body></html>`;
-  const body={from:_RESEND_FROM,to:Array.isArray(to)?to:[to],subject,html};
-  if(cc&&cc!==to){body.reply_to=Array.isArray(cc)?cc[0]:cc;}
-  if(attachments&&attachments.length) body.attachments=attachments;
-  console.log('[Email] Envoi via proxy vers',to,'sujet:',subject,'pièces jointes:',attachments?.length||0);
+  const html='<!DOCTYPE html><html><body style="margin:0;padding:20px;background:#f5f7fa;font-family:Arial,sans-serif;">'
+    +'<div style="max-width:600px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1);">'
+    +'<div style="background:#1a2e4a;padding:22px 30px;"><h1 style="color:#fff;margin:0;font-size:18px;">'+soc+'</h1></div>'
+    +'<div style="padding:28px 30px;color:#333;font-size:14px;line-height:1.7;">'
+    +(text||'').split('\n').map(function(l){return '<p style="margin:0 0 8px;">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</p>';}).join('')
+    +'</div>'
+    +'<div style="background:#f5f7fa;padding:14px 30px;font-size:11px;color:#888;text-align:center;">'+soc+(p.tel?' · '+p.tel:'')+(p.email?' · '+p.email:'')+'</div>'
+    +'</div></body></html>';
+
+  // Corps envoyé à la Netlify Function (pas directement à Resend)
+  const payload={
+    to: Array.isArray(to)?to:[to],
+    subject,
+    html,
+    text: text||''
+  };
+  if(cc&&cc!==to) payload.cc=Array.isArray(cc)?cc[0]:cc;
+
+  // Pièces jointes : [{filename:'xxx.pdf', content:'base64...'}]
+  if(attachments&&attachments.length){
+    payload.attachments=attachments.map(function(a){
+      return {filename:a.filename, content:a.content};
+    });
+    console.log('[Email] Pièces jointes:',payload.attachments.map(function(a){return a.filename+' ('+Math.round((a.content||'').length/1024)+'KB)';}));
+  } else {
+    console.log('[Email] Aucune pièce jointe');
+  }
+
+  console.log('[Email] → '+to+' | sujet: '+subject);
   let res;
   try{
     res=await fetch(_EMAIL_ENDPOINT,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(body)
+      body:JSON.stringify(payload)
     });
   }catch(netErr){
     console.error('[Email] Erreur réseau:',netErr);
     throw new Error('Erreur réseau : '+netErr.message);
   }
   const data=await res.json().catch(function(){return{};});
-  console.log('[Resend] Réponse HTTP',res.status,data);
+  console.log('[Email] Réponse HTTP',res.status,data);
   if(!res.ok){
-    throw new Error((data.message||data.name||JSON.stringify(data)||'Erreur Resend')+' (HTTP '+res.status+')');
+    throw new Error((data.message||data.error||JSON.stringify(data)||'Erreur')+' (HTTP '+res.status+')');
   }
   return data;
 }
@@ -8480,10 +8500,12 @@ function _genererContratPDF(contrat){
     doc.setFontSize(8); doc.setTextColor(150,150,150);
     doc.text('Ce document est un résumé du contrat — le document complet a été généré séparément.',14,285);
     const fname='contrat_'+contrat.ref.replace(/[^a-zA-Z0-9_-]/g,'_')+'.pdf';
-    const b64=_pdfB64(doc);
+    // Extraire le base64 AVANT doc.save() — format attendu par Resend : base64 pur sans préfixe
+    const b64=_pdfB64(doc); // doc.output('datauristring').split(',')[1]
+    console.log('[PDF contrat] base64 généré :',Math.round(b64.length/1024)+'KB');
     doc.save(fname);
-    return {fname,b64};
-  }catch(e){ console.warn('_genererContratPDF:',e); return null; }
+    return {fname, b64};
+  }catch(e){ console.error('[PDF contrat] Erreur génération:',e); return null; }
 }
 window._genererContratPDF=_genererContratPDF;
 
