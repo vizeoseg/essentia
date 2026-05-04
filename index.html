@@ -6507,37 +6507,18 @@ function _pdfB64(doc){
 
 async function _envoyerEmailResend({to,cc,subject,text,attachments}){
   if(!to||!(Array.isArray(to)?to[0]:to)) throw new Error('Destinataire manquant');
-  const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
-  const soc=p.nomSociete||'Essentia Services';
-  const html='<!DOCTYPE html><html><body style="margin:0;padding:20px;background:#f5f7fa;font-family:Arial,sans-serif;">'
-    +'<div style="max-width:600px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1);">'
-    +'<div style="background:#1a2e4a;padding:22px 30px;"><h1 style="color:#fff;margin:0;font-size:18px;">'+soc+'</h1></div>'
-    +'<div style="padding:28px 30px;color:#333;font-size:14px;line-height:1.7;">'
-    +(text||'').split('\n').map(function(l){return '<p style="margin:0 0 8px;">'+l.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</p>';}).join('')
-    +'</div>'
-    +'<div style="background:#f5f7fa;padding:14px 30px;font-size:11px;color:#888;text-align:center;">'+soc+(p.tel?' · '+p.tel:'')+(p.email?' · '+p.email:'')+'</div>'
-    +'</div></body></html>';
-
-  // Corps envoyé à la Netlify Function (pas directement à Resend)
+  // On envoie uniquement le texte brut — la Netlify Function construit le HTML côté serveur
   const payload={
     to: Array.isArray(to)?to:[to],
     subject,
-    html,
     text: text||''
   };
   if(cc&&cc!==to) payload.cc=Array.isArray(cc)?cc[0]:cc;
-
-  // Pièces jointes : [{filename:'xxx.pdf', content:'base64...'}]
   if(attachments&&attachments.length){
-    payload.attachments=attachments.map(function(a){
-      return {filename:a.filename, content:a.content};
-    });
-    console.log('[Email] Pièces jointes:',payload.attachments.map(function(a){return a.filename+' ('+Math.round((a.content||'').length/1024)+'KB)';}));
-  } else {
-    console.log('[Email] Aucune pièce jointe');
+    payload.attachments=attachments.map(function(a){return {filename:a.filename,content:a.content};});
+    console.log('[Email] PJ:',payload.attachments.map(function(a){return a.filename+' ('+Math.round((a.content||'').length/1024)+'KB)';}));
   }
-
-  console.log('[Email] → '+to+' | sujet: '+subject);
+  console.log('[Email] → '+(Array.isArray(to)?to[0]:to)+' | '+subject);
   let res;
   try{
     res=await fetch(_EMAIL_ENDPOINT,{
