@@ -6650,7 +6650,8 @@ function _regenererContratPDFb64(contrat){
 
     // ── Signatures ──
     y+=6;
-    y=_blocSignaturePDF(doc,y,W,M,c.nom||contrat.clientOuSalarie||'','du client');
+    var sigData=contrat.signatureData||(_signatureData||null);
+    y=_blocSignaturePDF(doc,y,W,M,c.nom||contrat.clientOuSalarie||'','du client',sigData);
 
     // ── Pied de page ──
     const pH=doc.internal.pageSize.getHeight();
@@ -9018,7 +9019,7 @@ function genererContratPrestation(){
   doc.save(_fname1);
 
   // Enregistrer dans l'historique
-  contratsData.push({id:'CTR'+Date.now(),type:'prestation',ref,clientId:clientId,clientOuSalarie:c.nom,date:debut,montantMensuel:montantTTC,statut:'actif',emailClient:gv('contratEmailClient'),signatureIncluse:!!_signatureData});
+  contratsData.push({id:'CTR'+Date.now(),type:'prestation',ref,clientId:clientId,clientOuSalarie:c.nom,date:debut,montantMensuel:montantTTC,statut:'actif',emailClient:gv('contratEmailClient'),signatureIncluse:!!_signatureData,signatureData:_signatureData||null});
   // Passage automatique en Client actif
   const _cIdx=clientsData.findIndex(x=>x.id===clientId);
   if(_cIdx>=0) clientsData[_cIdx].workflowStatut='client_actif';
