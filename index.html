@@ -37,7 +37,7 @@ body{font-family:'DM Sans',sans-serif;background:#111827;color:var(--text);displ
 .sidebar-logo{padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.07);cursor:pointer;}
 .sidebar-logo .brand{font-size:19px;font-weight:800;color:#fff;}
 .sidebar-logo .brand span{color:#7eb3ff;}
-.sidebar-logo .sub{font-size:10px;color:rgba(255,255,255,.3);font-family:'DM Mono',monospace;margin-top:2px;}
+.sidebar-logo .sub{font-size:10px;color:rgba(255,255,255,.55);font-family:'DM Mono',monospace;margin-top:2px;}
 .nav-section{font-size:9px;text-transform:uppercase;letter-spacing:1.8px;color:rgba(255,255,255,.35);padding:14px 12px 5px;font-weight:800;display:flex;align-items:center;gap:6px;}
 .nav-section::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.07);margin-left:4px;}
 .nav-btn{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border-radius:9px;font-size:13px;font-weight:500;color:rgba(255,255,255,.65);cursor:pointer;border:none;background:transparent;text-align:left;transition:all .15s;margin-bottom:2px;}
@@ -3486,13 +3486,45 @@ function ouvrirDrawerJour(dateKey, jourNom){
         })()}
         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
           ${!c._deplaceVers ? `<button class="btn btn-warning btn-sm" data-cid="${c.id}" data-date="${dateKey}" data-heure="${c.heureDebut||'09:00'}" data-nom="${c.nom.replace(/"/g,'&quot;')}" onclick="ouvrirModalDeplacement(this.dataset.cid,this.dataset.date,this.dataset.heure,this.dataset.nom)"><i class="fas fa-arrows-alt"></i> Déplacer</button>` : ''}
-          ${c._deplaceVers && c._deplacement ? `<button class="btn btn-ghost btn-sm" onclick="annulerDeplacement('${c._deplacement.id}')"><i class="fas fa-undo"></i> Annuler dépl.</button>` : ''}
+          ${c._deplaceVers && c._deplacement ? `<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;" onclick="if(confirm('Supprimer cette intervention ?')){annulerDeplacement('${c._deplacement.id}');fermerDrawerJour();}"><i class="fas fa-trash"></i> Supprimer</button>` : ''}
           ${entryPrev?.statut !== 'absent' ? `<button class="btn btn-danger btn-sm" onclick="setPlanStatut('${c.id}','${dateKey}','absent');ouvrirDrawerJour('${dateKey}','${jourNom}');"><i class="fas fa-times-circle"></i> Absent</button>` : `<button class="btn btn-ghost btn-sm" onclick="setPlanStatut('${c.id}','${dateKey}','prevu');ouvrirDrawerJour('${dateKey}','${jourNom}');"><i class="fas fa-undo"></i> Rétablir</button>`}
           ${(!entryPrev || entryPrev.statut==='prevu' || entryPrev.statut==='prevu_passe') ? `<button class="btn btn-success btn-sm" onclick="setPlanStatut('${c.id}','${dateKey}','confirme');ouvrirDrawerJour('${dateKey}','${jourNom}');"><i class="fas fa-check"></i> Confirmer</button>` : ''}
         </div>
       </div>`;
     });
   }
+
+  // ── Interventions ponctuelles de ce jour ──
+  const intervJour = (window.interventionsData||[]).filter(i => i.date === dateKey);
+  if(intervJour.length){
+    const typeColors2 = {'Ménage':'#3b82f6','Repassage':'#ec4899','Airbnb':'#10b981','Ponctuel':'#f59e0b'};
+    html += `<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px;">
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:6px;">⚡ Interventions ponctuelles</div>`;
+    intervJour.forEach(i => {
+      const isAnnule = i.statut === 'annule';
+      const col = isAnnule ? 'var(--red)' : (typeColors2[i.type]||'var(--accent)');
+      const motifTxt = isAnnule && i.motifAnnulation ? (motifLabels[i.motifAnnulation]||i.motifAnnulation) : '';
+      const noteTxt  = isAnnule && i.noteAnnulation ? ' — ' + i.noteAnnulation : '';
+      const dateTxt  = isAnnule && i.dateAnnulation ? ' · ' + i.dateAnnulation : '';
+      html += `<div style="background:var(--bg3);border:1px solid ${col};border-left:3px solid ${col};border-radius:8px;padding:8px 11px;margin-bottom:6px;${isAnnule?'opacity:.7;':''}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;font-size:12px;${isAnnule?'text-decoration:line-through;':''}">${i.heure||'—'} · ${i.clientNom||i.type}</div>
+            <div style="font-size:10px;color:var(--text3);">${i.type}${i.intervenante?' · '+i.intervenante:''}${i.notes?' · '+i.notes:''}</div>
+            ${isAnnule?`<div style="font-size:10px;color:#dc2626;margin-top:3px;font-weight:600;">${motifTxt}${noteTxt}${dateTxt}</div>`:''}
+          </div>
+          <div style="display:flex;gap:4px;flex-shrink:0;">
+            <button onclick="_annulDrawer('${i.id}','${dateKey}','${jourNom}')" style="border:none;background:none;cursor:pointer;color:${isAnnule?'var(--green)':'var(--amber)'};font-size:13px;padding:2px 5px;font-weight:700;" title="${isAnnule?'Rétablir':'Annuler avec motif'}">
+              ${isAnnule?'↩':'✗'}
+            </button>
+            <button onclick="supprimerIntervention('${i.id}')" style="border:none;background:none;cursor:pointer;color:var(--red);font-size:16px;padding:2px 5px;font-weight:700;" title="Supprimer définitivement">×</button>
+          </div>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
   document.getElementById('drawerDayContent').innerHTML = html;
   document.getElementById('tourneeDayDrawer').style.right = '0';
   document.getElementById('tourneeDayOverlay').style.display = 'block';
@@ -3939,7 +3971,7 @@ function changerTab(btn){
   if(tab==='fournisseurs'){chargerFournisseurs();}
   if(tab==='factures'){initFactures();}
   if(tab==='devis'){initDevis();}
-  if(tab==='tournees'){chargerTournees();setTimeout(chargerPlanningPrevisionnel,300);}
+  if(tab==='tournees'){chargerTournees();setTimeout(chargerPlanningPrevisionnel,300);if(typeof afficherInterventionsList==='function')afficherInterventionsList();}
   if(tab==='dsn'){chargerDSN();}
   if(tab==='contrats'){initContrats();}
   if(tab==='remise-materiel'){initRemiseMateriel();}
@@ -4405,6 +4437,7 @@ function chargerTournees(){
   _renderFiltresSalaries();
   setTimeout(_renderFiltresSalaries, 2000); // Re-render après sync Supabase
   const jours=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+  const _todayKeyT=new Date().toISOString().split('T')[0];
   const depotVal=document.getElementById('depotTournees')?.value||'';
   const depotDist=depotVal?communesAube.find(c=>c.nom===depotVal)?.distance||0:0;
   const prix=parseFloat(document.getElementById('prixCarburant').value)||1.95;
@@ -4561,9 +4594,19 @@ function exporterBulletin(id){
   const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4'});
   const now=new Date();const mois=now.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
   const M=15,W=210;let y=M;
+  const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
+  const nomSoc=p.nomSociete||'Essentia Services';
+  const logo=localStorage.getItem('progestLogo');
   doc.setFillColor(14,32,64);doc.rect(0,0,W,28,'F');
-  doc.setTextColor(100,160,255);doc.setFontSize(16);doc.setFont('helvetica','bold');doc.text('BULLETIN DE PAIE',W/2,16,{align:'center'});
-  doc.setTextColor(180,200,240);doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text(`Période : ${mois}`,W/2,23,{align:'center'});
+  // Logo en haut à gauche
+  if(logo){try{doc.addImage(logo,_logoFmt(logo),M,4,20,20);}catch(e){}}
+  const tx=logo?M+24:M;
+  doc.setTextColor(180,200,240);doc.setFontSize(9);doc.setFont('helvetica','normal');
+  doc.text(nomSoc,tx,10);
+  if(p.siret) doc.text('SIRET : '+p.siret,tx,16);
+  // Titre centré
+  doc.setTextColor(100,160,255);doc.setFontSize(16);doc.setFont('helvetica','bold');doc.text('BULLETIN DE PAIE',W-M,14,{align:'right'});
+  doc.setTextColor(180,200,240);doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text(`Période : ${mois}`,W-M,22,{align:'right'});
   y=36;
   doc.setTextColor(20,37,64);doc.setFontSize(11);doc.setFont('helvetica','bold');
   doc.text(`Salarié : ${s.nom}`,M,y);y+=7;
@@ -5124,11 +5167,19 @@ function exporterFraisPDF(){
     const doc=new jsPDF({unit:'mm',format:'a4'});
     const M=15,W=210;
     const total=notesFraisData.reduce(function(s,f){return s+f.montant;},0);
+    const pF=JSON.parse(localStorage.getItem('progestParams')||'{}');
+    const nomSocF=pF.nomSociete||'Essentia Services';
+    const logoF=localStorage.getItem('progestLogo');
     doc.setFillColor(14,32,64);doc.rect(0,0,W,24,'F');
+    if(logoF){try{doc.addImage(logoF,_logoFmt(logoF),M,3,18,18);}catch(e){}}
+    const txF=logoF?M+22:M;
+    doc.setTextColor(180,200,240);doc.setFontSize(8);doc.setFont('helvetica','normal');
+    doc.text(nomSocF,txF,10);
+    if(pF.siret) doc.text('SIRET : '+pF.siret,txF,16);
     doc.setTextColor(100,160,255);doc.setFontSize(14);doc.setFont('helvetica','bold');
-    doc.text('NOTES DE FRAIS',W/2,15,{align:'center'});
-    doc.setTextColor(180,200,240);doc.setFontSize(8);
-    doc.text('Total : '+total.toFixed(2)+' € — '+notesFraisData.length+' note(s) — '+new Date().toLocaleDateString('fr-FR'),W/2,21,{align:'center'});
+    doc.text('NOTES DE FRAIS',W-M,13,{align:'right'});
+    doc.setTextColor(180,200,240);doc.setFontSize(8);doc.setFont('helvetica','normal');
+    doc.text('Total : '+total.toFixed(2)+' € — '+notesFraisData.length+' note(s) — '+new Date().toLocaleDateString('fr-FR'),W-M,20,{align:'right'});
     let y=30;
     notesFraisData.forEach(function(f,i){
       if(y>250){doc.addPage();y=20;}
@@ -5529,13 +5580,13 @@ function initFactures(){
 }
 function remplirInfosFacture(){
   const id=document.getElementById('facClient').value;
-  const c=clientsData.find(x=>x.id===id);if(!c)return;
+  const c=clientsData.find(x=>x.id===id);if(!c){if(id)toast('Client introuvable','warning');return;}
   // Auto-fill référence facture FAC-2026-XXXX-NN
   const numEl=document.getElementById('facNumero');
   if(numEl && c.refClient) numEl.value=_refDoc('facture',c);
   const taux=getTVAClient(c);
-  document.getElementById('facTauxTVA').value=String(taux);
-  document.getElementById('facTVADisplay').value=taux+'% ('+(c.typeClient==='entreprise'||c.typeClient==='airbnb_agence'?'Entreprise':c.typeClient==='exonere_0'?'Exonéré SAP/Franchise':'Particulier')+')';
+  const tauxEl=document.getElementById('facTauxTVA');if(tauxEl)tauxEl.value=String(taux);
+  const tvaDispEl=document.getElementById('facTVADisplay');if(tvaDispEl)tvaDispEl.value=taux+'% ('+(c.typeClient==='entreprise'||c.typeClient==='airbnb_agence'?'Entreprise':c.typeClient==='exonere_0'?'Exonéré SAP/Franchise':'Particulier')+')';
   // Type d'opération selon le type client
   const typeOpEl=document.getElementById('facTypeOp');
   if(typeOpEl) typeOpEl.value=c.typeClient==='entreprise'?'b2b':'b2c';
@@ -5563,7 +5614,7 @@ function mettreAJourTypeOp(){
   }
 }
 function remplirLignesAuto(){
-  const id=document.getElementById('facClient').value;const c=clientsData.find(x=>x.id===id);if(!c)return;
+  const id=document.getElementById('facClient').value;const c=clientsData.find(x=>x.id===id);if(!c){if(id)toast('Client introuvable','warning');return;}
   const periode=document.getElementById('facPeriode').value||'ce mois';
   const hMois=Math.round((c.heures||0)*(c.frequence||1)*4.33*10)/10;
   lignesFactureData=[];
@@ -5575,11 +5626,21 @@ function ajouterLigneFacture(){lignesFactureData.push({desc:'',qte:1,unite:'h',p
 function supprimerLigneFacture(i){lignesFactureData.splice(i,1);renderLignesFacture();calculerTotauxFacture();}
 function renderLignesFacture(){
   const cont=document.getElementById('lignesFacture');if(!cont)return;
-  cont.innerHTML=lignesFactureData.map((l,i)=>`<div style="display:grid;grid-template-columns:3fr 70px 80px 100px 36px;gap:7px;align-items:center;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;"><input type="text" value="${l.desc}" placeholder="Description" style="font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);" oninput="lignesFactureData[${i}].desc=this.value;calculerTotauxFacture()"><input type="number" value="${l.qte}" step="0.1" style="font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);text-align:right;" oninput="lignesFactureData[${i}].qte=parseFloat(this.value)||0;calculerTotauxFacture()"><input type="text" value="${l.unite}" style="font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);" oninput="lignesFactureData[${i}].unite=this.value"><input type="number" value="${l.prixUnit}" step="0.01" style="font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);text-align:right;" oninput="lignesFactureData[${i}].prixUnit=parseFloat(this.value)||0;calculerTotauxFacture()"><button onclick="supprimerLigneFacture(${i})" style="width:30px;height:30px;border:none;background:var(--red-l);color:var(--red);border-radius:6px;cursor:pointer;">×</button></div><div style="text-align:right;font-size:10px;color:var(--text2);padding-right:46px;">Total : <strong>${((l.qte||0)*(l.prixUnit||0)).toFixed(2)} €</strong></div>`).join('');
+  const header=`<div style="display:grid;grid-template-columns:3fr 70px 80px 100px 36px;gap:7px;padding:4px 10px;">
+    <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Description</span>
+    <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right;">Qté</span>
+    <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Unité</span>
+    <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right;">Prix unit.</span>
+    <span></span>
+  </div>`;
+  const rows=lignesFactureData.map((l,i)=>`<div style="display:grid;grid-template-columns:3fr 70px 80px 100px 36px;gap:7px;align-items:center;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;"><input type="text" value="${l.desc}" placeholder="Description" style="font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);" oninput="lignesFactureData[${i}].desc=this.value;calculerTotauxFacture()"><input type="number" value="${l.qte}" step="0.1" style="font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);text-align:right;" oninput="lignesFactureData[${i}].qte=parseFloat(this.value)||0;calculerTotauxFacture()"><input type="text" value="${l.unite}" style="font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);" oninput="lignesFactureData[${i}].unite=this.value"><input type="number" value="${l.prixUnit}" step="0.01" style="font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);text-align:right;" oninput="lignesFactureData[${i}].prixUnit=parseFloat(this.value)||0;calculerTotauxFacture()"><button onclick="supprimerLigneFacture(${i})" style="width:30px;height:30px;border:none;background:var(--red-l);color:var(--red);border-radius:6px;cursor:pointer;">×</button></div><div style="text-align:right;font-size:10px;color:var(--text2);padding-right:46px;">Total : <strong>${((l.qte||0)*(l.prixUnit||0)).toFixed(2)} €</strong></div>`).join('');
+  cont.innerHTML = lignesFactureData.length ? header + rows : '<p style="font-size:11px;color:var(--text3);text-align:center;padding:12px;">Aucune ligne — cliquez sur "+ Ajouter une ligne"</p>';
 }
 function calculerTotauxFacture(){
+  if(!Array.isArray(lignesFactureData)) return;
   const st=lignesFactureData.reduce((s,l)=>s+(l.qte||0)*(l.prixUnit||0),0);
-  const taux=parseFloat(document.getElementById('facTauxTVA')?.value||'20');
+  const rawTaux=parseFloat(document.getElementById('facTauxTVA')?.value);
+  const taux=isNaN(rawTaux)?20:rawTaux;
   const tva=st*taux/100;const ttc=st+tva;
   const fmt2=v=>v.toFixed(2).replace('.',',')+' €';
   setEl('facSousTotal',fmt2(st));setEl('facMontantTVA',fmt2(tva));setEl('facTotalTTC',fmt2(ttc));setEl('facTVALabel',taux);
@@ -5644,6 +5705,9 @@ function _blocSignaturePDF(doc, y, W, M, nomPartie, labelPartie, sigData){
   return y+BH;
 }
 window._blocSignaturePDF=_blocSignaturePDF;
+
+// Détecte le format image du logo (PNG ou JPEG) depuis le préfixe base64
+function _logoFmt(b64){ return b64&&b64.startsWith('data:image/png')?'PNG':'JPEG'; }
 
 // Extrait la partie numérique de CLI-XXXX → '0042'
 function _numCli(c){ return (c?.refClient||'CLI-0000').replace('CLI-','').replace('PRO-',''); }
@@ -5807,8 +5871,10 @@ function convertirProspectEnClient(id){
   c.refClient=newRef;
   c.workflowStatut='client_actif';
   sauvegarderTout(true); chargerClients();
-  document.getElementById('editClientModal').style.display='none';
-  toast(`${c.nom} converti en client actif — ${newRef} ✓`,'success');
+  // Fermer le modal seulement s'il est ouvert
+  var _modal=document.getElementById('editClientModal');
+  if(_modal&&_modal.style.display!=='none') _modal.style.display='none';
+  toast(c.nom+' converti en client actif — '+newRef+' ✓','success');
 }
 window.convertirProspectEnClient=convertirProspectEnClient;
 
@@ -5930,7 +5996,7 @@ function genererFacturePDF(){
 
   // Logo si disponible
   if(logoB64){
-    try{doc.addImage(logoB64,'JPEG',M+4,y+4,22,22);}catch(e){}
+    try{doc.addImage(logoB64,_logoFmt(logoB64),M+4,y+4,22,22);}catch(e){}
     doc.setTextColor(255,255,255);
     doc.setFontSize(14);doc.setFont('helvetica','bold');
     doc.text(nomSoc,M+30,y+11);
@@ -6193,7 +6259,7 @@ function genererFacturePDF(){
     typeOp:typeOpVal, sirenClient:sirenClientVal,
     lignes:JSON.parse(JSON.stringify(lignesFactureData))
   });
-  facNumeroAutoIncrement++;
+  // facNumeroAutoIncrement obsolète (ref facture basée sur client) — retiré
   document.getElementById('facNumero').value=`FAC-${new Date().getFullYear()}-${String(facNumeroAutoIncrement).padStart(3,'0')}`;
   renderHistoriqueFactures();
   sauvegarderTout(true);
@@ -6539,13 +6605,13 @@ function _regenererContratPDFb64(contrat){
 
     // ── En-tête ──
     doc.setDrawColor(0,0,0); doc.setLineWidth(1); doc.line(M,y,W-M,y); y+=2;
-    if(logo){try{doc.addImage(logo,'JPEG',M,y+1,16,16);}catch(e){}}
+    if(logo){try{doc.addImage(logo,_logoFmt(logo),M,y+1,16,16);}catch(e){}}
     const tx=logo?M+20:M;
     doc.setTextColor(0,0,0); doc.setFontSize(13); doc.setFont('helvetica','bold');
     doc.text(nomSoc,tx,y+9);
     doc.setFontSize(8); doc.setFont('helvetica','normal');
     if(p.adresse) doc.text(p.adresse.replace(/\n/g,' '),tx,y+15);
-    if(p.siret) doc.text('SIRET : '+p.siret,tx,y+20);
+    if(p.siret) doc.text('SIRET : '+p.siret+(p.tvaIntra?' · TVA : '+p.tvaIntra:''),tx,y+20);
     doc.setFontSize(14); doc.setFont('helvetica','bold');
     doc.text('CONTRAT DE PRESTATION DE SERVICES',W-M,y+9,{align:'right'});
     doc.setFontSize(8); doc.setFont('helvetica','normal');
@@ -6650,14 +6716,21 @@ function _regenererContratPDFb64(contrat){
 
     // ── Signatures ──
     y+=6;
-    var sigData=contrat.signatureData||(_signatureData||null);
+    // Lire signature depuis localStorage (stockage léger) ou global courant
+    var sigData=null;
+    try{sigData=localStorage.getItem('sig_'+contrat.ref)||null;}catch(e){}
+    if(!sigData) sigData=_signatureData||null;
     y=_blocSignaturePDF(doc,y,W,M,c.nom||contrat.clientOuSalarie||'','du client',sigData);
 
     // ── Pied de page ──
     const pH=doc.internal.pageSize.getHeight();
-    doc.setDrawColor(0,0,0); doc.setLineWidth(0.3); doc.line(M,pH-15,W-M,pH-15);
-    doc.setTextColor(80,80,80); doc.setFontSize(6.5); doc.setFont('helvetica','normal');
-    doc.text(nomSoc+(p.siret?' · SIRET : '+p.siret:'')+' — Réf. '+ref,W/2,pH-9,{align:'center'});
+    doc.setDrawColor(200,215,240); doc.setLineWidth(0.3); doc.line(M,pH-22,W-M,pH-22);
+    doc.setTextColor(120,140,170); doc.setFontSize(6.5); doc.setFont('helvetica','normal');
+    const footerC=[
+      nomSoc+(p.forme?' — '+p.forme:'')+(p.siret?' · SIRET : '+p.siret:'')+(p.tvaIntra?' · TVA : '+p.tvaIntra:''),
+      (p.mentionLegale||'Pénalités de retard : 3× taux légal. Indemnité forfaitaire : 40 €.')+' — Réf. '+ref
+    ];
+    doc.text(footerC,W/2,pH-16,{align:'center',lineHeightFactor:1.6});
 
     const b64=_pdfB64(doc);
     _savePDFCache(ref,b64,ref+'_contrat_prestation.pdf');
@@ -6720,7 +6793,8 @@ async function _testResend(dest){
     console.error('[Resend test]',e);
   }
 }
-window._testResend=_testResend;
+// _testResend exposé uniquement en mode gérant
+if(typeof currentMode==='undefined'||currentMode==='gerant') window._testResend=_testResend;
 
 async function envoyerFactureEmail(){
   const d=_getFactureData();
@@ -6794,6 +6868,7 @@ async function envoyerFactureEmailId(id){
 
 function marquerPayee(id){
   const f=facturesData.find(x=>x.id===id);if(!f)return;
+  if(!confirm(`Marquer la facture ${f.numero||id} comme payée ? Cette action est irréversible.`))return;
   f.statut='payee';
   sauvegarderTout(true);
   renderHistoriqueFactures();
@@ -6862,9 +6937,9 @@ function chargerAccueil(){
   // Clients habituels ce jour (hors absents et déplacés)
   const clientsHab=clientsData.filter(function(c){
     if(!(_getJoursClientDate?_getJoursClientDate(c,dateKey):(c.jours||[])).includes(jourNom)) return false;
-    if(typeof clientEstAbsentCeJour==='function'&&clientEstAbsentCeJour(c.id,dateKey)) return false;
     const entry=(planningPrevData[c.id]||{})[dateKey];
     if(entry&&entry.statut==='absent') return false;
+    if(clientEstAbsentCeJour(c.id,dateKey)) return false;
     return true;
   });
 
@@ -8517,7 +8592,7 @@ function setTypeContrat(type){
       verifierTempsPartiel();
     }
     const refEl=document.getElementById('ctRef');
-    if(refEl&&!refEl.value) refEl.value=_nextContratRef(type);
+    if(refEl) refEl.value=_nextContratRef(type); // toujours mettre à jour quand on change de type
   }
   // Init signature canvas
   if(type==='prestation') setTimeout(initSignatureCanvas,100);
@@ -8580,7 +8655,7 @@ function validerSignature(){
 }
 
 // ── Email dual mode (Gmail / mailto) ─────────────────────
-function envoyerContratEmail(source, mode){
+async function envoyerContratEmail(source, mode){
   const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
   let dest='', nom='', ref='', type='';
 
@@ -8601,7 +8676,7 @@ function envoyerContratEmail(source, mode){
     nom=c.clientOuSalarie||'—'; ref=document.getElementById('avenantRef')?.value||''; type='avenant';
   }
 
-  _envoyerEmailContratAvecCopie(dest, nom, ref, type, p, mode||'gmail');
+  await _envoyerEmailContratAvecCopie(dest, nom, ref, type, p);
 }
 
 function envoyerContratEmailId(id){
@@ -8628,7 +8703,7 @@ function envoyerContratClient(clientId){
         <div style="font-size:10px;color:var(--text3);">${tLabels[c.type]||c.type} · ${c.date||''}${c.statut?' · '+c.statut:''}</div>
       </div>
       <div style="display:flex;gap:6px;">
-        <button class="btn btn-primary btn-sm" onclick="_envoyerContratAvecPDF('${client.email}','${client.nom.replace(/'/g,"\\'")}','${c.id}');document.getElementById('modalContratPicker').remove();">
+        <button class="btn btn-primary btn-sm" onclick="_envoyerContratAvecPDF('${client.email}','${client.nom.replace(/'/g,"\\'")}','${c.id}').then(function(){var m=document.getElementById('modalContratPicker');if(m)m.remove();})">
           <i class="fas fa-paper-plane"></i> Envoyer
         </button>
       </div>
@@ -8779,7 +8854,12 @@ function remplirInfosContrat(){
   refBadge.innerHTML=c.refClient?`<span style="font-size:10px;font-weight:700;color:var(--accent);background:rgba(74,124,247,.1);border-radius:4px;padding:2px 8px;margin-top:4px;display:inline-block;">${c.refClient}</span>`:'';
   // Référence contrat liée au client CLI-XXXX
   const refEl=document.getElementById('contratRef');
-  if(refEl) refEl.value=_genContratRef(id);
+  if(refEl && !refEl.value){
+    // Ref contrat liée au client CLI-XXXX
+    refEl.value=_genContratRef(id);
+  } else if(refEl && refEl.value && refEl.value.startsWith('undefined')){
+    refEl.value=_genContratRef(id);
+  }
   const tvaSel=document.getElementById('contratTVA');
   if(tvaSel){
     const tvaCli = parseFloat(c.tva);
@@ -8924,7 +9004,7 @@ function genererContratPrestation(){
 
   // ── En-tête sobre noir/blanc ──────────────────────────────
   doc.setDrawColor(0,0,0); doc.setLineWidth(1); doc.line(M,y,W-M,y); y+=2;
-  if(logo){try{doc.addImage(logo,'JPEG',M,y+1,16,16);}catch(e){}}
+  if(logo){try{doc.addImage(logo,_logoFmt(logo),M,y+1,16,16);}catch(e){}}
   doc.setTextColor(0,0,0); doc.setFontSize(13); doc.setFont('helvetica','bold');
   doc.text(nomSoc,logo?M+20:M,y+9);
   doc.setFontSize(8); doc.setFont('helvetica','normal');
@@ -9055,7 +9135,9 @@ function genererContratPrestation(){
   doc.save(_fname1);
 
   // Enregistrer dans l'historique
-  contratsData.push({id:'CTR'+Date.now(),type:'prestation',ref,clientId:clientId,clientOuSalarie:c.nom,date:debut,montantMensuel:montantTTC,statut:'actif',emailClient:gv('contratEmailClient'),signatureIncluse:!!_signatureData,signatureData:_signatureData||null});
+  // signatureData stockée en localStorage (pas dans Supabase — trop lourd)
+  if(_signatureData) try{localStorage.setItem('sig_'+ref,_signatureData);}catch(e){}
+  contratsData.push({id:'CTR'+Date.now(),type:'prestation',ref,clientId:clientId,clientOuSalarie:c.nom,date:debut,montantMensuel:montantTTC,statut:'actif',emailClient:gv('contratEmailClient'),signatureIncluse:!!_signatureData});
   // Passage automatique en Client actif
   const _cIdx=clientsData.findIndex(x=>x.id===clientId);
   if(_cIdx>=0) clientsData[_cIdx].workflowStatut='client_actif';
@@ -9104,7 +9186,7 @@ function genererContratTravail(){
 
   // ─ En-tête ─
   doc.setFillColor(26,10,60); doc.rect(0,0,W,26,'F');
-  if(logo){try{doc.addImage(logo,'JPEG',M,3,18,18);}catch(e){}}
+  if(logo){try{doc.addImage(logo,_logoFmt(logo),M,3,18,18);}catch(e){}}
   doc.setTextColor(255,255,255); doc.setFontSize(12); doc.setFont('helvetica','bold');
   doc.text(p.nomSociete||'Essentia Services',logo?M+22:M,13);
   doc.setTextColor(200,180,255); doc.setFontSize(14);
@@ -9384,57 +9466,143 @@ function sauvegarderIntervention() {
 window.sauvegarderIntervention = sauvegarderIntervention;
 
 function supprimerIntervention(id) {
-  if (!confirm('Supprimer cette intervention ?')) return;
+  if (!confirm('Supprimer définitivement cette intervention ? La trace sera perdue.')) return;
   interventionsData = interventionsData.filter(i => i.id !== id);
   localStorage.setItem('essentiaInterventions', JSON.stringify(interventionsData));
   afficherInterventionsList();
+  if(typeof renderPlanningMois==='function') renderPlanningMois('planningMoisCalendar', planningMoisOffset);
   toast('Intervention supprimée', 'success');
 }
 window.supprimerIntervention = supprimerIntervention;
 
+// Ouvre le modal de motif d'annulation
+let _annulationId = null;
 function annulerIntervention(id) {
   const interv = interventionsData.find(i => i.id === id);
   if (!interv) return;
-  interv.statut = interv.statut === 'annule' ? 'planifie' : 'annule';
-  localStorage.setItem('essentiaInterventions', JSON.stringify(interventionsData));
-  afficherInterventionsList();
-  if (typeof chargerTournees === 'function') chargerTournees();
-  toast(interv.statut === 'annule' ? 'Intervention annulée' : 'Intervention rétablie', interv.statut === 'annule' ? 'warning' : 'success');
+  // Rétablir si déjà annulée
+  if (interv.statut === 'annule') {
+    interv.statut = 'planifie';
+    delete interv.motifAnnulation;
+    delete interv.noteAnnulation;
+    delete interv.dateAnnulation;
+    localStorage.setItem('essentiaInterventions', JSON.stringify(interventionsData));
+    afficherInterventionsList();
+    if(typeof renderPlanningMois==='function') renderPlanningMois('planningMoisCalendar', planningMoisOffset);
+    toast('Intervention rétablie', 'success');
+    return;
+  }
+  // Sinon ouvrir le modal motif
+  _annulationId = id;
+  const modal = document.getElementById('modalMotifAnnulation');
+  if(!modal) return;
+  document.getElementById('annulMotifSelect').value = 'replanifier';
+  document.getElementById('annulNote').value = '';
+  modal.style.display = 'flex';
 }
 window.annulerIntervention = annulerIntervention;
+
+function confirmerAnnulation() {
+  const interv = interventionsData.find(i => i.id === _annulationId);
+  if (!interv) { fermerModalAnnulation(); return; }
+  interv.statut = 'annule';
+  interv.motifAnnulation = document.getElementById('annulMotifSelect').value;
+  interv.noteAnnulation = document.getElementById('annulNote').value.trim();
+  interv.dateAnnulation = new Date().toLocaleDateString('fr-FR');
+  localStorage.setItem('essentiaInterventions', JSON.stringify(interventionsData));
+  fermerModalAnnulation();
+  afficherInterventionsList();
+  if(typeof renderPlanningMois==='function') renderPlanningMois('planningMoisCalendar', planningMoisOffset);
+  const motifLabel = {replanifier:'À replanifier', client_annule:'Client annulé', autre:'Autre'}[interv.motifAnnulation]||'';
+  toast('Intervention annulée — ' + motifLabel, 'warning');
+}
+function fermerModalAnnulation() {
+  const m = document.getElementById('modalMotifAnnulation');
+  if(m) m.style.display = 'none';
+  _annulationId = null;
+}
+window.confirmerAnnulation = confirmerAnnulation;
+window.fermerModalAnnulation = fermerModalAnnulation;
+
+// Annuler depuis le drawer et le rouvrir après
+function _annulDrawer(id, dateKey, jourNom) {
+  const interv = interventionsData.find(i => i.id === id);
+  if (!interv) return;
+  if (interv.statut === 'annule') {
+    annulerIntervention(id); // rétablir direct
+    setTimeout(() => ouvrirDrawerJour(dateKey, jourNom), 200);
+  } else {
+    _annulDrawerCtx = { dateKey, jourNom };
+    annulerIntervention(id); // ouvre le modal motif
+  }
+}
+let _annulDrawerCtx = null;
+// Surcharge confirmerAnnulation pour rouvrir le drawer si besoin
+const _confirmerAnnulationOrig = confirmerAnnulation;
+confirmerAnnulation = function() {
+  _confirmerAnnulationOrig();
+  if (_annulDrawerCtx) {
+    const ctx = _annulDrawerCtx;
+    _annulDrawerCtx = null;
+    setTimeout(() => ouvrirDrawerJour(ctx.dateKey, ctx.jourNom), 200);
+  }
+};
+window.confirmerAnnulation = confirmerAnnulation;
+window._annulDrawer = _annulDrawer;
 
 const statutColors = { planifie: 'var(--amber)', confirme: 'var(--accent)', realise: 'var(--green)', annule: 'var(--red)' };
 const statutLabels = { planifie: 'Planifié', confirme: 'Confirmé', realise: 'Réalisé', annule: '✗ Annulé' };
 const typeColors = { 'Ménage': '#3b82f6', 'Repassage': '#ec4899', 'Airbnb': '#10b981', 'Ponctuel': '#f59e0b' };
+const motifLabels = { replanifier: '🔄 À replanifier', client_annule: '✗ Client annulé', autre: 'Autre' };
 
 function afficherInterventionsList() {
   const cont = document.getElementById('interventionsList');
   if (!cont) return;
-  // Show next 10 upcoming
   const now = new Date();
+
+  // Interventions à venir (actives)
   const upcoming = interventionsData
-    .filter(i => new Date(i.date + 'T' + i.heure) >= now)
+    .filter(i => i.statut !== 'annule' && new Date(i.date + 'T' + (i.heure||'00:00')) >= now)
     .sort((a, b) => (a.date + a.heure).localeCompare(b.date + b.heure))
     .slice(0, 10);
-  if (!upcoming.length) {
+
+  // À replanifier
+  const areplanifier = interventionsData.filter(i => i.statut === 'annule' && i.motifAnnulation === 'replanifier');
+
+  let html = '';
+
+  if (!upcoming.length && !areplanifier.length) {
     cont.innerHTML = '<span style="font-size:11px;color:var(--text3);padding:4px;">Aucune intervention planifiée</span>';
     return;
   }
-  cont.innerHTML = upcoming.map(i => {
+
+  html += upcoming.map(i => {
     const d = new Date(i.date + 'T00:00:00');
     const dateStr = d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
-    const col = i.statut === 'annule' ? 'var(--red)' : (typeColors[i.type] || 'var(--accent)');
-    const opacity = i.statut === 'annule' ? 'opacity:.55;' : '';
-    return `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.95);border:1px solid ${col};border-left:3px solid ${col};border-radius:8px;padding:5px 10px;font-size:11px;box-shadow:0 1px 4px rgba(0,0,0,.08);${opacity}">
-      <span style="color:${col};font-weight:700;${i.statut==='annule'?'text-decoration:line-through;':''}">${i.heure}</span>
+    const col = typeColors[i.type] || 'var(--accent)';
+    return `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.95);border:1px solid ${col};border-left:3px solid ${col};border-radius:8px;padding:5px 10px;font-size:11px;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+      <span style="color:${col};font-weight:700;">${i.heure}</span>
       <span style="font-weight:600;">${dateStr}</span>
       <span style="color:var(--text2);">${i.clientNom||i.type}</span>
       ${i.intervenante?`<span style="color:var(--text3);">· ${i.intervenante}</span>`:''}
       <span style="background:${statutColors[i.statut]||'var(--accent)'};color:#fff;padding:1px 7px;border-radius:20px;font-size:9px;font-weight:700;">${statutLabels[i.statut]||i.statut}</span>
-      ${i.statut!=='annule'?`<button onclick="annulerIntervention('${i.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;padding:0 2px;font-weight:700;" title="Annuler">✗</button>`:`<button onclick="annulerIntervention('${i.id}')" style="background:none;border:none;color:var(--green);cursor:pointer;font-size:11px;padding:0 2px;" title="Rétablir">↩</button>`}
-      <button onclick="supprimerIntervention('${i.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:0 2px;" title="Supprimer">×</button>
+      <button onclick="annulerIntervention('${i.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;padding:0 2px;font-weight:700;" title="Annuler avec motif">✗</button>
     </div>`;
   }).join('');
+
+  // Bandeau À replanifier
+  if (areplanifier.length) {
+    html += `<div style="display:inline-flex;align-items:center;gap:6px;background:#fff7ed;border:1px solid #f97316;border-left:3px solid #f97316;border-radius:8px;padding:5px 10px;font-size:11px;margin-left:4px;">
+      <span style="color:#f97316;font-weight:700;">🔄 ${areplanifier.length} à replanifier</span>`;
+    areplanifier.forEach(i => {
+      html += `<span style="color:#92400e;text-decoration:line-through;">${i.clientNom||'—'}</span>
+        <button onclick="annulerIntervention('${i.id}')" style="background:none;border:none;color:var(--green);cursor:pointer;font-size:11px;padding:0 2px;" title="Rétablir">↩</button>
+        <button onclick="supprimerIntervention('${i.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:0 2px;" title="Supprimer définitivement">×</button>`;
+    });
+    html += `</div>`;
+  }
+
+  cont.innerHTML = html;
 }
 window.afficherInterventionsList = afficherInterventionsList;
 
@@ -9462,7 +9630,7 @@ function remplirRetractClient(){
       contratEl.value=contratsClient[contratsClient.length-1].ref;
     } else {
       // Aperçu de la ref qui sera générée (client sans contrat existant)
-      contratEl.value=_genContratRef(id)+' (à générer)';
+      contratEl.value='CONT-'+new Date().getFullYear()+'-??? (à générer)';
     }
   }
   const svcEl=document.getElementById('retractService');
@@ -9810,7 +9978,7 @@ function genererDevisPDF(){
   const logo=localStorage.getItem('progestLogo');
   // Bandeau en-tête sobre noir/blanc
   doc.setDrawColor(0,0,0); doc.setLineWidth(0.8); doc.line(M,y,W-M,y); y+=2;
-  if(logo){try{doc.addImage(logo,'JPEG',M,y+1,16,16);}catch(e){}}
+  if(logo){try{doc.addImage(logo,_logoFmt(logo),M,y+1,16,16);}catch(e){}}
   const tx=logo?M+20:M;
   doc.setTextColor(0,0,0); doc.setFontSize(13); doc.setFont('helvetica','bold'); doc.text(nomSoc,tx,y+9);
   doc.setFontSize(7.5); doc.setFont('helvetica','normal');
@@ -9901,7 +10069,8 @@ function genererDevisPDF(){
   doc.save(`${numDev}_${(c.nom||'client').replace(/\s+/g,'_')}.pdf`);
   // Enregistrer
   devisData.push({id:'DEV'+Date.now(),numero:numDev,client:c.nom||'—',clientId,date:dateDev,objet:gv('devisObjet'),totalHT:st,totalTTC:ttc,tva:tauxTVA,statut:'en_attente',validite,lignes:JSON.parse(JSON.stringify(lignesDevisData))});
-  devisAutoIncrement++;
+  // devisAutoIncrement obsolète (ref devis basée sur client) — retiré
+  
   // Passage automatique en Devis envoyé (sauf si déjà client actif)
   if(clientId){const _ci=clientsData.findIndex(x=>x.id===clientId);if(_ci>=0&&clientsData[_ci].workflowStatut!=='client_actif')clientsData[_ci].workflowStatut='devis_envoye';}
   const numEl=document.getElementById('devisNumero');
@@ -10524,10 +10693,11 @@ function chargerPlanningPrevisionnel(){
       var jourAff = joursN2[dt.getDay()];
       var dateAff = String(dt.getDate()).padStart(2,'0')+'/'+String(mois).padStart(2,'0');
       var hPrevI = parseFloat(interv.duree)||0;
+      var hRealI = parseFloat(interv.dureeReelle!=null?interv.dureeReelle:interv.duree)||0;
       var isAnnule = interv.statut === 'annule';
       if(!isAnnule) totalIntPrev += hPrevI;
       var isRealise = interv.statut === 'realise' || interv.statut === 'confirme';
-      if(isRealise) totalIntReal += hPrevI;
+      if(isRealise) totalIntReal += hRealI;
       var statutOptI = ['planifie','confirme','realise','annule'].map(function(s){
         var lbl = {planifie:'⧖ Planifié', confirme:'✓ Confirmé', realise:'✓ Réalisé', annule:'✗ Annulé'}[s];
         return '<option value="'+s+'"'+(interv.statut===s?' selected':'')+'>'+lbl+'</option>';
@@ -10545,10 +10715,16 @@ function chargerPlanningPrevisionnel(){
         + '</td>'
         + '<td style="padding:5px 8px;text-align:center;font-size:11px;font-family:\'DM Mono\',monospace;">'+hPrevI.toFixed(2)+'h</td>'
         + '<td style="padding:5px 8px;">'
-          + '<input class="pp-interv-duree" data-iid="'+interv.id+'" type="number" value="'+hPrevI.toFixed(2)+'" step="0.25" min="0" '
+          + '<input class="pp-interv-duree" data-iid="'+interv.id+'" type="number" value="'+hRealI.toFixed(2)+'" step="0.25" min="0" '
           + 'style="width:65px;font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;text-align:center;font-family:\'DM Mono\',monospace;">h'
         + '</td>'
-        + '<td style="padding:5px 8px;text-align:center;font-size:11px;color:var(--text3);">—</td>'
+        + (function(){
+          if(isAnnule) return '<td style="padding:5px 8px;text-align:center;font-size:11px;color:var(--text3);">—</td>';
+          var delta=hRealI-hPrevI;
+          var deltaStr=delta===0?'±0':(delta>0?'+':'')+delta.toFixed(2)+'h';
+          var dColor=delta>0?'var(--green)':delta<0?'var(--red)':'var(--text3)';
+          return '<td style="padding:5px 8px;text-align:center;font-size:11px;font-weight:600;color:'+dColor+';">'+deltaStr+'</td>';
+        })()
         + '<td style="padding:5px 8px;">'
           + '<span style="font-size:10px;color:var(--text3);">'+(interv.clientNom||'')+(interv.intervenante?' · '+interv.intervenante:'')+'</span>'
           + (interv.notes?'<br><span style="font-size:9px;color:var(--text3);">'+interv.notes+'</span>':'')
@@ -10596,7 +10772,7 @@ function chargerPlanningPrevisionnel(){
       var iid = e.target.dataset.iid;
       var val = parseFloat(e.target.value);
       var interv = interventionsData.find(function(i){ return i.id===iid; });
-      if(interv && !isNaN(val)){ interv.duree = val; localStorage.setItem('essentiaInterventions', JSON.stringify(interventionsData)); }
+      if(interv && !isNaN(val)){ interv.dureeReelle = val; localStorage.setItem('essentiaInterventions', JSON.stringify(interventionsData)); }
     }
   });
   // FIX: aussi écouter 'input' sur les heures pour mise à jour immédiate
@@ -10928,7 +11104,7 @@ function _entete(doc, p, logo, titre, sousTitre, numPage, totalPages, confidenti
 
   // Logo
   if(logo){
-    try{ doc.addImage(logo,'JPEG',M,2,18,18); }catch(e){}
+    try{ doc.addImage(logo,_logoFmt(logo),M,2,18,18); }catch(e){}
   }
   var xText = logo ? M+22 : M;
 
@@ -13632,14 +13808,16 @@ function ouvrirModalAirbnb(){
   const modal = document.getElementById('modalAirbnb');
   if(!modal) return;
   const sel = document.getElementById('airbnbClient');
-  const clients = clientsData.filter(c=>c.typeClient==='airbnb_particulier'||c.typeClient==='airbnb_agence');
-  sel.innerHTML = '<option value="">— Sélectionner —</option>' +
-    clients.map(c=>`<option value="${c.id}">${c.nom}${c.commune?' · '+c.commune:''} (${c.typeClient==='airbnb_agence'?'Agence':'Particulier'})</option>`).join('');
   const selInt = document.getElementById('airbnbIntervenant');
-  selInt.innerHTML = '<option value="">— Gérant —</option>' +
+  const dateEl = document.getElementById('airbnbDate');
+  const recapEl = document.getElementById('airbnbRecap');
+  const clients = clientsData.filter(c=>c.typeClient==='airbnb_particulier'||c.typeClient==='airbnb_agence');
+  if(sel) sel.innerHTML = '<option value="">— Sélectionner —</option>' +
+    clients.map(c=>`<option value="${c.id}">${c.nom}${c.commune?' · '+c.commune:''} (${c.typeClient==='airbnb_agence'?'Agence':'Particulier'})</option>`).join('');
+  if(selInt) selInt.innerHTML = '<option value="">— Gérant —</option>' +
     salariesData.map(s=>`<option value="${s.nom}">${s.nom}</option>`).join('');
-  document.getElementById('airbnbDate').value = new Date().toISOString().split('T')[0];
-  document.getElementById('airbnbRecap').style.display = 'none';
+  if(dateEl) dateEl.value = new Date().toISOString().split('T')[0];
+  if(recapEl) recapEl.style.display = 'none';
   modal.style.display = 'flex';
 }
 
@@ -13648,31 +13826,37 @@ function fermerModalAirbnb(){
 }
 
 function remplirAirbnbInfos(){
-  const id = document.getElementById('airbnbClient').value;
+  const id = document.getElementById('airbnbClient')?.value;
   const c = clientsData.find(x=>x.id===id);
   const recap = document.getElementById('airbnbRecap');
+  if(!recap) return;
   if(!c){ recap.style.display='none'; return; }
   const tarif = c.tarif||0;
-  const duree = parseFloat(document.getElementById('airbnbDuree').value)||2;
-  const ht = tarif * duree;
+  const duree = c.heures||2;
+  const isActe = c.type === 'Acte';
+  const ht = isActe ? tarif : tarif * duree;
   const tvaP = getTVAClient(c)||0;
   const tva = ht * tvaP / 100;
+  const tarifLabel = isActe ? `${tarif}€/acte` : `${tarif}€/h`;
+  const estimLabel = isActe
+    ? `1 intervention × ${tarif}€ = ${ht.toFixed(2)}€ HT`
+    : `${duree}h × ${tarif}€ = ${ht.toFixed(2)}€ HT`;
   recap.style.display = 'block';
-  recap.innerHTML = `<strong>${c.nom}</strong> · ${c.commune||'—'} · Tarif : ${tarif}€/h<br>
-    Estimé : <strong>${duree}h × ${tarif}€ = ${ht.toFixed(2)}€ HT</strong> · TVA ${tvaP}% : ${tva.toFixed(2)}€ · TTC : ${(ht+tva).toFixed(2)}€`;
+  recap.innerHTML = `<strong>${c.nom}</strong> · ${c.commune||'—'} · Tarif : ${tarifLabel}<br>
+    Estimé : <strong>${estimLabel}</strong> · TVA ${tvaP}% : ${tva.toFixed(2)}€ · TTC : ${(ht+tva).toFixed(2)}€`;
 }
 
 function sauvegarderAirbnb(){
   const clientId = document.getElementById('airbnbClient').value;
   const date = document.getElementById('airbnbDate').value;
   const heure = document.getElementById('airbnbHeure').value;
-  const duree = parseFloat(document.getElementById('airbnbDuree').value)||2;
-  const note = document.getElementById('airbnbNote').value.trim();
-  const intervenant = document.getElementById('airbnbIntervenant').value;
   if(!clientId){ toast('Sélectionnez un client Airbnb','warning'); return; }
   if(!date){ toast('Sélectionnez une date','warning'); return; }
   const c = clientsData.find(x=>x.id===clientId);
   if(!c){ toast('Client introuvable','error'); return; }
+  const duree = c.heures||2;
+  const note = document.getElementById('airbnbNote').value.trim();
+  const intervenant = document.getElementById('airbnbIntervenant').value;
   deplacementsData.push({
     id: 'airbnb_'+Date.now(),
     clientId, dateOrigine: null, heureOrigine: null,
@@ -13996,17 +14180,11 @@ function assignerActivite(clientId, jour, activite){
           <input type="time" id="airbnbHeure" value="09:00">
         </div>
       </div>
-      <div class="rg-2">
-        <div class="form-group">
-          <label>Durée estimée (h)</label>
-          <input type="number" id="airbnbDuree" value="2" step="0.5" min="0.5">
-        </div>
-        <div class="form-group">
-          <label>Intervenant</label>
-          <select id="airbnbIntervenant" style="width:100%;">
-            <option value="">— Gérant —</option>
-          </select>
-        </div>
+      <div class="form-group">
+        <label>Intervenant</label>
+        <select id="airbnbIntervenant" style="width:100%;">
+          <option value="">— Gérant —</option>
+        </select>
       </div>
       <div class="form-group">
         <label>Note / Description</label>
@@ -14103,6 +14281,44 @@ function assignerActivite(clientId, jour, activite){
     <div style="margin-top:14px;display:flex;justify-content:flex-end;gap:8px;">
       <button onclick="fermerTableauAssignation()" class="btn btn-ghost btn-sm">Fermer</button>
       <button onclick="sauvegarderAssignations()" class="btn btn-success btn-sm"><i class="fas fa-save"></i> Enregistrer et fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL MOTIF ANNULATION INTERVENTION ═══ -->
+<div id="modalMotifAnnulation" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+  <div style="background:var(--bg);border-radius:16px;padding:24px;width:min(420px,95vw);box-shadow:var(--shadow);">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+      <div style="width:36px;height:36px;border-radius:10px;background:#fee2e2;display:flex;align-items:center;justify-content:center;color:#dc2626;font-size:16px;">✗</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:var(--text);">Annuler l'intervention</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:1px;">La trace sera conservée pour suivi</div>
+      </div>
+      <button onclick="fermerModalAnnulation()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--text3);font-size:20px;">&#x2715;</button>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="form-group">
+        <label>Motif d'annulation</label>
+        <select id="annulMotifSelect" style="width:100%;font-weight:600;">
+          <option value="replanifier">🔄 À replanifier — date inconnue</option>
+          <option value="client_annule">✗ Client a annulé</option>
+          <option value="autre">Autre</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Note (optionnel)</label>
+        <input type="text" id="annulNote" placeholder="Ex: client en déplacement, maladie..." style="width:100%;">
+      </div>
+      <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:8px 12px;font-size:11px;color:#92400e;">
+        <strong>🔄 À replanifier</strong> : l'intervention reste visible dans la bande du calendrier pour ne pas l'oublier.<br>
+        <strong>✗ Client annulé</strong> : archivé silencieusement, disparaît du planning.
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end;">
+      <button onclick="fermerModalAnnulation()" class="btn btn-ghost btn-sm">Retour</button>
+      <button onclick="confirmerAnnulation()" class="btn btn-sm" style="background:#dc2626;color:#fff;"><i class="fas fa-check"></i> Confirmer l'annulation</button>
     </div>
   </div>
 </div>
