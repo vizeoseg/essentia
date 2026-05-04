@@ -6852,13 +6852,47 @@ function calculerStats(){
   setEl('statsStock',stockAlertes);
 }
 function chargerAccueil(){
-  const today=new Date().toLocaleDateString('fr-FR',{weekday:'long'}).toLowerCase();
-  const todayI=clientsData.filter(c=>c.jours&&c.jours.includes(today));
+  // ── Interventions du jour synchronisées avec le planning ──
+  const _nowAccueil=new Date(); _nowAccueil.setHours(0,0,0,0);
+  const JOURS=['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+  const jourNom=JOURS[new Date().getDay()];
+  const dateKey=new Date().toISOString().split('T')[0];
+  const toMin=function(t){const s=String(t||'00:00');const p=s.includes(':')?s.split(':'):['0','0'];return (parseInt(p[0])||0)*60+(parseInt(p[1])||0);};
+
+  // Clients habituels ce jour (hors absents et déplacés)
+  const clientsHab=clientsData.filter(function(c){
+    if(!(_getJoursClientDate?_getJoursClientDate(c,dateKey):(c.jours||[])).includes(jourNom)) return false;
+    if(typeof clientEstAbsentCeJour==='function'&&clientEstAbsentCeJour(c.id,dateKey)) return false;
+    const entry=(planningPrevData[c.id]||{})[dateKey];
+    if(entry&&entry.statut==='absent') return false;
+    return true;
+  });
+
+  // Clients déplacés VERS aujourd'hui (incluant Airbnb urgences)
+  const clientsDep=(deplacementsData||[]).filter(function(d){return d.dateNouvelle===dateKey;}).map(function(d){
+    const c=clientsData.find(function(x){return x.id===d.clientId;});
+    return c?Object.assign({},c,{heureDebut:d.heureNouvelle||c.heureDebut,_airbnb:d.airbnb||false,_dep:true}):null;
+  }).filter(Boolean);
+
+  const todayI=[...clientsHab,...clientsDep].sort(function(a,b){return toMin(a.heureDebut)-toMin(b.heureDebut);});
+
   const divT=document.getElementById('todayInterventions');
-  if(divT)divT.innerHTML=todayI.map(c=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:8px;margin-bottom:6px;border:1px solid var(--border);font-size:12px;"><span style="background:var(--accent);color:white;padding:2px 7px;border-radius:50px;font-size:10px;font-weight:600;">09:00</span><span>${c.nom} — ${c.commune||'—'}</span></div>`).join('')||'<p style="color:var(--text3);font-size:12px;">Aucune intervention aujourd\'hui</p>';
+  if(divT)divT.innerHTML=todayI.map(function(c){
+    const entry=(planningPrevData[c.id]||{})[dateKey];
+    const statut=entry?entry.statut:'prevu';
+    const statutColors={confirme:'var(--green)',absent:'var(--red)',partiel:'var(--amber)',prevu:'var(--accent)',prevu_passe:'var(--amber)'};
+    const statutIcons={confirme:'✓',absent:'✗',partiel:'~',prevu:'⧖',prevu_passe:'?'};
+    const bColor=c._airbnb?'#f97316':statutColors[statut]||'var(--accent)';
+    const prefix=c._airbnb?'🏠 ':c._dep?'🔄 ':'';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:8px;margin-bottom:6px;border:1px solid var(--border);font-size:12px;">
+      <span style="background:${bColor};color:white;padding:2px 7px;border-radius:50px;font-size:10px;font-weight:600;">${c.heureDebut||'—'}</span>
+      <span style="flex:1;">${prefix}${c.nom} — ${c.commune||'—'}</span>
+      <span style="font-size:10px;color:${statutColors[statut]||'var(--accent)'};">${statutIcons[statut]||''}</span>
+    </div>`;
+  }).join('')||'<p style="color:var(--text3);font-size:12px;">Aucune intervention aujourd\'hui</p>';
   setEl('todayCount',todayI.length);
   const alertes=[];
-  const now=new Date();
+  const now=_nowAccueil;
   clientsData.forEach(c=>{if(c.dateSortie){const _p=c.dateSortie.split('-');const d=new Date(_p[0],_p[1]-1,_p[2]);const diff=Math.round((d-now)/(1000*60*60*24));if(diff>=0&&diff<=30)alertes.push(`<div class="alert-item alert-warning"><i class="fas fa-file-contract"></i> Contrat <strong>${c.nom}</strong> expire dans ${diff} jour(s)</div>`);}});
   const divA=document.getElementById('alertesList');
   if(divA)divA.innerHTML=alertes.join('')||'<p style="color:var(--text3);font-size:12px;">Aucune alerte</p>';
