@@ -5648,10 +5648,10 @@ window._blocSignaturePDF=_blocSignaturePDF;
 // Extrait la partie numérique de CLI-XXXX → '0042'
 function _numCli(c){ return (c?.refClient||'CLI-0000').replace('CLI-','').replace('PRO-',''); }
 
-// ── Compteurs contrats permanents dans progestParams ─────────
+// ── Refs contrats travail (CDI/CDD/CTP) — compteur séquentiel ─
 function _nextContratRef(type){
-  const prefixMap={prestation:'CONT',cdi:'CDI',cdd:'CDD',temps_partiel:'CTP'};
-  const prefix=prefixMap[type]||'CONT';
+  const prefixMap={cdi:'CDI',cdd:'CDD',temps_partiel:'CTP'};
+  const prefix=prefixMap[type]||'CDI';
   const counterKey='contrat'+prefix+'Counter';
   const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
   const maxExist=Math.max(0,...(contratsData||[])
@@ -5663,34 +5663,71 @@ function _nextContratRef(type){
   localStorage.setItem('progestParams',JSON.stringify(p));
   return ref;
 }
+
+// ── Ref contrat prestation liée au client CLI-XXXX ─────────────
+// Format : CONT-2026-XXXX (1er contrat) / CONT-2026-XXXX-A / -B …
+function _genContratRef(clientId){
+  const c=clientsData.find(function(x){return x.id===clientId;});
+  if(!c||!c.refClient) return _nextContratRef('cdi').replace('CDI','CONT'); // fallback
+  const num=_numCli(c);
+  const y=new Date().getFullYear();
+  const existants=contratsData.filter(function(x){
+    return x.type==='prestation'&&x.clientOuSalarie===c.nom;
+  }).length;
+  if(existants===0) return 'CONT-'+y+'-'+num;
+  return 'CONT-'+y+'-'+num+'-'+String.fromCharCode(64+existants); // A,B,C…
+}
+
+// ── Migration : contrats prestation → format client + CDI/CDD/CTP doublons ─
 function _migrerContrats(){
-  const prefixMap={prestation:'CONT',cdi:'CDI',cdd:'CDD',temps_partiel:'CTP'};
-  const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
   let changed=false;
-  ['prestation','cdi','cdd','temps_partiel'].forEach(function(type){
+  const y=new Date().getFullYear();
+  // Contrats prestation : ref liée au client
+  const byClient={};
+  contratsData.forEach(function(ct){
+    if(ct.type!=='prestation') return;
+    if(!byClient[ct.clientOuSalarie]) byClient[ct.clientOuSalarie]=[];
+    byClient[ct.clientOuSalarie].push(ct);
+  });
+  Object.keys(byClient).forEach(function(nom){
+    const c=clientsData.find(function(x){return x.nom===nom;});
+    if(!c||!c.refClient) return;
+    const num=_numCli(c);
+    const sorted=byClient[nom].slice().sort(function(a,b){
+      return (parseInt(String(a.id).replace(/\D/g,''))||0)-(parseInt(String(b.id).replace(/\D/g,''))||0);
+    });
+    sorted.forEach(function(ct,i){
+      const newRef=i===0?'CONT-'+y+'-'+num:'CONT-'+y+'-'+num+'-'+String.fromCharCode(64+i);
+      if(ct.ref!==newRef){ct.ref=newRef;changed=true;}
+    });
+  });
+  // CDI/CDD/CTP : réparer doublons + compteurs séquentiels
+  const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
+  ['cdi','cdd','temps_partiel'].forEach(function(type){
+    const prefixMap={cdi:'CDI',cdd:'CDD',temps_partiel:'CTP'};
     const prefix=prefixMap[type];
     const counterKey='contrat'+prefix+'Counter';
     const seen={};
-    contratsData.forEach(function(c){
-      if(c.type!==type) return;
-      if(!c.ref||seen[c.ref]){c.ref=null;changed=true;}
-      else seen[c.ref]=true;
+    contratsData.forEach(function(ct){
+      if(ct.type!==type) return;
+      if(!ct.ref||seen[ct.ref]){ct.ref=null;changed=true;}
+      else seen[ct.ref]=true;
     });
     const maxExist=Math.max(0,...contratsData.filter(function(c){return c.type===type&&c.ref;})
-      .map(function(c){const parts=c.ref.split('-');return parseInt(parts[parts.length-1])||0;}));
+      .map(function(c){const pts=c.ref.split('-');return parseInt(pts[pts.length-1])||0;}));
     let n=Math.max(parseInt(p[counterKey])||1,maxExist+1);
-    contratsData.forEach(function(c){
-      if(c.type!==type||c.ref) return;
-      c.ref=prefix+'-'+new Date().getFullYear()+'-'+String(n).padStart(3,'0');
+    contratsData.forEach(function(ct){
+      if(ct.type!==type||ct.ref) return;
+      ct.ref=prefix+'-'+y+'-'+String(n).padStart(3,'0');
       n++;changed=true;
     });
-    if(!p[counterKey]||parseInt(p[counterKey])<=maxExist){p[counterKey]=n;}
+    if(!p[counterKey]||parseInt(p[counterKey])<=maxExist) p[counterKey]=n;
   });
   if(changed){
     localStorage.setItem('progestParams',JSON.stringify(p));
     try{sauvegarderTout(true);}catch(e){}
     setTimeout(function(){try{sauvegarderTout(true);}catch(e){};},2500);
-    console.info('[Migration contrats] Doublons réparés, compteurs mis à jour');
+    console.info('[Migration contrats] Refs clients mises à jour');
   }
 }
 
@@ -8417,9 +8454,9 @@ function remplirInfosContrat(){
   var refBadge=document.getElementById('contratClientRefBadge');
   if(!refBadge){refBadge=document.createElement('div');refBadge.id='contratClientRefBadge';var selParent=document.getElementById('contratClient')?.parentNode;if(selParent)selParent.appendChild(refBadge);}
   refBadge.innerHTML=c.refClient?`<span style="font-size:10px;font-weight:700;color:var(--accent);background:rgba(74,124,247,.1);border-radius:4px;padding:2px 8px;margin-top:4px;display:inline-block;">${c.refClient}</span>`:'';
-  // Référence contrat via compteur permanent progestParams
+  // Référence contrat liée au client CLI-XXXX
   const refEl=document.getElementById('contratRef');
-  if(refEl) refEl.value=_nextContratRef('prestation');
+  if(refEl) refEl.value=_genContratRef(id);
   const tvaSel=document.getElementById('contratTVA');
   if(tvaSel){
     const tvaCli = parseFloat(c.tva);
@@ -9095,11 +9132,8 @@ function remplirRetractClient(){
     if(contratsClient.length){
       contratEl.value=contratsClient[contratsClient.length-1].ref;
     } else {
-      const _p2=JSON.parse(localStorage.getItem('progestParams')||'{}');
-      const _mx=Math.max(0,...contratsData.filter(function(x){return x.type==='prestation'&&x.ref;})
-        .map(function(x){const pts=x.ref.split('-');return parseInt(pts[pts.length-1])||0;}));
-      const _n=Math.max(parseInt(_p2.contratCONTCounter)||1,_mx+1);
-      contratEl.value='CONT-'+new Date().getFullYear()+'-'+String(_n).padStart(3,'0')+' (à générer)';
+      // Aperçu de la ref qui sera générée (client sans contrat existant)
+      contratEl.value=_genContratRef(id)+' (à générer)';
     }
   }
   const svcEl=document.getElementById('retractService');
