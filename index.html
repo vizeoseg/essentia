@@ -8314,9 +8314,12 @@ function toggleContratFin(){
 function remplirInfosContrat(){
   const id=document.getElementById('contratClient')?.value;
   const c=clientsData.find(x=>x.id===id); if(!c) return;
-  // Auto-fill référence contrat au format CONT-2026-XXXX
+  // Référence contrat séquentielle globale (CONT-2026-018, etc.)
   const refEl=document.getElementById('contratRef');
-  if(refEl && c.refClient) refEl.value=_refDoc('contrat',c);
+  if(refEl){
+    const _seq=contratsData.filter(function(x){return x.type==='prestation';}).length+1;
+    refEl.value='CONT-'+new Date().getFullYear()+'-'+String(_seq).padStart(3,'0');
+  }
   const tvaSel=document.getElementById('contratTVA');
   if(tvaSel){
     const tvaCli = parseFloat(c.tva);
@@ -8987,8 +8990,15 @@ function remplirRetractClient(){
   // Pré-remplir le N° contrat : dernier contrat prestation du client
   const contratEl=document.getElementById('retractNumContrat');
   if(contratEl){
+    // Recherche par nom (contratsData ne stocke pas clientId)
     const contratsClient=contratsData.filter(function(ct){return ct.clientOuSalarie===c.nom&&ct.type==='prestation';});
-    if(contratsClient.length) contratEl.value=contratsClient[contratsClient.length-1].ref;
+    if(contratsClient.length){
+      contratEl.value=contratsClient[contratsClient.length-1].ref;
+    } else {
+      // Fallback : générer la référence qui serait attribuée à ce client
+      const _seq=contratsData.filter(function(x){return x.type==='prestation';}).length+1;
+      contratEl.value='CONT-'+new Date().getFullYear()+'-'+String(_seq).padStart(3,'0')+' (à générer)';
+    }
   }
   const svcEl=document.getElementById('retractService');
   if(svcEl&&!svcEl.value) svcEl.value=c.type==='Heure'?'Prestation de nettoyage à domicile \u2013 '+c.heures+'h/passage':'Prestation de service à domicile';
