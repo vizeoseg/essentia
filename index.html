@@ -6499,12 +6499,137 @@ function telechargerXMLFacture(id){
 const _EMAIL_ENDPOINT='/.netlify/functions/send-email';
 const _RESEND_FROM='contact@essentia-services.fr';
 
-// Cache PDF persistant dans localStorage — survit aux rechargements de page
+// Cache PDF persistant dans localStorage
 function _savePDFCache(ref, b64, fname){
   try{ localStorage.setItem('pdfcache_'+ref, JSON.stringify({b64,fname})); }catch(e){ console.warn('PDF cache localStorage plein'); }
 }
 function _loadPDFCache(ref){
   try{ return JSON.parse(localStorage.getItem('pdfcache_'+ref)||'null'); }catch(e){ return null; }
+}
+
+// Régénère le PDF complet d'un contrat prestation depuis clientsData + contratsData
+// Retourne le base64 pur (même contenu que "Générer PDF")
+function _regenererContratPDFb64(contrat){
+  try{
+    const jsPDFCls=(window.jspdf||{}).jsPDF; if(!jsPDFCls) return null;
+    const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
+    const nomSoc=p.nomSociete||'Essentia Services';
+    const c=clientsData.find(function(x){return x.nom===contrat.clientOuSalarie;})||{};
+    const ref=contrat.ref||'';
+    const debut=contrat.date||new Date().toLocaleDateString('fr-FR');
+    const tarif=parseFloat(c.tarif)||0;
+    const heures=parseFloat(c.heures)||0;
+    const freqMult={'hebdomadaire':4.33,'bihebdomadaire':8.66,'mensuelle':1,'ponctuelle':1}[c.frequence||'hebdomadaire']||4.33;
+    const freqLabel={'hebdomadaire':'Hebdomadaire','bihebdomadaire':'2 fois/semaine','mensuelle':'Mensuelle','ponctuelle':'Ponctuelle'}[c.frequence||'hebdomadaire']||'Hebdomadaire';
+    const tva=parseFloat(c.tva)||10;
+    const montantHT=tarif*heures*freqMult;
+    const montantTTC=montantHT*(1+tva/100);
+    const fmt2=function(v){return v.toFixed(2).replace('.',',');};
+    const logo=localStorage.getItem('progestLogo');
+    const doc=new jsPDFCls({unit:'mm',format:'a4'}); const W=210,M=15; let y=M;
+
+    // ── En-tête ──
+    doc.setDrawColor(0,0,0); doc.setLineWidth(1); doc.line(M,y,W-M,y); y+=2;
+    if(logo){try{doc.addImage(logo,'JPEG',M,y+1,16,16);}catch(e){}}
+    const tx=logo?M+20:M;
+    doc.setTextColor(0,0,0); doc.setFontSize(13); doc.setFont('helvetica','bold');
+    doc.text(nomSoc,tx,y+9);
+    doc.setFontSize(8); doc.setFont('helvetica','normal');
+    if(p.adresse) doc.text(p.adresse.replace(/\n/g,' '),tx,y+15);
+    if(p.siret) doc.text('SIRET : '+p.siret,tx,y+20);
+    doc.setFontSize(14); doc.setFont('helvetica','bold');
+    doc.text('CONTRAT DE PRESTATION DE SERVICES',W-M,y+9,{align:'right'});
+    doc.setFontSize(8); doc.setFont('helvetica','normal');
+    doc.text('Réf. : '+ref+'  |  Date : '+debut,W-M,y+15,{align:'right'});
+    doc.setLineWidth(0.5); doc.line(M,y+24,W-M,y+24); y+=30;
+
+    // ── Parties ──
+    doc.setDrawColor(0,0,0); doc.setLineWidth(0.3);
+    doc.rect(M,y,87,30); doc.rect(W/2+2,y,87,30);
+    doc.setTextColor(0,0,0); doc.setFontSize(7); doc.setFont('helvetica','bold');
+    doc.text('LE PRESTATAIRE',M+3,y+5); doc.text('LE CLIENT',W/2+5,y+5);
+    if(c.refClient){doc.setFont('helvetica','normal');doc.setTextColor(100,120,160);doc.text(c.refClient,W-M-3,y+5,{align:'right'});doc.setTextColor(0,0,0);}
+    doc.setFontSize(10); doc.setFont('helvetica','bold');
+    doc.text(nomSoc,M+3,y+12); doc.text(c.nom||contrat.clientOuSalarie||'—',W/2+5,y+12);
+    doc.setFontSize(8); doc.setFont('helvetica','normal');
+    if(p.siret) doc.text('SIRET : '+p.siret,M+3,y+18);
+    if(p.adresse) doc.text((p.adresse.split('\n')[0]||''),M+3,y+23);
+    doc.text(c.commune||c.adresse||'—',W/2+5,y+18);
+    if(c.email) doc.text(c.email,W/2+5,y+23);
+    if(c.tel) doc.text('Tél : '+c.tel,W/2+5,y+27);
+    y+=36;
+
+    // ── Objet & conditions financières ──
+    var section=function(titre,contenu,rgb){
+      if(y>255){doc.addPage();y=M;}
+      rgb=rgb||[0,0,0];
+      doc.setTextColor(rgb[0],rgb[1],rgb[2]); doc.setFontSize(9); doc.setFont('helvetica','bold');
+      doc.text(titre,M,y+5);
+      doc.setDrawColor(rgb[0],rgb[1],rgb[2]); doc.setLineWidth(0.4);
+      doc.line(M,y+7,W-M,y+7); y+=10;
+      doc.setTextColor(30,30,30); doc.setFontSize(8.5); doc.setFont('helvetica','normal');
+      var lines=doc.splitTextToSize(contenu,W-2*M-4);
+      lines.forEach(function(l){if(y>270){doc.addPage();y=M;}doc.text(l,M+2,y+4);y+=5;});
+      y+=4;
+    };
+
+    section('ARTICLE 1 — OBJET DU CONTRAT',
+      'Le présent contrat a pour objet de définir les conditions dans lesquelles '+nomSoc+' (ci-après "le Prestataire") s\'engage à fournir des prestations de services à domicile à '+(c.nom||contrat.clientOuSalarie)+'  (ci-après "le Client"), conformément aux modalités ci-après définies.');
+
+    section('ARTICLE 2 — PRESTATIONS',
+      'Nature : Entretien du domicile / nettoyage.\n'
+      +'Fréquence : '+freqLabel+'\n'
+      +'Durée par intervention : '+heures+' heure'+(heures>1?'s':'')+'\n'
+      +(c.heureDebut?'Heure de début : '+c.heureDebut+'\n':'')
+      +(c.jours&&c.jours.length?'Jours : '+c.jours.map(function(j){return j.charAt(0).toUpperCase()+j.slice(1);}).join(', ')+'\n':'')
+      +(c.commune?'Lieu : '+c.commune:''));
+
+    section('ARTICLE 3 — CONDITIONS FINANCIÈRES',
+      'Tarif horaire HT : '+fmt2(tarif)+' €/h\n'
+      +'TVA applicable : '+tva+'%\n'
+      +'Montant mensuel HT : '+fmt2(montantHT)+' €\n'
+      +'Montant mensuel TTC : '+fmt2(montantTTC)+' €\n'
+      +'Modalités de paiement : Prélèvement mensuel ou virement bancaire à réception de facture.\n'
+      +'Les prix sont révisables chaque année au 1er janvier selon l\'indice INSEE des prix à la consommation.');
+
+    section('ARTICLE 4 — DURÉE ET RÉSILIATION',
+      'Le présent contrat est conclu pour une durée indéterminée à compter du '+debut+'.\n'
+      +'Chacune des parties pourra y mettre fin par lettre recommandée avec accusé de réception, moyennant un préavis d\'un (1) mois.\n'
+      +'En cas de manquement grave aux obligations contractuelles, la résiliation pourra intervenir sans préavis.');
+
+    section('ARTICLE 5 — OBLIGATIONS DU PRESTATAIRE',
+      nomSoc+' s\'engage à :\n'
+      +'• Réaliser les prestations avec soin et diligence, selon les règles de l\'art.\n'
+      +'• Respecter la confidentialité des informations du Client.\n'
+      +'• Fournir du personnel qualifié, assuré et déclaré.\n'
+      +'• Souscrire et maintenir en vigueur une assurance responsabilité civile professionnelle.');
+
+    section('ARTICLE 6 — OBLIGATIONS DU CLIENT',
+      'Le Client s\'engage à :\n'
+      +'• Mettre à disposition du Prestataire les accès et moyens nécessaires à l\'exécution des prestations.\n'
+      +'• Régler les factures dans les délais convenus.\n'
+      +'• Prévenir le Prestataire de toute absence au minimum 48h à l\'avance.');
+
+    section('ARTICLE 7 — DROIT DE RÉTRACTATION',
+      'Conformément aux articles L.221-18 et suivants du Code de la consommation, le Client dispose d\'un délai de 14 jours à compter de la signature du présent contrat pour exercer son droit de rétractation, sans avoir à justifier de motifs ni à payer de pénalités.');
+
+    // ── Signatures ──
+    y+=6;
+    y=_blocSignaturePDF(doc,y,W,M,c.nom||contrat.clientOuSalarie||'','du client');
+
+    // ── Pied de page ──
+    const pH=doc.internal.pageSize.getHeight();
+    doc.setDrawColor(0,0,0); doc.setLineWidth(0.3); doc.line(M,pH-15,W-M,pH-15);
+    doc.setTextColor(80,80,80); doc.setFontSize(6.5); doc.setFont('helvetica','normal');
+    doc.text(nomSoc+(p.siret?' · SIRET : '+p.siret:'')+' — Réf. '+ref,W/2,pH-9,{align:'center'});
+
+    const b64=_pdfB64(doc);
+    _savePDFCache(ref,b64,ref+'_contrat_prestation.pdf');
+    return b64;
+  }catch(e){
+    console.error('[_regenererContratPDFb64]',e);
+    return null;
+  }
 }
 
 // Extrait le base64 pur d'un doc jsPDF (sans le préfixe data:...;base64,)
@@ -8506,52 +8631,16 @@ async function _envoyerContratAvecPDF(email, nom, contratId){
   const tLabels={prestation:'Contrat de prestation de services',cdi:'Contrat de travail CDI',cdd:'Contrat de travail CDD',temps_partiel:'Contrat de travail — Temps partiel',avenant:'Avenant au contrat'};
   const typeLabel=tLabels[contrat.type]||'Contrat';
 
-  // Utiliser le PDF complet depuis localStorage (généré par "Générer PDF") si disponible
+  // Régénérer le PDF complet depuis les données client + contrat
   let attachments=[];
-  const _cached=_loadPDFCache(contrat.ref);
-  if(_cached&&_cached.b64){
-    attachments=[{filename:_cached.fname,content:_cached.b64}];
-    console.log('[Email] PDF complet depuis localStorage:',_cached.fname,Math.round(_cached.b64.length/1024)+'KB');
+  if(contrat.type==='prestation'){
+    const b64=_regenererContratPDFb64(contrat);
+    if(b64) attachments=[{filename:contrat.ref+'_contrat_prestation.pdf',content:b64}];
+    else console.error('[Email] Échec régénération PDF');
   } else {
-  // Sinon générer un PDF résumé sans autoTable
-  const jsPDFCls=(window.jspdf||{}).jsPDF;
-  if(jsPDFCls){
-    try{
-      const doc=new jsPDFCls();
-      doc.setFillColor(26,46,74); doc.rect(0,0,210,22,'F');
-      doc.setTextColor(255,255,255); doc.setFontSize(13); doc.setFont('helvetica','bold');
-      doc.text(p.nomSociete||'Essentia Services',14,10);
-      doc.setFontSize(9); doc.setFont('helvetica','normal');
-      doc.text(typeLabel,14,17);
-      doc.text(new Date().toLocaleDateString('fr-FR'),196,17,{align:'right'});
-      doc.setTextColor(40,40,40); doc.setFontSize(11); doc.setFont('helvetica','bold');
-      doc.text('Référence : '+contrat.ref,14,36);
-      doc.setFontSize(10); doc.setFont('helvetica','normal');
-      var infos=[
-        'Client : '+(contrat.clientOuSalarie||'—'),
-        'Type : '+typeLabel,
-        'Date : '+(contrat.date||'—'),
-        'Statut : '+(contrat.statut||'actif'),
-      ];
-      if(contrat.montantMensuel) infos.push('Montant mensuel TTC : '+contrat.montantMensuel.toFixed(2)+' €');
-      infos.forEach(function(l,i){ doc.text(l,14,50+i*10); });
-      _blocSignaturePDF(doc,110,210,14,contrat.clientOuSalarie||'','du client');
-      // Extraction base64 avec doc.output('datauristring')
-      var b64=doc.output('datauristring').split(',')[1];
-      console.log('[PDF contrat] b64 longueur:',b64?b64.length:'null');
-      if(b64&&b64.length>100){
-        attachments=[{filename:'contrat_'+contrat.ref.replace(/[^a-zA-Z0-9_-]/g,'_')+'.pdf',content:b64}];
-      } else {
-        console.error('[PDF contrat] Base64 vide !');
-      }
-    }catch(pdfErr){
-      console.error('[PDF contrat] Erreur:',pdfErr);
-      toast('⚠ PDF non généré : '+pdfErr.message,'warning');
-    }
-  } else {
-    console.error('[PDF] jsPDF non disponible');
+    const cached=_loadPDFCache(contrat.ref);
+    if(cached&&cached.b64) attachments=[{filename:cached.fname,content:cached.b64}];
   }
-  } // fin else cache
 
   const _refCli=(clientsData||[]).find(function(c){return c.nom===nom;})?.refClient||'';
   const subject=(_refCli?'['+_refCli+'] ':'')+typeLabel+' — '+contrat.ref+' — '+(p.nomSociete||'');
@@ -8575,33 +8664,14 @@ async function _envoyerEmailContratAvecCopie(dest, nom, ref, type, p){
   const text='Bonjour '+nom+',\n\nVeuillez trouver ci-joint votre '+typeLabel.toLowerCase()+' référence '+ref+'.\n\nCe document est établi en deux exemplaires originaux. Merci de le signer, de le parapher sur chaque page et de nous retourner un exemplaire signé.\n\nN\'hésitez pas à nous contacter pour toute question.\n\nCordialement,\n'+(p.nomSociete||'')+(p.tel?'\n'+p.tel:'')+(p.email?'\n'+p.email:'');
   // Utiliser le PDF complet en cache si disponible, sinon PDF résumé
   var attachments=[];
-  const _cached2=_loadPDFCache(ref);
-  if(_cached2&&_cached2.b64){
-    attachments=[{filename:_cached2.fname,content:_cached2.b64}];
-    console.log('[Email] PDF complet depuis localStorage:',_cached2.fname);
+  var attachments=[];
+  var contratObj=contratsData.find(function(c){return c.ref===ref;});
+  if(contratObj&&contratObj.type==='prestation'){
+    var b64r=_regenererContratPDFb64(contratObj);
+    if(b64r) attachments=[{filename:ref+'_contrat_prestation.pdf',content:b64r}];
   } else {
-    var jsPDFCls2=(window.jspdf||{}).jsPDF;
-    var contratData=contratsData.find(function(c){return c.ref===ref;})||{ref:ref,type:type,clientOuSalarie:nom,date:new Date().toLocaleDateString('fr-FR'),statut:'en cours'};
-    if(jsPDFCls2){
-      try{
-        var doc2=new jsPDFCls2();
-        doc2.setFillColor(26,46,74); doc2.rect(0,0,210,22,'F');
-        doc2.setTextColor(255,255,255); doc2.setFontSize(13); doc2.setFont('helvetica','bold');
-        doc2.text(p.nomSociete||'Essentia Services',14,10);
-        doc2.setFontSize(9); doc2.setFont('helvetica','normal');
-        doc2.text(typeLabel,14,17);
-        doc2.text(new Date().toLocaleDateString('fr-FR'),196,17,{align:'right'});
-        doc2.setTextColor(40,40,40); doc2.setFontSize(11); doc2.setFont('helvetica','bold');
-        doc2.text('Référence : '+ref,14,36);
-        doc2.setFontSize(10); doc2.setFont('helvetica','normal');
-        var infos2=['Client : '+(nom||'—'),'Type : '+typeLabel,'Date : '+(contratData.date||'—')];
-        if(contratData.montantMensuel) infos2.push('Montant mensuel TTC : '+contratData.montantMensuel.toFixed(2)+' €');
-        infos2.forEach(function(l,i){ doc2.text(l,14,50+i*10); });
-        _blocSignaturePDF(doc2,100,210,14,nom,'du client');
-        var b64b=doc2.output('datauristring').split(',')[1];
-        if(b64b&&b64b.length>100) attachments=[{filename:'contrat_'+ref.replace(/[^a-zA-Z0-9_-]/g,'_')+'.pdf',content:b64b}];
-      }catch(e2){ console.error('[PDF contrat formulaire]',e2); }
-    }
+    var cached3=_loadPDFCache(ref);
+    if(cached3&&cached3.b64) attachments=[{filename:cached3.fname,content:cached3.b64}];
   }
   console.log('[Email] Pièces jointes:',attachments.length);
   toast('Envoi en cours…','info');
