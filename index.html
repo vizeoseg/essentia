@@ -6497,6 +6497,7 @@ function telechargerXMLFacture(id){
 // ════════════════════════════════════════════════════════════
 // Proxy Netlify Function — évite les erreurs CORS
 const _EMAIL_ENDPOINT='/.netlify/functions/send-email';
+const _RESEND_FROM='contact@essentia-services.fr';
 
 function _pdfB64(doc){ return doc.output('datauristring').split(',')[1]; }
 
