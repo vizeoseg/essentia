@@ -6495,8 +6495,8 @@ function telechargerXMLFacture(id){
 // ════════════════════════════════════════════════════════════
 // RESEND — Envoi email avec pièce jointe PDF
 // ════════════════════════════════════════════════════════════
-const _RESEND_KEY='re_V6J5HiEK_LJ4dvJaADGTFnKdUrajLd6oQ';
-const _RESEND_FROM='Essentia Services <contact@essentia-services.fr>';
+// Proxy Netlify Function — évite les erreurs CORS
+const _EMAIL_ENDPOINT='/.netlify/functions/send-email';
 
 function _pdfB64(doc){ return doc.output('datauristring').split(',')[1]; }
 
@@ -6516,17 +6516,17 @@ ${soc}${p.tel?' · '+p.tel:''}${p.email?' · '+p.email:''}</div>
   const body={from:_RESEND_FROM,to:Array.isArray(to)?to:[to],subject,html};
   if(cc&&cc!==to){body.reply_to=Array.isArray(cc)?cc[0]:cc;}
   if(attachments&&attachments.length) body.attachments=attachments;
-  console.log('[Resend] Envoi vers',to,'sujet:',subject,'pièces jointes:',attachments?.length||0);
+  console.log('[Email] Envoi via proxy vers',to,'sujet:',subject,'pièces jointes:',attachments?.length||0);
   let res;
   try{
-    res=await fetch('https://api.resend.com/emails',{
+    res=await fetch(_EMAIL_ENDPOINT,{
       method:'POST',
-      headers:{'Authorization':'Bearer '+_RESEND_KEY,'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify(body)
     });
   }catch(netErr){
-    console.error('[Resend] Erreur réseau/CORS:',netErr);
-    throw new Error('Erreur réseau : '+netErr.message+' (vérifiez la console F12)');
+    console.error('[Email] Erreur réseau:',netErr);
+    throw new Error('Erreur réseau : '+netErr.message);
   }
   const data=await res.json().catch(function(){return{};});
   console.log('[Resend] Réponse HTTP',res.status,data);
