@@ -6499,6 +6499,9 @@ function telechargerXMLFacture(id){
 const _EMAIL_ENDPOINT='/.netlify/functions/send-email';
 const _RESEND_FROM='contact@essentia-services.fr';
 
+// Cache des PDFs générés : { [ref]: {b64, fname} } — réutilisé pour l'email
+var _pdfCache={};
+
 // Extrait le base64 pur d'un doc jsPDF (sans le préfixe data:...;base64,)
 function _pdfB64(doc){
   const uri=doc.output('datauristring'); // "data:application/pdf;base64,JVBERi..."
@@ -8498,8 +8501,14 @@ async function _envoyerContratAvecPDF(email, nom, contratId){
   const tLabels={prestation:'Contrat de prestation de services',cdi:'Contrat de travail CDI',cdd:'Contrat de travail CDD',temps_partiel:'Contrat de travail — Temps partiel',avenant:'Avenant au contrat'};
   const typeLabel=tLabels[contrat.type]||'Contrat';
 
-  // Génération PDF sans autoTable — plus robuste
+  // Utiliser le PDF complet en cache (généré par "Générer PDF") si disponible
   let attachments=[];
+  if(_pdfCache[contrat.ref]&&_pdfCache[contrat.ref].b64){
+    const cached=_pdfCache[contrat.ref];
+    attachments=[{filename:cached.fname,content:cached.b64}];
+    console.log('[Email] PDF complet depuis cache:',cached.fname,Math.round(cached.b64.length/1024)+'KB');
+  } else {
+  // Sinon générer un PDF résumé sans autoTable
   const jsPDFCls=(window.jspdf||{}).jsPDF;
   if(jsPDFCls){
     try{
@@ -8537,6 +8546,7 @@ async function _envoyerContratAvecPDF(email, nom, contratId){
   } else {
     console.error('[PDF] jsPDF non disponible');
   }
+  } // fin else cache
 
   const _refCli=(clientsData||[]).find(function(c){return c.nom===nom;})?.refClient||'';
   const subject=(_refCli?'['+_refCli+'] ':'')+typeLabel+' — '+contrat.ref+' — '+(p.nomSociete||'');
@@ -8558,30 +8568,35 @@ async function _envoyerEmailContratAvecCopie(dest, nom, ref, type, p){
   const _refCli=(clientsData||[]).find(function(c){return c.nom===nom;})?.refClient||'';
   const subject=(_refCli?'['+_refCli+'] ':'')+typeLabel+' — '+ref+' — '+(p.nomSociete||'');
   const text='Bonjour '+nom+',\n\nVeuillez trouver ci-joint votre '+typeLabel.toLowerCase()+' référence '+ref+'.\n\nCe document est établi en deux exemplaires originaux. Merci de le signer, de le parapher sur chaque page et de nous retourner un exemplaire signé.\n\nN\'hésitez pas à nous contacter pour toute question.\n\nCordialement,\n'+(p.nomSociete||'')+(p.tel?'\n'+p.tel:'')+(p.email?'\n'+p.email:'');
-  // Générer PDF sans autoTable — fonctionne même si le contrat n'est pas encore sauvegardé
+  // Utiliser le PDF complet en cache si disponible, sinon PDF résumé
   var attachments=[];
-  var jsPDFCls2=(window.jspdf||{}).jsPDF;
-  var contratData=contratsData.find(function(c){return c.ref===ref;})||{ref:ref,type:type,clientOuSalarie:nom,date:new Date().toLocaleDateString('fr-FR'),statut:'en cours'};
-  if(jsPDFCls2){
-    try{
-      var doc2=new jsPDFCls2();
-      doc2.setFillColor(26,46,74); doc2.rect(0,0,210,22,'F');
-      doc2.setTextColor(255,255,255); doc2.setFontSize(13); doc2.setFont('helvetica','bold');
-      doc2.text(p.nomSociete||'Essentia Services',14,10);
-      doc2.setFontSize(9); doc2.setFont('helvetica','normal');
-      doc2.text(typeLabel,14,17);
-      doc2.text(new Date().toLocaleDateString('fr-FR'),196,17,{align:'right'});
-      doc2.setTextColor(40,40,40); doc2.setFontSize(11); doc2.setFont('helvetica','bold');
-      doc2.text('Référence : '+ref,14,36);
-      doc2.setFontSize(10); doc2.setFont('helvetica','normal');
-      var infos2=['Client : '+(nom||'—'),'Type : '+typeLabel,'Date : '+(contratData.date||'—')];
-      if(contratData.montantMensuel) infos2.push('Montant mensuel TTC : '+contratData.montantMensuel.toFixed(2)+' €');
-      infos2.forEach(function(l,i){ doc2.text(l,14,50+i*10); });
-      _blocSignaturePDF(doc2,100,210,14,nom,'du client');
-      var b64b=doc2.output('datauristring').split(',')[1];
-      console.log('[PDF contrat formulaire] b64:',b64b?b64b.length+'chars':'vide');
-      if(b64b&&b64b.length>100) attachments=[{filename:'contrat_'+ref.replace(/[^a-zA-Z0-9_-]/g,'_')+'.pdf',content:b64b}];
-    }catch(e2){ console.error('[PDF contrat formulaire]',e2); }
+  if(_pdfCache[ref]&&_pdfCache[ref].b64){
+    const cached2=_pdfCache[ref];
+    attachments=[{filename:cached2.fname,content:cached2.b64}];
+    console.log('[Email] PDF complet depuis cache:',cached2.fname);
+  } else {
+    var jsPDFCls2=(window.jspdf||{}).jsPDF;
+    var contratData=contratsData.find(function(c){return c.ref===ref;})||{ref:ref,type:type,clientOuSalarie:nom,date:new Date().toLocaleDateString('fr-FR'),statut:'en cours'};
+    if(jsPDFCls2){
+      try{
+        var doc2=new jsPDFCls2();
+        doc2.setFillColor(26,46,74); doc2.rect(0,0,210,22,'F');
+        doc2.setTextColor(255,255,255); doc2.setFontSize(13); doc2.setFont('helvetica','bold');
+        doc2.text(p.nomSociete||'Essentia Services',14,10);
+        doc2.setFontSize(9); doc2.setFont('helvetica','normal');
+        doc2.text(typeLabel,14,17);
+        doc2.text(new Date().toLocaleDateString('fr-FR'),196,17,{align:'right'});
+        doc2.setTextColor(40,40,40); doc2.setFontSize(11); doc2.setFont('helvetica','bold');
+        doc2.text('Référence : '+ref,14,36);
+        doc2.setFontSize(10); doc2.setFont('helvetica','normal');
+        var infos2=['Client : '+(nom||'—'),'Type : '+typeLabel,'Date : '+(contratData.date||'—')];
+        if(contratData.montantMensuel) infos2.push('Montant mensuel TTC : '+contratData.montantMensuel.toFixed(2)+' €');
+        infos2.forEach(function(l,i){ doc2.text(l,14,50+i*10); });
+        _blocSignaturePDF(doc2,100,210,14,nom,'du client');
+        var b64b=doc2.output('datauristring').split(',')[1];
+        if(b64b&&b64b.length>100) attachments=[{filename:'contrat_'+ref.replace(/[^a-zA-Z0-9_-]/g,'_')+'.pdf',content:b64b}];
+      }catch(e2){ console.error('[PDF contrat formulaire]',e2); }
+    }
   }
   console.log('[Email] Pièces jointes:',attachments.length);
   toast('Envoi en cours…','info');
@@ -8888,7 +8903,9 @@ function genererContratPrestation(){
   doc.setTextColor(80,80,80); doc.setFontSize(6.5); doc.setFont('helvetica','normal');
   doc.text(`${nomSoc}${p.siret?' · SIRET : '+p.siret:''} — Réf. ${ref}`,W/2,pH-9,{align:'center'});
 
-  doc.save(`${ref}_contrat_prestation.pdf`);
+  const _fname1=`${ref}_contrat_prestation.pdf`;
+  _pdfCache[ref]={b64:_pdfB64(doc),fname:_fname1};
+  doc.save(_fname1);
 
   // Enregistrer dans l'historique
   contratsData.push({id:'CTR'+Date.now(),type:'prestation',ref,clientOuSalarie:c.nom,date:debut,montantMensuel:montantTTC,statut:'actif',emailClient:gv('contratEmailClient'),signatureIncluse:!!_signatureData});
@@ -9112,7 +9129,9 @@ function genererContratTravail(){
   doc.setTextColor(120,100,170); doc.setFontSize(6); doc.setFont('helvetica','normal');
   doc.text((p.nomSociete||'')+' — Réf. '+ref+' — Document indicatif, à valider par un juriste avant signature.',W/2,pH-6,{align:'center'});
 
-  doc.save(ref+'_contrat_'+type.toLowerCase()+'.pdf');
+  const _fname2=ref+'_contrat_'+type.toLowerCase()+'.pdf';
+  _pdfCache[ref]={b64:_pdfB64(doc),fname:_fname2};
+  doc.save(_fname2);
   contratsData.push({id:'CTR'+Date.now(),type:_typeContratActif,ref:ref,clientOuSalarie:s.nom,date:dateEmb,statut:'actif',emailSalarie:gv('ctEmailSalarie')});
   sauvegarderTout(true); renderHistoriqueContrats();
   toast('Contrat '+type+' '+ref+' généré ✓','success');
@@ -9158,7 +9177,9 @@ function genererAvenant(){
   doc.setTextColor(60,60,80); doc.setFontSize(8);
   doc.text('Toutes les autres clauses du contrat original restent inchangées.',M+4,y+5); y+=13;
   y=_blocSignaturePDF(doc,y,W,M,contratOriginal.clientOuSalarie||'');
-  doc.save(`${ref}_avenant.pdf`);
+  const _fname3=`${ref}_avenant.pdf`;
+  _pdfCache[ref]={b64:_pdfB64(doc),fname:_fname3};
+  doc.save(_fname3);
   contratsData.push({id:'CTR'+Date.now(),type:'avenant',ref,clientOuSalarie:contratOriginal.clientOuSalarie||'—',date,statut:'actif'});
   sauvegarderTout(true); renderHistoriqueContrats();
   toast(`Avenant ${ref} généré ✓`,'success');
