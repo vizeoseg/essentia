@@ -9342,7 +9342,6 @@ function genererDevisPDF(){
   if(c.entreprise) _destH+=5; if(c.adresse) _destH+=5; if(c.commune) _destH+=5; if(c.email) _destH+=5;
   doc.setDrawColor(0,0,0); doc.setLineWidth(0.3); doc.rect(W/2,y,W/2-M,_destH);
   doc.setTextColor(0,0,0); doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.text('DESTINATAIRE',W/2+3,y+5);
-  if(c.refClient){doc.setFont('helvetica','normal');doc.setTextColor(100,120,160);doc.text(c.refClient,W-M-2,y+5,{align:'right'});doc.setTextColor(0,0,0);}
   doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.text(c.nom||'—',W/2+3,y+12);
   doc.setFontSize(8); doc.setFont('helvetica','normal');
   let _dy=y+18;
