@@ -1863,7 +1863,7 @@ tr:hover td{background:rgba(74,124,247,.02);}
           <div class="form-group" id="contratFinGroup"><label>Date de fin <span style="color:var(--text3);font-size:10px;font-weight:400;">(optionnelle)</span></label><input type="date" id="contratFin"></div>
           <div class="form-group"><label>Préavis résiliation</label><select id="contratPreavis"><option value="1">1 mois</option><option value="2">2 mois</option><option value="3">3 mois</option></select></div>
           <div class="form-group"><label>Email client</label><input type="email" id="contratEmailClient" placeholder="client@email.fr"></div>
-          <div class="form-group"><label>Fréquence</label><select id="contratFrequence"><option value="hebdomadaire">Hebdomadaire</option><option value="bihebdomadaire">2x / semaine</option><option value="mensuelle">Mensuelle</option><option value="ponctuelle">Ponctuelle</option></select></div>
+          <div class="form-group"><label>Fréquence</label><select id="contratFrequence" onchange="calculerTotalContrat()"><option value="hebdomadaire">Hebdomadaire</option><option value="bihebdomadaire">2x / semaine</option><option value="mensuelle">Mensuelle</option><option value="ponctuelle">Ponctuelle</option></select></div>
           <div class="form-group" style="grid-column:1/-1;"><label>Jours d'intervention <span style="color:var(--red);">*</span></label><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;"><button type="button" id="contratJourBtn_Lundi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Lundi</button><button type="button" id="contratJourBtn_Mardi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Mardi</button><button type="button" id="contratJourBtn_Mercredi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Mercredi</button><button type="button" id="contratJourBtn_Jeudi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Jeudi</button><button type="button" id="contratJourBtn_Vendredi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Vendredi</button><button type="button" id="contratJourBtn_Samedi" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Samedi</button><button type="button" id="contratJourBtn_Dimanche" onclick="this.classList.toggle('jour-on')" class="jour-day-btn">Dimanche</button></div></div>
           <div class="form-group"><label>Heure d'intervention <span style="color:var(--red);">*</span></label><input type="time" id="contratHeureIntervention" value="09:00"></div>
         </div>
@@ -8323,7 +8323,7 @@ function remplirInfosContrat(){
   if(hEl&&c.heures) hEl.value=c.heures;
   const emailEl=document.getElementById('contratEmailClient');
   if(emailEl&&c.email) emailEl.value=c.email;
-  ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'].forEach(function(j){
+  ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'].forEach(function(j){
     var btn=document.getElementById('contratJourBtn_'+j);
     if(btn){btn.classList.remove('jour-on');if(c.jours&&c.jours.includes(j.toLowerCase()))btn.classList.add('jour-on');}
   });
