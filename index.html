@@ -6514,7 +6514,14 @@ function _regenererContratPDFb64(contrat){
     const jsPDFCls=(window.jspdf||{}).jsPDF; if(!jsPDFCls) return null;
     const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
     const nomSoc=p.nomSociete||'Essentia Services';
-    const c=clientsData.find(function(x){return x.nom===contrat.clientOuSalarie;})||{};
+    // Recherche client : par ID (fiable) → nom exact → email → fallback {}
+    var c=null;
+    if(contrat.clientId) c=clientsData.find(function(x){return x.id===contrat.clientId;});
+    if(!c) c=clientsData.find(function(x){return x.nom===contrat.clientOuSalarie;});
+    if(!c&&contrat.emailClient) c=clientsData.find(function(x){return x.email===contrat.emailClient;});
+    if(!c) c={};
+    // Compléter avec les données du contrat si absentes
+    if(!c.email&&contrat.emailClient) c=Object.assign({},c,{email:contrat.emailClient});
     const ref=contrat.ref||'';
     const debut=contrat.date||new Date().toLocaleDateString('fr-FR');
     const tarif=parseFloat(c.tarif)||0;
@@ -9009,7 +9016,7 @@ function genererContratPrestation(){
   doc.save(_fname1);
 
   // Enregistrer dans l'historique
-  contratsData.push({id:'CTR'+Date.now(),type:'prestation',ref,clientOuSalarie:c.nom,date:debut,montantMensuel:montantTTC,statut:'actif',emailClient:gv('contratEmailClient'),signatureIncluse:!!_signatureData});
+  contratsData.push({id:'CTR'+Date.now(),type:'prestation',ref,clientId:clientId,clientOuSalarie:c.nom,date:debut,montantMensuel:montantTTC,statut:'actif',emailClient:gv('contratEmailClient'),signatureIncluse:!!_signatureData});
   // Passage automatique en Client actif
   const _cIdx=clientsData.findIndex(x=>x.id===clientId);
   if(_cIdx>=0) clientsData[_cIdx].workflowStatut='client_actif';
