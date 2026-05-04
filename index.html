@@ -8984,6 +8984,12 @@ function remplirRetractClient(){
   const adrEl=document.getElementById('retractAdresseClient'); if(adrEl) adrEl.value=c.adresse||c.commune||'';
   const emailEl=document.getElementById('retractEmailClient'); if(emailEl) emailEl.value=c.email||'';
   const telEl=document.getElementById('retractTelClient'); if(telEl) telEl.value=c.tel||'';
+  // Pré-remplir le N° contrat : dernier contrat prestation du client
+  const contratEl=document.getElementById('retractNumContrat');
+  if(contratEl){
+    const contratsClient=contratsData.filter(function(ct){return ct.clientOuSalarie===c.nom&&ct.type==='prestation';});
+    if(contratsClient.length) contratEl.value=contratsClient[contratsClient.length-1].ref;
+  }
   const svcEl=document.getElementById('retractService');
   if(svcEl&&!svcEl.value) svcEl.value=c.type==='Heure'?'Prestation de nettoyage à domicile \u2013 '+c.heures+'h/passage':'Prestation de service à domicile';
 }
