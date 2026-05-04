@@ -802,6 +802,7 @@ tr:hover td{background:rgba(74,124,247,.02);}
         <div class="table-wrap">
           <table><thead><tr>
             <th style="width:85px;">Réf. client</th>
+            <th style="width:120px;">Statut</th>
             <th style="cursor:pointer;" onclick="trierClients('nom')">Nom ⇅</th>
             <th>Tél / Contact</th>
             <th style="cursor:pointer;" onclick="trierClients('typeClient')">Type ⇅</th>
@@ -4079,7 +4080,7 @@ function genererFactureDepuisClient(clientId){
     if(typeof renderLignesFacture==='function') renderLignesFacture();
     if(typeof calculerTotauxFacture==='function') calculerTotauxFacture();
     // Mettre à jour le statut workflow
-    c.workflowStatut='facturation_active';
+    c.workflowStatut='client_actif';
     sauvegarderTout(true);
     toast(`Facture pré-remplie pour ${c.nom} — Vérifiez et générez le PDF`,'success');
   },400);
@@ -4152,14 +4153,22 @@ function afficherClients(clients){
     const typeBadge=c.typeClient==='entreprise'?`<span class="badge badge-blue">Entreprise</span>`:`<span class="badge badge-green">Particulier</span>`;
     const caMoisHT=c.totalMoisHT||0;const caMoisTTC=c.totalMoisTTC||0;const caAnHT=c.caAnneeHT||0;
     totalHT+=caMoisHT;totalTTC+=caMoisTTC;totalAn+=caAnHT;
-    const wfStatut = c.workflowStatut || 'client';
-    const wfColors = {client:'var(--teal)',devis_envoye:'var(--amber)',contrat_signe:'var(--purple)',facturation_active:'var(--green)'};
-    const wfLabels = {client:'Client','devis_envoye':'Devis envoyé','contrat_signe':'Contrat signé','facturation_active':'Facturation active'};
-    const wfColor = wfColors[wfStatut]||'var(--text3)';
-    const wfLabel = wfLabels[wfStatut]||wfStatut;
+    const _today=new Date();_today.setHours(0,0,0,0);
+    const _hasSortie=c.dateSortie&&new Date(c.dateSortie)<_today;
+    const _wfRaw=c.workflowStatut||'client_actif';
+    const _wfNorm={client:'client_actif',facturation_active:'client_actif',contrat_signe:'client_actif'}[_wfRaw]||_wfRaw;
+    const effStatut=_hasSortie?'inactif':_wfNorm;
+    const _STAT={
+      prospect:    {bg:'rgba(147,197,253,.25)',color:'#1d4ed8',icon:'🎯',label:'Prospect'},
+      client_actif:{bg:'rgba(16,185,129,.15)', color:'#059669',icon:'✓', label:'Client actif'},
+      devis_envoye:{bg:'rgba(245,158,11,.15)', color:'#d97706',icon:'📄',label:'Devis envoyé'},
+      inactif:     {bg:'rgba(156,163,175,.2)',  color:'#6b7280',icon:'—', label:'Inactif'}
+    };
+    const _s=_STAT[effStatut]||_STAT.client_actif;
     return `<tr>
       <td style="text-align:center;"><span style="display:inline-block;font-size:10px;font-weight:800;color:var(--accent);background:rgba(74,124,247,.12);border:1px solid rgba(74,124,247,.25);border-radius:6px;padding:3px 7px;letter-spacing:.5px;white-space:nowrap;">${c.refClient||'—'}</span></td>
-      <td><strong>${c.nom}</strong><div style="font-size:10px;font-weight:600;color:${wfColor};margin-top:2px;">● ${wfLabel}</div>${c.email?`<div style="font-size:10px;color:var(--text3);">${c.email}</div>`:''}</td>
+      <td style="text-align:center;"><span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:${_s.color};background:${_s.bg};border-radius:20px;padding:3px 9px;white-space:nowrap;">${_s.icon} ${_s.label}</span>${effStatut==='prospect'?`<br><button onclick="convertirProspectEnClient('${c.id}')" style="font-size:9px;margin-top:3px;border:none;background:rgba(16,185,129,.15);color:#059669;border-radius:4px;padding:2px 6px;cursor:pointer;font-weight:600;">✓ Convertir</button>`:''}</td>
+      <td><strong>${c.nom}</strong>${c.email?`<div style="font-size:10px;color:var(--text3);">${c.email}</div>`:''}</td>
       <td style="font-size:11px;color:var(--text2);">${c.tel||c.entreprise||'—'}</td>
       <td>${typeBadge}</td>
       <td>${tvaBadge}</td>
@@ -4210,6 +4219,10 @@ function modifierClient(id){
       <div>
         <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin-bottom:2px;">Référence client — permanente &amp; unique</div>
         <div style="font-size:22px;font-weight:900;color:var(--accent);letter-spacing:2px;line-height:1;">${c.refClient||'—'}</div>
+      </div>
+      <div style="margin-left:auto;text-align:right;">
+        ${(()=>{const _STAT={prospect:{bg:'rgba(147,197,253,.25)',color:'#1d4ed8',icon:'🎯',label:'Prospect'},client_actif:{bg:'rgba(16,185,129,.15)',color:'#059669',icon:'✓',label:'Client actif'},devis_envoye:{bg:'rgba(245,158,11,.15)',color:'#d97706',icon:'📄',label:'Devis envoyé'},inactif:{bg:'rgba(156,163,175,.2)',color:'#6b7280',icon:'—',label:'Inactif'}};const _s=_STAT[c.workflowStatut]||_STAT.client_actif;return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:${_s.color};background:${_s.bg};border-radius:20px;padding:4px 12px;">${_s.icon} ${_s.label}</span>`})()}
+        ${c.workflowStatut==='prospect'?`<br><button onclick="convertirProspectEnClient('${c.id}')" class="btn btn-success btn-sm" style="margin-top:6px;"><i class='fas fa-check'></i> Convertir en client</button>`:''}
       </div>
     </div>
     <div class="form-row">
@@ -5626,6 +5639,65 @@ function _numCli(c){ return (c?.refClient||'CLI-0000').replace('CLI-',''); }
 
 // Attribution automatique CLI-XXXX aux clients sans refClient
 // Appelée après chaque chargement de données (localStorage + Supabase)
+// ── Prospect : modal création depuis formulaire devis ─────────
+function _ouvrirModalProspect(){
+  const old=document.getElementById('modalNouveauProspect'); if(old) old.remove();
+  const modal=document.createElement('div');
+  modal.id='modalNouveauProspect'; modal.className='modal'; modal.style.display='flex';
+  modal.innerHTML=`<div class="modal-box modal-sm">
+    <div class="modal-header">
+      <span class="modal-title">🎯 Nouveau prospect</span>
+      <button class="modal-close" onclick="this.closest('.modal').remove();document.getElementById('devisClient').value=''"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:14px;">Créez une fiche prospect rapide. Vous pourrez la compléter et la convertir en client plus tard.</div>
+    <div class="form-row">
+      <div class="form-group" style="grid-column:1/-1;"><label>Nom / Raison sociale <span style="color:var(--red);">*</span></label><input type="text" id="prospectNom" placeholder="Dupont Marie" style="margin-top:4px;"></div>
+      <div class="form-group"><label>Email</label><input type="email" id="prospectEmail" placeholder="contact@email.fr" style="margin-top:4px;"></div>
+      <div class="form-group"><label>Téléphone</label><input type="tel" id="prospectTel" placeholder="06 XX XX XX XX" style="margin-top:4px;"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn btn-success" style="flex:1;" onclick="_confirmerProspect()"><i class="fas fa-check"></i> Créer le prospect</button>
+      <button class="btn btn-ghost" onclick="this.closest('.modal').remove();document.getElementById('devisClient').value=''">Annuler</button>
+    </div>
+  </div>`;
+  modal.addEventListener('click',e=>{if(e.target===modal){modal.remove();document.getElementById('devisClient').value='';}});
+  document.body.appendChild(modal);
+  setTimeout(()=>document.getElementById('prospectNom')?.focus(),100);
+}
+
+function _confirmerProspect(){
+  const nom=(document.getElementById('prospectNom')?.value||'').trim();
+  if(!nom){toast('Le nom est obligatoire','warning');return;}
+  const email=document.getElementById('prospectEmail')?.value||'';
+  const tel=document.getElementById('prospectTel')?.value||'';
+  const ref='CLI-'+String(clientAutoIncrement).padStart(4,'0');
+  clientAutoIncrement++;
+  const prospect=normaliserClient({
+    id:'c'+Date.now(), nom, email, tel, refClient:ref,
+    workflowStatut:'prospect', typeClient:'particulier', tva:10,
+    tarif:0, heures:0, frequence:1, jours:[], interventions:[], heuresRealisees:{}
+  });
+  clientsData.push(prospect);
+  sauvegarderTout(true);
+  chargerSelectClientsDevis();
+  const sel=document.getElementById('devisClient');
+  if(sel) sel.value=prospect.id;
+  remplirInfosDevis();
+  document.getElementById('modalNouveauProspect')?.remove();
+  toast(`Prospect ${nom} (${ref}) créé ✓`,'success');
+}
+window._ouvrirModalProspect=_ouvrirModalProspect;
+window._confirmerProspect=_confirmerProspect;
+
+function convertirProspectEnClient(id){
+  const c=clientsData.find(x=>x.id===id); if(!c) return;
+  c.workflowStatut='client_actif';
+  sauvegarderTout(true); chargerClients();
+  document.getElementById('editClientModal').style.display='none';
+  toast(`${c.nom} (${c.refClient}) converti en client actif ✓`,'success');
+}
+window.convertirProspectEnClient=convertirProspectEnClient;
+
 function _migrerRefClients(){
   var sanRef=clientsData.filter(function(c){return !c.refClient;});
   if(!sanRef.length) return false;
@@ -7166,7 +7238,7 @@ function normaliserClient(c){
     totalMoisHT:  moisHT,
     totalMoisTTC: moisTTC,
     caAnneeHT:    anHT,
-    workflowStatut: c.workflowStatut || 'client',
+    workflowStatut: ({client:'client_actif',facturation_active:'client_actif',contrat_signe:'client_actif'}[c.workflowStatut] || c.workflowStatut || 'client_actif'),
     heureDebut: (c.heureDebut && String(c.heureDebut).includes(':')) ? c.heureDebut : '09:00'
   };
 }
@@ -8514,7 +8586,10 @@ function genererContratPrestation(){
 
   // Enregistrer dans l'historique
   contratsData.push({id:'CTR'+Date.now(),type:'prestation',ref,clientOuSalarie:c.nom,date:debut,montantMensuel:montantTTC,statut:'actif',emailClient:gv('contratEmailClient'),signatureIncluse:!!_signatureData});
-  sauvegarderTout(true); renderHistoriqueContrats();
+  // Passage automatique en Client actif
+  const _cIdx=clientsData.findIndex(x=>x.id===clientId);
+  if(_cIdx>=0) clientsData[_cIdx].workflowStatut='client_actif';
+  sauvegarderTout(true); renderHistoriqueContrats(); chargerClients();
   toast(`Contrat ${ref} généré ✓`,'success');
 }
 
@@ -9122,12 +9197,15 @@ function initDevis(){
 function chargerSelectClientsDevis(){
   const sel=document.getElementById('devisClient'); if(!sel) return;
   const v=sel.value;
-  sel.innerHTML='<option value="">— Sélectionner —</option>'+clientsData.map(c=>`<option value="${c.id}">${c.nom}${c.entreprise?' – '+c.entreprise:''}</option>`).join('');
+  sel.innerHTML='<option value="">— Sélectionner —</option>'
+    +'<option value="__prospect__" style="font-weight:700;color:#1d4ed8;">🎯 ➕ Nouveau prospect...</option>'
+    +clientsData.map(c=>`<option value="${c.id}">${c.workflowStatut==='prospect'?'🎯 ':''}`+`${c.nom}${c.refClient?' ('+c.refClient+')':''}${c.entreprise?' – '+c.entreprise:''}</option>`).join('');
   if(v) sel.value=v;
 }
 
 function remplirInfosDevis(){
   const id=document.getElementById('devisClient')?.value;
+  if(id==='__prospect__'){ _ouvrirModalProspect(); return; }
   const c=clientsData.find(x=>x.id===id); if(!c) return;
   // Auto-fill référence devis DEV-2026-XXXX-NN
   const numEl=document.getElementById('devisNumero');
@@ -9339,9 +9417,11 @@ function genererDevisPDF(){
   // Enregistrer
   devisData.push({id:'DEV'+Date.now(),numero:numDev,client:c.nom||'—',clientId,date:dateDev,objet:gv('devisObjet'),totalHT:st,totalTTC:ttc,tva:tauxTVA,statut:'en_attente',validite,lignes:JSON.parse(JSON.stringify(lignesDevisData))});
   devisAutoIncrement++;
+  // Passage automatique en Devis envoyé (sauf si déjà client actif)
+  if(clientId){const _ci=clientsData.findIndex(x=>x.id===clientId);if(_ci>=0&&clientsData[_ci].workflowStatut!=='client_actif')clientsData[_ci].workflowStatut='devis_envoye';}
   const numEl=document.getElementById('devisNumero');
-  if(numEl) numEl.value=`DEV-${new Date().getFullYear()}-${String(devisAutoIncrement).padStart(3,'0')}`;
-  renderHistoriqueDevis(); sauvegarderTout(true);
+  if(numEl) numEl.placeholder=`DEV-${new Date().getFullYear()}-XXXX-01`;
+  renderHistoriqueDevis(); chargerClients(); sauvegarderTout(true);
   toast(`Devis ${numDev} généré ✓`,'success');
 }
 
@@ -9390,7 +9470,7 @@ function creerContratDepuisDevis(devisId){
     // Mettre à jour le statut workflow client
     if(d.clientId){
       const c=clientsData.find(x=>x.id===d.clientId);
-      if(c){ c.workflowStatut='contrat_signe'; sauvegarderTout(true); chargerClients(); }
+      if(c){ c.workflowStatut='client_actif'; sauvegarderTout(true); chargerClients(); }
     }
     toast(`Redirection vers Contrats — basé sur le devis ${d.numero}`,'success');
   },400);
@@ -9442,7 +9522,7 @@ function convertirDevisIdEnFacture(id){
     // Mettre à jour le workflow client
     if(d.clientId){
       const c=clientsData.find(x=>x.id===d.clientId);
-      if(c){ c.workflowStatut='facturation_active'; }
+      if(c){ c.workflowStatut='client_actif'; }
     }
     sauvegarderTout(true); renderHistoriqueDevis(); chargerClients();
     toast(`Devis ${d.numero} converti — Vérifiez et générez le PDF`,'success');
