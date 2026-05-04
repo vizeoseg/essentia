@@ -4381,8 +4381,11 @@ function chargerSelectClients(){
   const retractSel=document.getElementById('retractClient');
   if(retractSel){const rv=retractSel.value;retractSel.innerHTML='<option value="">— Sélectionner —</option>'+clientsData.map(c=>`<option value="${c.id}">${c.nom}</option>`).join('');if(rv)retractSel.value=rv;}
   // Devis + Contrat selects
-  const dvSel=document.getElementById('devisClient');
-  if(dvSel){const dv=dvSel.value;dvSel.innerHTML='<option value="">— Sélectionner —</option>'+clientsData.map(c=>`<option value="${c.id}">${c.nom}${c.entreprise?' – '+c.entreprise:''}</option>`).join('');if(dv)dvSel.value=dv;}
+  if(typeof chargerSelectClientsDevis==='function') chargerSelectClientsDevis();
+  else {
+    const dvSel=document.getElementById('devisClient');
+    if(dvSel){const dv=dvSel.value;dvSel.innerHTML='<option value="">— Sélectionner —</option>'+clientsData.map(c=>`<option value="${c.id}">${c.nom}${c.entreprise?' – '+c.entreprise:''}</option>`).join('');if(dv)dvSel.value=dv;}
+  }
   const ctSel=document.getElementById('contratClient');
   if(ctSel){const cv=ctSel.value;ctSel.innerHTML='<option value="">— Sélectionner —</option>'+clientsData.map(c=>`<option value="${c.id}">${c.nom}${c.entreprise?' – '+c.entreprise:''}</option>`).join('');if(cv)ctSel.value=cv;}
   // Checklist client selects
