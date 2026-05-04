@@ -77,7 +77,11 @@ exports.handler = async function (event) {
     text: text || '',
   };
 
-  if (cc) resendBody.reply_to = Array.isArray(cc) ? cc[0] : cc;
+  // reply_to : uniquement si email valide (évite les rejets Orange/FAI)
+  const ccVal = Array.isArray(cc) ? cc[0] : cc;
+  if (ccVal && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ccVal)) {
+    resendBody.reply_to = ccVal;
+  }
   if (attachments && attachments.length > 0) {
     resendBody.attachments = attachments;
     console.log('[send-email] PJ:', attachments.map(a => `${a.filename} (${Math.round((a.content||'').length/1024)}KB)`));

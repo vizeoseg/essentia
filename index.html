@@ -6700,9 +6700,11 @@ async function _envoyerEmailResend({to,cc,subject,text,attachments}){
     throw new Error('Erreur réseau : '+netErr.message);
   }
   const data=await res.json().catch(function(){return{};});
-  console.log('[Email] Réponse HTTP',res.status,data);
+  console.log('[Email] Réponse HTTP',res.status,JSON.stringify(data));
   if(!res.ok){
-    throw new Error((data.message||data.error||JSON.stringify(data)||'Erreur')+' (HTTP '+res.status+')');
+    const msg=(data.message||data.error||data.name||JSON.stringify(data)||'Erreur inconnue')+' (HTTP '+res.status+')';
+    console.error('[Email] ERREUR RESEND:',msg);
+    throw new Error(msg);
   }
   return data;
 }
