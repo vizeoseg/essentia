@@ -4057,7 +4057,11 @@ function ajouterClient(){
     jours:(()=>{try{const s=document.getElementById('newJours');if(!s)return[];return Array.from(s.selectedOptions).map(o=>o.value);}catch(e){return[];}})(),heuresRealisees:{}
   }));
   ['newNom','newEntreprise','newDateArrivee','newDateSortie','newTel','newEmail','newAdresse'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  chargerClients();calculerStats();toast('Client ajouté !','success');
+  chargerClients();calculerStats();
+  if(typeof chargerPlanningPrevisionnel==='function') chargerPlanningPrevisionnel();
+  if(typeof chargerTournees==='function') chargerTournees();
+  sauvegarderTout(true);
+  toast('Client ajouté !','success');
 }
 
 function genererFactureDepuisClient(clientId){
@@ -4341,6 +4345,7 @@ function sauvegarderModificationClient(){
   document.getElementById('editClientModal').style.display='none';
   chargerClients();calculerStats();
   if(typeof chargerTournees==='function') chargerTournees();
+  if(typeof chargerPlanningPrevisionnel==='function') chargerPlanningPrevisionnel();
   sauvegarderTout(true);
   toast('Client modifié ✓','success');
 }
