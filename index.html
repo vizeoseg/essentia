@@ -4038,8 +4038,7 @@ function ajouterClient(){
   const tva=(()=>{if(typeClient==='exonere_0')return 0;const v=parseFloat(document.getElementById('newTVAClient')?.value);return isNaN(v)?(typeClient==='entreprise'||typeClient==='airbnb_agence'?20:10):v;})();
   const totalMoisHT=tarif*heures*4.33*freq;
   const totalMoisTTC=totalMoisHT*(1+tva/100);
-  const refClient='CLI-'+String(clientAutoIncrement).padStart(4,'0');
-  clientAutoIncrement++;
+  const refClient=_nextClientRef('CLI-');
   clientsData.push(normaliserClient({
     id:'c'+Date.now(),nom,refClient,entreprise:document.getElementById('newEntreprise').value||'',
     typeClient,tva,
@@ -5649,6 +5648,24 @@ window._blocSignaturePDF=_blocSignaturePDF;
 // Extrait la partie numérique de CLI-XXXX → '0042'
 function _numCli(c){ return (c?.refClient||'CLI-0000').replace('CLI-','').replace('PRO-',''); }
 
+// ── Compteur global permanent dans progestParams ──────────────
+function _getClientRefCounter(){
+  const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
+  return parseInt(p.clientRefCounter)||1;
+}
+function _nextClientRef(prefix){
+  const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
+  // Garantir que le compteur est au-delà de toutes les refs existantes
+  const maxExist=Math.max(0,...(clientsData||[])
+    .filter(function(c){return c.refClient;})
+    .map(function(c){return parseInt(c.refClient.replace('CLI-','').replace('PRO-',''))||0;}));
+  let n=Math.max(parseInt(p.clientRefCounter)||1, maxExist+1);
+  const ref=(prefix||'CLI-')+String(n).padStart(4,'0');
+  p.clientRefCounter=n+1;
+  localStorage.setItem('progestParams',JSON.stringify(p));
+  return ref;
+}
+
 // Attribution automatique CLI-XXXX aux clients sans refClient
 // Appelée après chaque chargement de données (localStorage + Supabase)
 // ── Prospect : modal création depuis formulaire devis ─────────
@@ -5682,8 +5699,7 @@ function _confirmerProspect(){
   if(!nom){toast('Le nom est obligatoire','warning');return;}
   const email=document.getElementById('prospectEmail')?.value||'';
   const tel=document.getElementById('prospectTel')?.value||'';
-  const ref='PRO-'+String(clientAutoIncrement).padStart(4,'0');
-  clientAutoIncrement++;
+  const ref=_nextClientRef('PRO-');
   const prospect=normaliserClient({
     id:'c'+Date.now(), nom, email, tel, refClient:ref,
     workflowStatut:'prospect', typeClient:'particulier', tva:10,
@@ -5704,8 +5720,7 @@ window._confirmerProspect=_confirmerProspect;
 function convertirProspectEnClient(id){
   const c=clientsData.find(x=>x.id===id); if(!c) return;
   // Attribuer un nouveau CLI-XXXX (le PRO-XXXX est retiré)
-  const newRef='CLI-'+String(clientAutoIncrement).padStart(4,'0');
-  clientAutoIncrement++;
+  const newRef=_nextClientRef('CLI-');
   c.refClient=newRef;
   c.workflowStatut='client_actif';
   sauvegarderTout(true); chargerClients();
@@ -5715,32 +5730,45 @@ function convertirProspectEnClient(id){
 window.convertirProspectEnClient=convertirProspectEnClient;
 
 function _migrerRefClients(){
-  // Étape 1 : corriger les prospects qui ont un préfixe CLI- → PRO-
-  var fixedProspects=0;
+  var changed=0;
+  // Étape 1 : corriger les prospects avec préfixe CLI- → PRO-
   clientsData.forEach(function(c){
     if(c.refClient && c.refClient.startsWith('CLI-') && c.workflowStatut==='prospect'){
-      c.refClient='PRO-'+c.refClient.replace('CLI-','');
-      fixedProspects++;
+      c.refClient='PRO-'+c.refClient.replace('CLI-',''); changed++;
     }
   });
-  // Étape 2 : attribuer une ref aux clients/prospects sans ref
+  // Étape 2 : réparer les doublons (même ref sur deux clients différents)
+  var seen={};
+  clientsData.forEach(function(c){
+    if(!c.refClient) return;
+    if(seen[c.refClient]){ c.refClient=null; changed++; } // sera réattribué ci-dessous
+    else seen[c.refClient]=true;
+  });
+  // Étape 3 : initialiser le compteur dans progestParams si besoin
+  var p=JSON.parse(localStorage.getItem('progestParams')||'{}');
+  var maxExist=Math.max(0,...clientsData.filter(function(c){return c.refClient;})
+    .map(function(c){return parseInt(c.refClient.replace('CLI-','').replace('PRO-',''))||0;}));
+  if(!p.clientRefCounter || parseInt(p.clientRefCounter)<=maxExist){
+    p.clientRefCounter=maxExist+1;
+    localStorage.setItem('progestParams',JSON.stringify(p));
+  }
+  // Étape 4 : attribuer une ref aux clients/prospects sans ref
   var sanRef=clientsData.filter(function(c){return !c.refClient;});
-  if(!sanRef.length && !fixedProspects) return false;
   if(sanRef.length){
     var tries=[...clientsData].sort(function(a,b){
       return (parseInt(String(a.id).replace(/\D/g,''))||0)-(parseInt(String(b.id).replace(/\D/g,''))||0);
     });
-    var next=clientAutoIncrement||1;
     tries.forEach(function(c){
       if(c.refClient) return;
       var idx=clientsData.findIndex(function(x){return x.id===c.id;});
-      var prefix=c.workflowStatut==='prospect'?'PRO-':'CLI-';
-      if(idx>=0) clientsData[idx].refClient=prefix+String(next).padStart(4,'0');
-      next++;
+      if(idx<0) return;
+      var prefix=clientsData[idx].workflowStatut==='prospect'?'PRO-':'CLI-';
+      clientsData[idx].refClient=_nextClientRef(prefix);
+      changed++;
     });
-    clientAutoIncrement=next;
   }
-  console.info('[Migration refClient] '+sanRef.length+' attribué(s), '+fixedProspects+' PRO- corrigé(s)');
+  if(!changed) return false;
+  console.info('[Migration refClient] '+sanRef.length+' attribué(s), doublons réparés, compteur='+_getClientRefCounter());
   try{ sauvegarderTout(true); }catch(e){}
   setTimeout(function(){ try{ sauvegarderTout(true); }catch(e){}; }, 2500);
   return true;
@@ -6968,6 +6996,7 @@ function chargerFournisseurs(){
 // PARAMÈTRES SOCIÉTÉ
 // ══════════════════════════════════════════════════════════
 function sauvegarderParametres(){
+  const existing=JSON.parse(localStorage.getItem('progestParams')||'{}');
   const params={
     nomSociete:document.getElementById('paramNomSociete')?.value||'',
     siret:document.getElementById('paramSiret')?.value||'',
@@ -6980,7 +7009,8 @@ function sauvegarderParametres(){
     iban:document.getElementById('paramIBAN')?.value||'',
     bic:document.getElementById('paramBIC')?.value||'',
     capital:document.getElementById('paramCapital')?.value||'',
-    mentionLegale:document.getElementById('paramMentionLegale')?.value||''
+    mentionLegale:document.getElementById('paramMentionLegale')?.value||'',
+    clientRefCounter:existing.clientRefCounter  // ne jamais écraser le compteur
   };
   localStorage.setItem('progestParams',JSON.stringify(params));
   // Mettre à jour sidebar
