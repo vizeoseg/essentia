@@ -32,13 +32,29 @@
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'DM Sans',sans-serif;background:#111827;color:var(--text);display:flex;min-height:100vh;}
 /* SIDEBAR */
-.sidebar{width:var(--sidebar-w);background:linear-gradient(180deg,#1a2e4a,#101830);display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;z-index:200;overflow-y:auto;box-shadow:2px 0 20px rgba(0,0,0,.3);}
+.sidebar{width:var(--sidebar-w);background:linear-gradient(180deg,#1a2e4a,#101830);display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;z-index:200;overflow-y:auto;overflow-x:hidden;box-shadow:2px 0 20px rgba(0,0,0,.3);transition:width .25s cubic-bezier(.4,0,.2,1);}
 .sidebar::-webkit-scrollbar{width:3px;}.sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:10px;}
-.sidebar-logo{padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.07);cursor:pointer;}
+/* Sidebar rétractée */
+.sidebar.retracted{width:62px;}
+.sidebar.retracted .sidebar-logo .brand,.sidebar.retracted .sidebar-logo .sub,.sidebar.retracted .nav-btn-text,.sidebar.retracted .nav-section,.sidebar.retracted .sidebar-footer .btn-save-label,.sidebar.retracted .sidebar-footer .btn-json-label{display:none !important;}
+.sidebar.retracted .nav-btn{justify-content:center;padding:10px 0;border-left:none !important;}
+.sidebar.retracted .nav-btn.active{border-left:3px solid #7eb3ff !important;padding:10px 0 10px 0;}
+.sidebar.retracted .nav-btn .ni{width:100%;text-align:center;font-size:16px;}
+.sidebar.retracted .sidebar-logo{padding:14px 0;text-align:center;}
+.sidebar.retracted .sidebar-logo .brand span{display:block;font-size:14px;}
+.sidebar.retracted #sidebarLogoFallback{display:none;}
+.sidebar.retracted .sidebar-footer{flex-direction:column;align-items:center;padding:8px 6px;}
+.sidebar.retracted .btn-retract-icon{transform:rotate(180deg);}
+/* Tooltip au survol en mode rétracté */
+.sidebar.retracted .nav-btn{position:relative;}
+.sidebar.retracted .nav-btn:hover::after{content:attr(data-label);position:absolute;left:68px;top:50%;transform:translateY(-50%);background:#1a2e4a;color:#fff;font-size:12px;font-weight:600;padding:5px 10px;border-radius:7px;white-space:nowrap;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.4);pointer-events:none;}
+.sidebar-logo{padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.07);}
 .sidebar-logo .brand{font-size:19px;font-weight:800;color:#fff;}
 .sidebar-logo .brand span{color:#7eb3ff;}
 .sidebar-logo .sub{font-size:10px;color:rgba(255,255,255,.55);font-family:'DM Mono',monospace;margin-top:2px;}
-.nav-section{font-size:9px;text-transform:uppercase;letter-spacing:1.8px;color:rgba(255,255,255,.35);padding:14px 12px 5px;font-weight:800;display:flex;align-items:center;gap:6px;}
+.nav-section{font-size:9px;text-transform:uppercase;letter-spacing:1.8px;color:rgba(255,255,255,.35);padding:14px 12px 5px;font-weight:800;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;position:relative;}
+.nav-section::before{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%) rotate(0deg);font-size:9px;color:rgba(255,255,255,.35);transition:transform .25s ease;}
+.nav-section.collapsed::before{transform:translateY(-50%) rotate(-90deg);}
 .nav-section::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.07);margin-left:4px;}
 .nav-btn{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border-radius:9px;font-size:13px;font-weight:500;color:rgba(255,255,255,.65);cursor:pointer;border:none;background:transparent;text-align:left;transition:all .15s;margin-bottom:2px;}
 .nav-btn:hover{background:rgba(255,255,255,.1);color:rgba(255,255,255,.92);}
@@ -47,30 +63,36 @@ body{font-family:'DM Sans',sans-serif;background:#111827;color:var(--text);displ
 .nav-btn .ni{width:18px;text-align:center;font-size:13px;color:rgba(255,255,255,.45);flex-shrink:0;}
 .nav-btn.active .ni{color:#7eb3ff;filter:drop-shadow(0 0 4px rgba(126,179,255,.5));}
 .sidebar-footer{padding:12px;border-top:1px solid rgba(255,255,255,.07);display:flex;gap:6px;margin-top:auto;}
+/* Transition main quand sidebar change */
+.main{transition:margin-left .25s cubic-bezier(.4,0,.2,1);}
 /* MAIN */
-.main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#0f172a 100%);min-height:100vh;}
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:13px 22px;background:rgba(10,20,45,.8);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:100;}
-.topbar-title{font-size:16px;font-weight:600;color:#e8f0ff;}
-.topbar-right{display:flex;align-items:center;gap:8px;}
-.page-content{padding:20px 22px;flex:1;}
+.main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#0f172a 100%);min-height:100vh;overflow-x:hidden;min-width:0;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;background:rgba(10,20,45,.8);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:100;min-width:0;overflow:hidden;}
+.topbar-title{font-size:15px;font-weight:600;color:#e8f0ff;white-space:nowrap;}
+.topbar-right{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.page-content{padding:18px 20px;flex:1;min-width:0;overflow-x:hidden;}
 /* CARDS */
 .card{background:rgba(255,255,255,.97);border-radius:var(--radius);padding:18px;margin-bottom:16px;box-shadow:var(--shadow);border:1px solid rgba(255,255,255,.2);}
 .card-header{display:flex;align-items:center;gap:9px;padding-bottom:13px;margin-bottom:15px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
 .card-header h3{font-size:14px;font-weight:600;flex:1;color:var(--text);}
 .card-icon{width:30px;height:30px;border-radius:8px;background:var(--accent-l);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:12px;flex-shrink:0;}
 /* BUTTONS */
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .15s;font-family:'DM Sans',sans-serif;}
-.btn-primary{background:var(--accent);color:#fff;}.btn-primary:hover{background:#2e6ce0;}
-.btn-success{background:var(--green);color:#fff;}.btn-success:hover{background:#0ea576;}
-.btn-warning{background:var(--amber);color:#1a0d00;}.btn-warning:hover{background:#d8881a;}
-.btn-danger{background:var(--red);color:#fff;}.btn-danger:hover{background:#cc3535;}
-.btn-ghost{background:rgba(255,255,255,.09);color:rgba(200,220,255,.85);border:1px solid rgba(255,255,255,.15);}.btn-ghost:hover{background:rgba(255,255,255,.18);color:#fff;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .18s;font-family:'DM Sans',sans-serif;}
+.btn:active{transform:scale(.97);}
+.btn-primary{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(74,124,247,.25);}.btn-primary:hover{background:#2e6ce0;box-shadow:0 4px 12px rgba(74,124,247,.35);}
+.btn-success{background:var(--green);color:#fff;box-shadow:0 2px 8px rgba(18,184,122,.2);}.btn-success:hover{background:#0ea576;box-shadow:0 4px 12px rgba(18,184,122,.3);}
+.btn-warning{background:var(--amber);color:#fff;box-shadow:0 2px 8px rgba(240,153,31,.2);}.btn-warning:hover{background:#d8881a;}
+.btn-danger{background:var(--red);color:#fff;box-shadow:0 2px 8px rgba(230,69,69,.2);}.btn-danger:hover{background:#cc3535;}
+/* btn-ghost : adapté pour fond clair (cards) */
+.btn-ghost{background:var(--bg3);color:var(--text2);border:1px solid var(--border);}.btn-ghost:hover{background:var(--accent-l);color:var(--accent);border-color:var(--accent);}
+/* btn-ghost-dark : pour fond sombre (sidebar, topbar) */
+.btn-ghost-dark{background:rgba(255,255,255,.09);color:rgba(200,220,255,.85);border:1px solid rgba(255,255,255,.15);}.btn-ghost-dark:hover{background:rgba(255,255,255,.18);color:#fff;}
 .btn-import{background:linear-gradient(135deg,#312e81,#3730a3);color:#a5b4fc;border:1.5px solid rgba(165,180,252,.35);font-weight:600;}.btn-import:hover{background:linear-gradient(135deg,#4338ca,#4f46e5);color:#fff;border-color:#818cf8;box-shadow:0 0 12px rgba(99,102,241,.35);}
 .btn-import-rapide{background:linear-gradient(135deg,#14532d,#15803d);color:#86efac;border:1.5px solid rgba(134,239,172,.35);font-weight:600;}.btn-import-rapide:hover{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border-color:#22c55e;box-shadow:0 0 12px rgba(34,197,94,.3);}
 .btn-camera{background:linear-gradient(135deg,#1a2e4a,#22406a);color:#7eb3ff;border:1.5px solid rgba(126,179,255,.35);font-weight:600;}.btn-camera:hover{background:linear-gradient(135deg,#22406a,#2e5490);color:#fff;border-color:rgba(126,179,255,.6);}
 .btn-upload{background:linear-gradient(135deg,#1a3a2a,#1e4d35);color:#4ade80;border:1.5px solid rgba(74,222,128,.3);font-weight:600;}.btn-upload:hover{background:linear-gradient(135deg,#1e4d35,#166534);color:#fff;border-color:rgba(74,222,128,.5);}
-.btn-purple{background:var(--purple);color:#fff;}.btn-purple:hover{background:#6356d4;}
-.btn-sm{padding:5px 10px;font-size:11px;border-radius:7px;}
+.btn-purple{background:var(--purple);color:#fff;box-shadow:0 2px 8px rgba(124,108,240,.2);}.btn-purple:hover{background:#6356d4;}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:7px;}
 /* STATS */
 .stats-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:11px;margin-bottom:18px;}
 .stat-card{background:rgba(255,255,255,.97);border-radius:var(--radius);padding:14px;cursor:pointer;transition:all .2s;box-shadow:var(--shadow);border:1px solid rgba(255,255,255,.2);}
@@ -92,8 +114,12 @@ th{background:var(--bg3);color:var(--text2);font-size:10px;font-weight:700;text-
 td{padding:8px 8px;border-bottom:1px solid var(--border);color:var(--text);}
 tr:last-child td{border-bottom:none;}
 tr:hover td{background:rgba(74,124,247,.02);}
-.icon-btn{background:none;border:none;cursor:pointer;padding:3px 5px;border-radius:5px;font-size:12px;}
-.icon-btn.view{color:var(--accent);}.icon-btn.edit{color:var(--amber);}.icon-btn.del{color:var(--red);}
+.icon-btn{background:transparent;border:1px solid transparent;cursor:pointer;padding:5px 8px;border-radius:7px;font-size:13px;transition:all .15s;display:inline-flex;align-items:center;justify-content:center;}
+.icon-btn:hover{border-color:currentColor;background:currentColor;color:#fff;transform:scale(1.08);}
+.icon-btn.view{color:var(--accent);}.icon-btn.view:hover{background:var(--accent);border-color:var(--accent);color:#fff;}
+.icon-btn.edit{color:var(--amber);}.icon-btn.edit:hover{background:var(--amber);border-color:var(--amber);color:#fff;}
+.icon-btn.del{color:var(--red);}.icon-btn.del:hover{background:var(--red);border-color:var(--red);color:#fff;}
+.icon-btn:active{transform:scale(.93);}
 /* BADGES */
 .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:50px;font-size:10px;font-weight:600;}
 .badge-blue{background:rgba(74,124,247,.15);color:var(--accent);}
@@ -110,10 +136,10 @@ tr:hover td{background:rgba(74,124,247,.02);}
 .modal-close{background:none;border:none;color:var(--text3);font-size:19px;cursor:pointer;padding:3px 7px;border-radius:5px;}
 .modal-close:hover{color:var(--red);}
 /* TOAST */
-#toastContainer{position:fixed;top:14px;right:14px;z-index:99999;display:flex;flex-direction:column;gap:6px;}
-.toast{background:var(--bg2);border-radius:9px;padding:10px 13px;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500;box-shadow:var(--shadow);animation:slideIn .22s ease;min-width:210px;border:1px solid var(--border);}
-.toast.success{border-left:3px solid var(--green);}.toast.error{border-left:3px solid var(--red);}.toast.warning{border-left:3px solid var(--amber);}.toast.info{border-left:3px solid var(--accent);}
-@keyframes slideIn{from{transform:translateX(60px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+#toastContainer{position:fixed;bottom:18px;right:18px;z-index:99999;display:flex;flex-direction:column-reverse;gap:5px;}
+.toast{background:rgba(15,23,42,.92);backdrop-filter:blur(8px);border-radius:8px;padding:7px 12px;display:flex;align-items:center;gap:7px;font-size:11px;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,.3);animation:slideInToast .2s ease;min-width:160px;max-width:280px;border:1px solid rgba(255,255,255,.08);color:rgba(230,240,255,.9);}
+.toast.success{border-left:3px solid var(--green);}.toast.error{border-left:3px solid var(--red);background:rgba(80,10,10,.92);}.toast.warning{border-left:3px solid var(--amber);}.toast.info{border-left:3px solid var(--accent);}
+@keyframes slideInToast{from{transform:translateY(12px);opacity:0;}to{transform:translateY(0);opacity:1;}}
 /* TABS */
 .tab-pane{display:none;}.tab-pane.active{display:block;}
 /* MISC */
@@ -563,6 +589,10 @@ tr{transition:background .12s;}
   .stock-grid{grid-template-columns:repeat(2,1fr) !important;}
 }
 
+@media(max-width:1100px){
+  #topbarAlertes{display:none !important;}
+  #btnExportExcel{display:none !important;}
+}
 @media(max-width:480px){
   /* Stats 1 colonne */
   .stats-grid{grid-template-columns:repeat(2,1fr) !important;}
@@ -648,40 +678,45 @@ tr{transition:background .12s;}
 
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo" style="padding:14px 16px 12px;text-align:center;">
-    <img id="sidebarLogo" src="" alt="Essentia Services" style="max-height:56px;max-width:160px;object-fit:contain;border-radius:8px;margin-bottom:8px;display:none;">
-    <div id="sidebarLogoFallback" class="brand"><span>Essentia</span> Services</div>
-    <div class="sub" id="sidebarSub" style="margin-top:4px;">Gestion professionnelle</div>
+  <div class="sidebar-logo" style="padding:14px 16px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+    <div style="display:flex;flex-direction:column;min-width:0;">
+      <img id="sidebarLogo" src="" alt="Essentia Services" style="max-height:40px;max-width:140px;object-fit:contain;border-radius:6px;display:none;margin-bottom:4px;">
+      <div id="sidebarLogoFallback" class="brand"><span>Essentia</span> Services</div>
+      <div class="sub" id="sidebarSub" style="margin-top:3px;">Gestion professionnelle</div>
+    </div>
+    <button onclick="toggleSidebarRetract()" title="Réduire / Agrandir" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:7px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .15s;" onmouseover="this.style.background='rgba(255,255,255,.18)'" onmouseout="this.style.background='rgba(255,255,255,.08)'">
+      <i class="fas fa-chevron-left btn-retract-icon" style="color:rgba(255,255,255,.6);font-size:11px;transition:transform .25s;"></i>
+    </button>
   </div>
   <!-- NAV GÉRANT (masquée en mode employé) -->
   <nav id="navGerant" style="padding:8px;">
     <div class="nav-section">Vue d'ensemble</div>
-    <button class="nav-btn active" data-tab="accueil" onclick="changerTab(this)"><span class="ni"><i class="fas fa-home"></i></span>Accueil</button>
+    <button class="nav-btn active" data-tab="accueil" data-label="Accueil" onclick="changerTab(this)"><span class="ni"><i class="fas fa-home"></i></span><span class="nav-btn-text">Accueil</span></button>
     <div class="nav-section">Parcours client</div>
-    <button class="nav-btn" data-tab="clients" onclick="changerTab(this)"><span class="ni"><i class="fas fa-user-tie"></i></span>Clients</button>
-    <button class="nav-btn" data-tab="tournees" onclick="changerTab(this)"><span class="ni"><i class="fas fa-route"></i></span>Tournées</button>
-    <button class="nav-btn" data-tab="devis" onclick="changerTab(this)"><span class="ni"><i class="fas fa-file-signature"></i></span>Devis</button>
-    <button class="nav-btn" data-tab="contrats" onclick="changerTab(this)"><span class="ni"><i class="fas fa-file-contract"></i></span>Contrats</button>
-    <button class="nav-btn" data-tab="remise-materiel" onclick="changerTab(this)"><span class="ni"><i class="fas fa-toolbox"></i></span>Remise matériel</button>
-    <button class="nav-btn" data-tab="livrets" onclick="changerTab(this)"><span class="ni"><i class="fas fa-book-open"></i></span>Livrets entreprise</button>
-    <button class="nav-btn" data-tab="factures" onclick="changerTab(this)"><span class="ni"><i class="fas fa-file-invoice-dollar"></i></span>Factures</button>
-    <button class="nav-btn" data-tab="attestations" onclick="changerTab(this)"><span class="ni"><i class="fas fa-award"></i></span>Attestations fiscales</button>
+    <button class="nav-btn" data-tab="clients" data-label="Clients" onclick="changerTab(this)"><span class="ni"><i class="fas fa-user-tie"></i></span><span class="nav-btn-text">Clients</span></button>
+    <button class="nav-btn" data-tab="tournees" data-label="Tournées" onclick="changerTab(this)"><span class="ni"><i class="fas fa-route"></i></span><span class="nav-btn-text">Tournées</span></button>
+    <button class="nav-btn" data-tab="devis" data-label="Devis" onclick="changerTab(this)"><span class="ni"><i class="fas fa-file-signature"></i></span><span class="nav-btn-text">Devis</span></button>
+    <button class="nav-btn" data-tab="contrats" data-label="Contrats" onclick="changerTab(this)"><span class="ni"><i class="fas fa-file-contract"></i></span><span class="nav-btn-text">Contrats</span></button>
+    <button class="nav-btn" data-tab="remise-materiel" data-label="Remise matériel" onclick="changerTab(this)"><span class="ni"><i class="fas fa-toolbox"></i></span><span class="nav-btn-text">Remise matériel</span></button>
+    <button class="nav-btn" data-tab="livrets" data-label="Livrets" onclick="changerTab(this)"><span class="ni"><i class="fas fa-book-open"></i></span><span class="nav-btn-text">Livrets entreprise</span></button>
+    <button class="nav-btn" data-tab="factures" data-label="Factures" onclick="changerTab(this)"><span class="ni"><i class="fas fa-file-invoice-dollar"></i></span><span class="nav-btn-text">Factures</span></button>
+    <button class="nav-btn" data-tab="attestations" data-label="Attestations" onclick="changerTab(this)"><span class="ni"><i class="fas fa-award"></i></span><span class="nav-btn-text">Attestations fiscales</span></button>
     <div class="nav-section">RH & Équipe</div>
-    <button class="nav-btn" data-tab="salaries" onclick="changerTab(this)"><span class="ni"><i class="fas fa-id-badge"></i></span>Salariés</button>
-    <button class="nav-btn" data-tab="dsn" onclick="changerTab(this)"><span class="ni"><i class="fas fa-file-export"></i></span>Export DSN</button>
-    <button class="nav-btn" data-tab="paiements" onclick="changerTab(this)"><span class="ni"><i class="fas fa-calendar-check"></i></span>Prévisions paiements</button>
+    <button class="nav-btn" data-tab="salaries" data-label="Salariés" onclick="changerTab(this)"><span class="ni"><i class="fas fa-id-badge"></i></span><span class="nav-btn-text">Salariés</span></button>
+    <button class="nav-btn" data-tab="dsn" data-label="Export DSN" onclick="changerTab(this)"><span class="ni"><i class="fas fa-file-export"></i></span><span class="nav-btn-text">Export DSN</span></button>
+    <button class="nav-btn" data-tab="paiements" data-label="Prévisions" onclick="changerTab(this)"><span class="ni"><i class="fas fa-calendar-check"></i></span><span class="nav-btn-text">Prévisions paiements</span></button>
     <div class="nav-section">Finances</div>
-    <button class="nav-btn" data-tab="finances" onclick="changerTab(this)"><span class="ni"><i class="fas fa-coins"></i></span>Finances</button>
-    <button class="nav-btn" data-tab="frais" onclick="changerTab(this)"><span class="ni"><i class="fas fa-receipt"></i></span>Notes de frais <span id="kmAlerteBadge" class="badge badge-red" style="display:none;margin-left:4px;font-size:9px;">0</span></button>
-    <button class="nav-btn" data-tab="tva" onclick="changerTab(this)"><span class="ni"><i class="fas fa-percentage"></i></span>Déclaration TVA</button>
-    <button class="nav-btn" data-tab="resultat" onclick="changerTab(this)"><span class="ni"><i class="fas fa-chart-pie"></i></span>Résultat net</button>
+    <button class="nav-btn" data-tab="finances" data-label="Finances" onclick="changerTab(this)"><span class="ni"><i class="fas fa-coins"></i></span><span class="nav-btn-text">Finances</span></button>
+    <button class="nav-btn" data-tab="frais" data-label="Notes de frais" onclick="changerTab(this)"><span class="ni"><i class="fas fa-receipt"></i></span><span class="nav-btn-text">Notes de frais <span id="kmAlerteBadge" class="badge badge-red" style="display:none;margin-left:4px;font-size:9px;">0</span></span></button>
+    <button class="nav-btn" data-tab="tva" data-label="TVA" onclick="changerTab(this)"><span class="ni"><i class="fas fa-percentage"></i></span><span class="nav-btn-text">Déclaration TVA</span></button>
+    <button class="nav-btn" data-tab="resultat" data-label="Résultat" onclick="changerTab(this)"><span class="ni"><i class="fas fa-chart-pie"></i></span><span class="nav-btn-text">Résultat net</span></button>
     <div class="nav-section">Stock & Outils</div>
-    <button class="nav-btn" data-tab="stock" onclick="changerTab(this)"><span class="ni"><i class="fas fa-boxes"></i></span>Gestion stock</button>
-    <button class="nav-btn" data-tab="fournisseurs" onclick="changerTab(this)"><span class="ni"><i class="fas fa-truck"></i></span>Fournisseurs</button>
-    <button class="nav-btn" data-tab="tarifshoraires" onclick="changerTab(this)"><span class="ni"><i class="fas fa-clock"></i></span>Tarifs horaires</button>
-    <button class="nav-btn" data-tab="exports" onclick="changerTab(this)"><span class="ni"><i class="fas fa-file-export"></i></span>Exports PDF</button>
+    <button class="nav-btn" data-tab="stock" data-label="Stock" onclick="changerTab(this)"><span class="ni"><i class="fas fa-boxes"></i></span><span class="nav-btn-text">Gestion stock</span></button>
+    <button class="nav-btn" data-tab="fournisseurs" data-label="Fournisseurs" onclick="changerTab(this)"><span class="ni"><i class="fas fa-truck"></i></span><span class="nav-btn-text">Fournisseurs</span></button>
+    <button class="nav-btn" data-tab="tarifshoraires" data-label="Tarifs" onclick="changerTab(this)"><span class="ni"><i class="fas fa-clock"></i></span><span class="nav-btn-text">Tarifs horaires</span></button>
+    <button class="nav-btn" data-tab="exports" data-label="Exports PDF" onclick="changerTab(this)"><span class="ni"><i class="fas fa-file-export"></i></span><span class="nav-btn-text">Exports PDF</span></button>
     <div class="nav-section">Réglages</div>
-    <button class="nav-btn" data-tab="parametres" onclick="changerTab(this)"><span class="ni"><i class="fas fa-cog"></i></span>Paramètres</button>
+    <button class="nav-btn" data-tab="parametres" data-label="Paramètres" onclick="changerTab(this)"><span class="ni"><i class="fas fa-cog"></i></span><span class="nav-btn-text">Paramètres</span></button>
     <div style="padding:8px 4px 0;">
       <button class="lock-btn" onclick="verrouillerGerant()"><span class="ni"><i class="fas fa-lock"></i></span>Verrouiller</button>
       <div id="lockCountdown"></div>
@@ -713,14 +748,40 @@ tr{transition:background .12s;}
 <div class="main" id="gerantMain" style="display:none;">
   <div class="topbar">
     <div style="display:flex;align-items:center;gap:10px;">
-      <button class="btn btn-ghost btn-sm" id="menuToggle" onclick="toggleSidebar()" style="display:none;"><i class="fas fa-bars"></i></button>
-      <div id="topbarLogoWrap" style="display:none;"></div><!-- logo centralisé dans sidebar -->
-      <span class="topbar-title" id="topbarTitle">Accueil</span>
+      <button class="btn btn-ghost-dark btn-sm" id="menuToggle" onclick="toggleSidebar()" style="display:none;"><i class="fas fa-bars"></i></button>
+      <div id="topbarLogoWrap" style="display:none;"></div>
+      <div style="display:flex;flex-direction:column;">
+        <span class="topbar-title" id="topbarTitle">Accueil</span>
+        <span style="font-size:10px;color:rgba(200,220,255,.4);font-family:'DM Mono',monospace;margin-top:1px;" id="topbarSub"></span>
+      </div>
     </div>
-    <div class="topbar-right">
-      <span id="modeBadge" class="mode-badge manager" onclick="modeBadgeClick()" title="Changer de mode"><i class="fas fa-user-shield"></i> Gérant</span>
-      <span style="font-size:11px;color:rgba(200,220,255,.6);font-family:'DM Mono',monospace;" id="clockDisplay"></span>
-      <button class="btn btn-ghost btn-sm" id="btnExportExcel" onclick="exporterExcel()"><i class="fas fa-file-excel"></i></button>
+
+    <div class="topbar-right" style="gap:6px;">
+      <!-- Alertes rapides -->
+      <div id="topbarAlertes" style="display:flex;gap:5px;align-items:center;"></div>
+
+      <!-- Séparateur -->
+      <div style="width:1px;height:20px;background:rgba(255,255,255,.1);margin:0 4px;"></div>
+
+      <!-- Sync / Sauvegarde -->
+      <button onclick="sauvegarderTout()" title="Sauvegarder" style="display:inline-flex;align-items:center;gap:5px;background:rgba(18,184,122,.15);border:1px solid rgba(18,184,122,.3);border-radius:8px;padding:5px 10px;cursor:pointer;color:#6ee7b7;font-size:11px;font-weight:600;transition:all .15s;" onmouseover="this.style.background='rgba(18,184,122,.25)'" onmouseout="this.style.background='rgba(18,184,122,.15)'">
+        <i class="fas fa-save"></i> <span id="topbarSaveLabel">Sauver</span>
+      </button>
+
+      <!-- Horloge -->
+      <div style="display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:5px 10px;">
+        <i class="fas fa-clock" style="color:rgba(200,220,255,.5);font-size:10px;"></i>
+        <span style="font-size:12px;color:rgba(220,235,255,.9);font-family:'DM Mono',monospace;font-weight:500;" id="clockDisplay"></span>
+      </div>
+
+      <!-- Séparateur -->
+      <div style="width:1px;height:20px;background:rgba(255,255,255,.1);margin:0 4px;"></div>
+
+      <!-- Export Excel -->
+      <button class="btn btn-ghost-dark btn-sm" id="btnExportExcel" onclick="exporterExcel()" title="Exporter Excel"><i class="fas fa-file-excel" style="color:#4ade80;"></i></button>
+
+      <!-- Badge mode -->
+      <span id="modeBadge" class="mode-badge manager" onclick="modeBadgeClick()" title="Changer de mode" style="font-size:11px;font-weight:700;padding:5px 12px;"><i class="fas fa-user-shield"></i> Gérant</span>
     </div>
   </div>
 
@@ -861,11 +922,11 @@ tr{transition:background .12s;}
       <!-- Paramètres tournées -->
       <div class="card" style="margin-bottom:14px;">
         <div class="card-header"><div class="card-icon"><i class="fas fa-route"></i></div><h3>Paramètres tournées</h3>
-          <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
-            <button class="btn btn-ghost btn-sm" id="btnPlanMoisPrev" onclick="navPlanningMois(-1)"><i class="fas fa-chevron-left"></i></button>
-            <span id="planningMoisLabel" style="font-size:13px;font-weight:700;color:var(--accent);min-width:130px;text-align:center;"></span>
-            <button class="btn btn-ghost btn-sm" id="btnPlanMoisNext" onclick="navPlanningMois(1)"><i class="fas fa-chevron-right"></i></button>
-            <button class="btn btn-ghost btn-sm" onclick="navPlanningMois(0)"><i class="fas fa-calendar-day"></i> Aujourd'hui</button>
+          <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+            <button class="btn btn-sm" style="background:var(--bg3);border:1.5px solid var(--border);color:var(--text2);font-weight:700;min-width:34px;" onclick="navPlanningMois(-1)" title="Mois précédent"><i class="fas fa-chevron-left"></i></button>
+            <span id="planningMoisLabel" style="font-size:14px;font-weight:800;color:var(--accent);min-width:140px;text-align:center;letter-spacing:.3px;"></span>
+            <button class="btn btn-sm" style="background:var(--bg3);border:1.5px solid var(--border);color:var(--text2);font-weight:700;min-width:34px;" onclick="navPlanningMois(1)" title="Mois suivant"><i class="fas fa-chevron-right"></i></button>
+            <button class="btn btn-sm" style="background:var(--accent-l);color:var(--accent);border:1.5px solid rgba(74,124,247,.3);font-weight:600;" onclick="navPlanningMois(0)"><i class="fas fa-calendar-day"></i> Aujourd'hui</button>
           </div>
         </div>
         <div class="form-row" style="max-width:600px;">
@@ -879,14 +940,14 @@ tr{transition:background .12s;}
       </div>
       <!-- Planning mensuel -->
       <div class="card" style="overflow-x:auto;">
-        <div class="card-header"><div class="card-icon" style="background:var(--accent-l);color:var(--accent);"><i class="fas fa-calendar-alt"></i></div><h3>Planning mensuel</h3>
-          <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
-            <div style="display:flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;">
-              <button id="btnVueMois" class="btn btn-sm" onclick="setVuePlanning('mois')" style="border-radius:0;border:none;background:var(--accent);color:white;font-size:11px;padding:4px 10px;"><i class="fas fa-calendar-alt"></i> Mois</button>
-              <button id="btnVueSemaine" class="btn btn-sm" onclick="setVuePlanning('semaine')" style="border-radius:0;border:none;background:transparent;color:var(--text2);font-size:11px;padding:4px 10px;"><i class="fas fa-calendar-week"></i> Semaine</button>
+        <div class="card-header" style="flex-wrap:wrap;gap:8px;"><div class="card-icon" style="background:var(--accent-l);color:var(--accent);"><i class="fas fa-calendar-alt"></i></div><h3>Planning mensuel</h3>
+          <div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <div style="display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;">
+              <button id="btnVueMois" class="btn btn-sm" onclick="setVuePlanning('mois')" style="border-radius:0;border:none;background:var(--accent);color:#fff;font-weight:700;padding:6px 12px;"><i class="fas fa-calendar-alt"></i> Mois</button>
+              <button id="btnVueSemaine" class="btn btn-sm" onclick="setVuePlanning('semaine')" style="border-radius:0;border:none;background:transparent;color:var(--text2);font-weight:600;padding:6px 12px;"><i class="fas fa-calendar-week"></i> Semaine</button>
             </div>
             <button class="btn btn-success btn-sm" onclick="ouvrirModalIntervention()"><i class="fas fa-plus"></i> Planifier</button>
-            <button class="btn btn-sm" style="background:#f97316;color:#fff;font-size:11px;padding:4px 10px;" onclick="ouvrirModalAirbnb()"><i class="fas fa-bolt"></i> Airbnb</button>
+            <button class="btn btn-sm" style="background:#f97316;color:#fff;font-weight:700;" onclick="ouvrirModalAirbnb()"><i class="fas fa-bolt"></i> Airbnb</button>
             <button class="btn btn-primary btn-sm" onclick="exportPlanningMoisPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
             <div id="filtresSalaries" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;"></div>
           </div>
@@ -2127,7 +2188,7 @@ tr{transition:background .12s;}
 
   <div class="topbar">
     <div style="display:flex;align-items:center;gap:10px;">
-      <button class="btn btn-ghost btn-sm" id="menuToggleEmp" onclick="toggleSidebar()" style="display:none;"><i class="fas fa-bars"></i></button>
+      <button class="btn btn-ghost-dark btn-sm" id="menuToggleEmp" onclick="toggleSidebar()" style="display:none;"><i class="fas fa-bars"></i></button>
       <div id="topbarLogoEmpWrap" style="display:none;"><img id="topbarLogoEmp" src="" alt="Logo" style="max-height:32px;max-width:90px;object-fit:contain;border-radius:5px;"></div>
       <span class="topbar-title" id="topbarTitleEmp">Accueil</span>
     </div>
@@ -3593,7 +3654,7 @@ function ouvrirDrawerJour(dateKey, jourNom){
           ${c._deplaceVers && c._deplacement ? `<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;" onclick="if(confirm('Supprimer cette intervention ?')){annulerDeplacement('${c._deplacement.id}');fermerDrawerJour();}"><i class="fas fa-trash"></i> Supprimer</button>` : ''}
           ${entryPrev?.statut !== 'absent' ? `<button class="btn btn-danger btn-sm" onclick="setPlanStatut('${c.id}','${dateKey}','absent');ouvrirDrawerJour('${dateKey}','${jourNom}');"><i class="fas fa-times-circle"></i> Absent</button>` : `<button class="btn btn-ghost btn-sm" onclick="setPlanStatut('${c.id}','${dateKey}','prevu');ouvrirDrawerJour('${dateKey}','${jourNom}');"><i class="fas fa-undo"></i> Rétablir</button>`}
           ${(!entryPrev || entryPrev.statut==='prevu' || entryPrev.statut==='prevu_passe') ? `<button class="btn btn-success btn-sm" onclick="setPlanStatut('${c.id}','${dateKey}','confirme');ouvrirDrawerJour('${dateKey}','${jourNom}');"><i class="fas fa-check"></i> Confirmer</button>` : ''}
-          <button class="btn btn-sm" style="background:#fef9c3;color:#854d0e;border:1px solid #fde68a;font-size:10px;" onclick="stopperRecurrenceClient('${c.id}','${dateKey}','${jourNom}')" title="Arrêter la récurrence à partir de cette date"><i class="fas fa-ban"></i> Arrêter ici</button>
+          <button class="btn btn-sm" style="background:#fef9c3;color:#854d0e;border:1.5px solid #fde68a;" onclick="stopperRecurrenceClient('${c.id}','${dateKey}','${jourNom}')" title="Arrêter la récurrence à partir de cette date"><i class="fas fa-ban"></i> Arrêter ici</button>
         </div>
       </div>`;
     });
@@ -4036,12 +4097,34 @@ const CP_LIST=[CP.blue,CP.green,CP.purple,CP.teal,CP.amber,CP.red];
 const CTT={backgroundColor:'#fff',titleColor:'#1a2540',bodyColor:'#4f637a',borderColor:'#dde3f0',borderWidth:1,padding:9,cornerRadius:7};
 const CS={x:{grid:{color:'rgba(221,227,240,.5)'},ticks:{color:'#8fa3c0',font:{size:9}},border:{display:false}},y:{grid:{color:'rgba(221,227,240,.5)'},ticks:{color:'#8fa3c0',font:{size:9}},beginAtZero:true,border:{display:false}}};
 
-function toast(msg,type='info'){
-  const icons={success:'fa-check-circle',error:'fa-times-circle',warning:'fa-exclamation-triangle',info:'fa-info-circle'};
+function toast(msg,type='info',duration){
+  // Seuls error et warning s'affichent — success/info sont silencieux
+  if(type==='success'||type==='info') return;
+  if(!duration) duration = type==='error' ? 4000 : 2500;
+  const icons={error:'fa-times-circle',warning:'fa-exclamation-triangle'};
+  const colors={error:'#f87171',warning:'var(--amber)'};
   const c=document.getElementById('toastContainer');
+  while(c.children.length>=2) c.removeChild(c.firstChild);
   const t=document.createElement('div');t.className=`toast ${type}`;
-  t.innerHTML=`<span style="font-size:13px;color:var(--${type==='success'?'green':type==='error'?'red':type==='warning'?'amber':'accent'});"><i class="fas ${icons[type]}"></i></span>${msg}`;
-  c.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(60px)';t.style.transition='.3s';setTimeout(()=>t.remove(),300);},3000);
+  t.innerHTML=`<i class="fas ${icons[type]||'fa-info-circle'}" style="color:${colors[type]||'var(--accent)'};font-size:12px;flex-shrink:0;"></i><span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(8px)';t.style.transition='.25s';setTimeout(()=>t.remove(),250);},duration);
+}
+// Affiche un toast de confirmation uniquement pour actions destructives
+function toastConfirm(msg){
+  const c=document.getElementById('toastContainer');
+  const t=document.createElement('div');t.className='toast success';
+  t.innerHTML=`<i class="fas fa-check-circle" style="color:var(--green);font-size:12px;flex-shrink:0;"></i><span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(8px)';t.style.transition='.25s';setTimeout(()=>t.remove(),250);},2000);
+}
+
+// Indicateur discret de sauvegarde dans le bandeau (remplace le toast save)
+function _flashSaveBtn(ok=true){
+  const lbl=document.getElementById('topbarSaveLabel');
+  if(!lbl)return;
+  lbl.textContent=ok?'✓ Sauvé':'✗ Erreur';
+  setTimeout(()=>lbl.textContent='Sauver',1800);
 }
 
 function fmt(v){return(v<0?'−':'')+Math.abs(v).toFixed(2)+' €';}
@@ -4049,6 +4132,23 @@ function fmtN(v){return v.toFixed(2).replace('.',',')+' €';}
 function setEl(id,val,color=null){const el=document.getElementById(id);if(!el)return;el.textContent=val;if(color)el.style.color=color;}
 
 function horloge(){const d=new Date();document.getElementById('clockDisplay').textContent=d.toLocaleDateString('fr-FR')+' · '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
+
+// ── Sidebar rétractable ──────────────────────────────────
+function toggleSidebarRetract(){
+  const sidebar = document.getElementById('sidebar');
+  const main = document.getElementById('gerantMain');
+  const retracted = sidebar.classList.toggle('retracted');
+  if(main) main.style.marginLeft = retracted ? '62px' : 'var(--sidebar-w)';
+  localStorage.setItem('sidebarRetracted', retracted ? '1' : '0');
+}
+function initSidebarRetractState(){
+  if(localStorage.getItem('sidebarRetracted')==='1'){
+    const sidebar=document.getElementById('sidebar');
+    const main=document.getElementById('gerantMain');
+    if(sidebar) sidebar.classList.add('retracted');
+    if(main) main.style.marginLeft='62px';
+  }
+}
 
 // ── Sidebar sections repliables ──────────────────────────
 function initSidebarCollapse(){
@@ -4339,10 +4439,10 @@ function afficherClients(clients){
       <td><span style="font-weight:600;">${caAnHT.toFixed(2)} €</span></td>
       <td style="white-space:nowrap;">
         <button class="icon-btn" style="color:var(--accent);" title="Créer un devis" onclick="creerDevisDepuisClient('${c.id}')"><i class="fas fa-file-signature"></i></button>
-        <button class="icon-btn" style="color:var(--purple);" title="Générer / envoyer un contrat" onclick="envoyerContratClient('${c.id}')"><i class="fas fa-file-contract"></i></button>
-        <button class="icon-btn" style="color:var(--green);" title="Générer facture mensuelle" onclick="genererFactureDepuisClient('${c.id}')"><i class="fas fa-file-invoice-dollar"></i></button>
-        <button class="icon-btn edit" title="Modifier le client" onclick="modifierClient('${c.id}')"><i class="fas fa-edit"></i></button>
-        <button class="icon-btn del" title="Supprimer le client" onclick="supprimerClient('${c.id}')"><i class="fas fa-trash"></i></button>
+        <button class="icon-btn" style="color:var(--purple);" title="Contrat" onclick="envoyerContratClient('${c.id}')"><i class="fas fa-file-contract"></i></button>
+        <button class="icon-btn" style="color:var(--green);" title="Générer facture" onclick="genererFactureDepuisClient('${c.id}')"><i class="fas fa-file-invoice-dollar"></i></button>
+        <button class="icon-btn edit" title="Modifier" onclick="modifierClient('${c.id}')"><i class="fas fa-edit"></i></button>
+        <button class="icon-btn del" title="Supprimer" onclick="supprimerClient('${c.id}')"><i class="fas fa-trash"></i></button>
       </td>
     </tr>`;
   }).join('');
@@ -4526,7 +4626,7 @@ function supprimerClient(id){
     if(del.length>200) del=del.slice(-200);
     localStorage.setItem('_deletedClientIds', JSON.stringify(del));
   } catch(e){}
-  chargerClients();calculerStats();sauvegarderTout(true);toast('Client supprimé','success');
+  chargerClients();calculerStats();sauvegarderTout(true);toastConfirm('Client supprimé');
 }
 function chargerSelectClients(){
   const sel=document.getElementById('facClient');if(sel){
@@ -4692,7 +4792,7 @@ function chargerSalaries(){
   });
   chargerPrevisionsPaiements();
 }
-function supprimerSalarie(id){if(!confirm('Supprimer ce salarié ? Cette action est irréversible.'))return;salariesData=salariesData.filter(s=>s.id!==id);chargerSalaries();calculerStats();chargerAccueil();chargerPrevisionsPaiements();calculerResultatNet();sauvegarderTout(true);toast('Salarié supprimé','success');}
+function supprimerSalarie(id){if(!confirm('Supprimer ce salarié ? Cette action est irréversible.'))return;salariesData=salariesData.filter(s=>s.id!==id);chargerSalaries();calculerStats();chargerAccueil();chargerPrevisionsPaiements();calculerResultatNet();sauvegarderTout(true);toastConfirm('Salarié supprimé');}
 
 function voirBulletin(id){
   currentBulletinId=id;
@@ -7010,7 +7110,7 @@ function supprimerFacture(id){
   sauvegarderTout(true);
   renderHistoriqueFactures();
   calculerStats();
-  toast('Facture supprimée','info');
+  toastConfirm('Facture supprimée');
 }
 
 function reediterFacture(id){
@@ -7053,6 +7153,24 @@ function calculerStats(){
   setEl('kpiTVAMois',(tva10+tva20).toFixed(2)+' €');
   const stockAlertes=stockData.filter(p=>p.stock<=p.seuil).length;
   setEl('statsStock',stockAlertes);
+  _majAlertesTopbar(impayees, stockAlertes);
+}
+
+function _majAlertesTopbar(impayees, stockAlertes){
+  const cont = document.getElementById('topbarAlertes');
+  if(!cont) return;
+  let html = '';
+  if(impayees > 0){
+    html += `<span onclick="changerTabNom('factures')" title="${impayees} facture${impayees>1?'s':''} impayée${impayees>1?'s':''}" style="display:inline-flex;align-items:center;gap:4px;background:rgba(14,116,144,.2);border:1px solid rgba(14,116,144,.4);border-radius:20px;padding:3px 9px;font-size:11px;font-weight:700;color:#67e8f9;cursor:pointer;">
+      <i class="fas fa-file-invoice" style="font-size:10px;"></i> ${impayees} impayée${impayees>1?'s':''}
+    </span>`;
+  }
+  if(stockAlertes > 0){
+    html += `<span onclick="changerTabNom('stock')" title="${stockAlertes} alerte${stockAlertes>1?'s':''} stock" style="display:inline-flex;align-items:center;gap:4px;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);border-radius:20px;padding:3px 9px;font-size:11px;font-weight:700;color:#fbbf24;cursor:pointer;">
+      <i class="fas fa-boxes" style="font-size:10px;"></i> ${stockAlertes} stock
+    </span>`;
+  }
+  cont.innerHTML = html;
 }
 function chargerAccueil(){
   // ── Interventions du jour synchronisées avec le planning ──
@@ -7460,7 +7578,7 @@ function validerMouvement(){
 function supprimerProduit(id){
   if(!confirm('Supprimer ce produit du stock ?'))return;
   stockData=stockData.filter(p=>p.id!==id);
-  chargerStock();sauvegarderTout(true);toast('Produit supprimé','success');
+  chargerStock();sauvegarderTout(true);toastConfirm('Produit supprimé');
 }
 
 function filtrerStock(){
@@ -7551,7 +7669,7 @@ function ajouterFournisseur(){
 function supprimerFournisseur(id){
   if(!confirm('Supprimer ce fournisseur ?'))return;
   fournisseursData=fournisseursData.filter(f=>f.id!==id);
-  chargerFournisseurs();sauvegarderTout(true);toast('Fournisseur supprimé','success');
+  chargerFournisseurs();sauvegarderTout(true);toastConfirm('Fournisseur supprimé');
 }
 
 function chargerFournisseurs(){
@@ -7810,7 +7928,7 @@ function reinitialiserTout(){
     if (typeof window.startSupaSync === 'function') window.startSupaSync();
   }, 3000);
 
-  toast('✅ Application réinitialisée — toutes les données supprimées','success');
+  toastConfirm('Application réinitialisée ✓');
 }
 
 function exportCalendrierEmpPDF(){
@@ -7903,8 +8021,8 @@ function sauvegarderTout(auto=false){
     }
     // (Si les champs DOM n'existent pas, on ne touche pas à progestParams)
 
-    if(!auto) toast('Données sauvegardées ✓','success');
-  }catch(e){console.error(e);toast('Erreur sauvegarde','error');}
+    _flashSaveBtn(true);
+  }catch(e){console.error(e);_flashSaveBtn(false);toast('Erreur sauvegarde','error');}
 }
 // ══════════════════════════════════════════════════════════
 // #1 — NORMALISATION CLIENTSDATA (garantit cohérence des champs dérivés)
@@ -8209,6 +8327,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   ['newRecetteDate','newDepenseDate','newFraisDate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today;});
   horloge();setInterval(horloge,1000);
   initSidebarCollapse();
+  initSidebarRetractState();
   chargerCommunes();
   // Init années select
   const a=new Date().getFullYear();
@@ -9651,7 +9770,7 @@ function supprimerIntervention(id) {
   localStorage.setItem('essentiaInterventions', JSON.stringify(interventionsData));
   afficherInterventionsList();
   if(typeof renderPlanningMois==='function') renderPlanningMois('planningMoisCalendar', planningMoisOffset);
-  toast('Intervention supprimée', 'success');
+  toastConfirm('Intervention supprimée');
 }
 window.supprimerIntervention = supprimerIntervention;
 
@@ -10346,7 +10465,7 @@ function changerStatutDevis(id,statut){
 function supprimerDevis(id){
   if(!confirm('Supprimer ce devis ?')) return;
   devisData=devisData.filter(x=>x.id!==id); sauvegarderTout(true); renderHistoriqueDevis();
-  toast('Devis supprimé','info');
+  toastConfirm('Devis supprimé');
 }
 function reimprimerDevis(id){
   const d=devisData.find(x=>x.id===id); if(!d) return;
