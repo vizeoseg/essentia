@@ -237,6 +237,9 @@ tr:hover td{background:rgba(74,124,247,.02);}
 .tva-badge-0 {background:#dcfce7;color:#166534;padding:2px 8px;border-radius:50px;font-size:10px;font-weight:700;}
 .tva-badge-10{background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:50px;font-size:10px;font-weight:700;}
 .tva-badge-20{background:#e0e7ff;color:#3730a3;padding:2px 8px;border-radius:50px;font-size:10px;font-weight:700;}
+/* Bouton TVA 0% exonéré */
+#tva0Btn.tva0-on{background:var(--amber);color:#fff;border-color:var(--amber);box-shadow:0 2px 8px rgba(240,153,31,.3);}
+
 /* ═══ AMÉLIORATIONS VISUELLES ═══ */
 
 /* 1. Sidebar — sections repliables */
@@ -864,55 +867,98 @@ tr{transition:background .12s;}
     <!-- ═══ CLIENTS ═══ -->
     <div id="tab-clients" class="tab-pane">
       <div class="card">
-        <div class="card-header"><div class="card-icon"><i class="fas fa-user-plus"></i></div><h3>Ajouter un client</h3></div>
-        <div class="form-row">
-          <div class="form-group"><label>Nom *</label><input type="text" id="newNom"></div>
-          <div class="form-group"><label>Téléphone</label><input type="tel" id="newTel" placeholder="06 00 00 00 00"></div>
-          <div class="form-group"><label>Email</label><input type="email" id="newEmail" placeholder="client@email.fr"></div>
-          <div class="form-group"><label>Adresse complète</label><input type="text" id="newAdresse" placeholder="12 rue des Lilas, 10000 Troyes"></div>
-          <div class="form-group"><label>Entreprise</label><input type="text" id="newEntreprise"></div>
-          <div class="form-group">
-            <label>Type client</label>
-            <select id="newTypeClient" onchange="mettreAJourTVAClient()">
-              <option value="particulier">Particulier (TVA 10%)</option>
-              <option value="entreprise">Entreprise (TVA 20%)</option>
-              <option value="airbnb_particulier">Airbnb Particulier (TVA 10%)</option>
-              <option value="airbnb_agence">Airbnb Agence (TVA 20%)</option>
-              <option value="exonere_0">Exonéré TVA 0% ⚡ (SAP/Franchise)</option>
-            </select>
+        <div class="card-header">
+          <div class="card-icon"><i class="fas fa-user-plus"></i></div>
+          <h3>Ajouter un client</h3>
+          <div style="margin-left:auto;display:flex;gap:6px;">
+            <button class="btn btn-import btn-sm" onclick="document.getElementById('importClientsModal').style.display='block'"><i class="fas fa-file-import"></i> Importer</button>
+            <label class="btn btn-import-rapide btn-sm" style="cursor:pointer;" title="Import rapide XLS/CSV"><i class="fas fa-file-excel"></i> XLS<input type="file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importerClientsXLS(this)"></label>
           </div>
-          <div class="form-group"><label>TVA applicable</label>
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-              <select id="newTVAClient" style="font-weight:700;flex:1;" onchange="if(this.value==='0'){document.getElementById('tva0CheckClient').checked=true;document.getElementById('newTypeClient').value='exonere_0';}else document.getElementById('tva0CheckClient').checked=false;">
-                <option value="10">10% — Particulier (SAP)</option>
-                <option value="20">20% — Entreprise</option>
-                <option value="0">0% — Exonéré/Franchise</option>
+        </div>
+
+        <!-- ── Section 1 : Identité + Prestation ── -->
+        <div style="background:var(--bg3);border-radius:10px;padding:14px;margin-bottom:10px;">
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:12px;display:flex;align-items:center;gap:6px;"><i class="fas fa-user"></i> Identité & Prestation</div>
+          <div class="form-row" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));">
+            <div class="form-group"><label>Nom *</label><input type="text" id="newNom" placeholder="Dupont Marie"></div>
+            <div class="form-group"><label>Téléphone</label><input type="tel" id="newTel" placeholder="06 00 00 00 00"></div>
+            <div class="form-group"><label>Email</label><input type="email" id="newEmail" placeholder="client@email.fr"></div>
+            <div class="form-group">
+              <label>Nature du client</label>
+              <select id="newTypeClient" onchange="mettreAJourTVAClient()">
+                <option value="particulier">👤 Particulier</option>
+                <option value="entreprise">🏢 Entreprise</option>
+                <option value="airbnb_particulier">🏠 Airbnb Particulier</option>
+                <option value="airbnb_agence">🏢 Airbnb Agence</option>
               </select>
-              <label style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--amber);cursor:pointer;white-space:nowrap;" title="Cocher pour appliquer exonération TVA 0% à ce client">
-                <input type="checkbox" id="tva0CheckClient" onchange="if(this.checked){document.getElementById('newTVAClient').value='0';document.getElementById('newTypeClient').value='exonere_0';}else{document.getElementById('newTVAClient').value='10';}" style="accent-color:var(--amber);width:15px;height:15px;">
-                ⚡ 0% exonéré
-              </label>
             </div>
+            <div class="form-group">
+              <label>TVA applicable</label>
+              <select id="newTVAClient" style="font-weight:700;">
+                <option value="10">10% — SAP / Particulier</option>
+                <option value="20">20% — Entreprise</option>
+                <option value="0">0% — Exonéré / Franchise</option>
+              </select>
+              <input type="hidden" id="tva0CheckClient">
+            </div>
+            <div class="form-group"><label>Tarif (€/h)</label><input type="number" id="newTarif" value="20" oninput="calculerCAAnnuel()"></div>
+            <div class="form-group"><label>Durée/visite (h)</label><input type="number" id="newHeures" value="0" step="0.25" min="0" oninput="calculerCAAnnuel()" placeholder="ex: 1.5"></div>
+            <div class="form-group"><label>Passages/sem</label><input type="number" id="newFrequence" value="1" step="1" min="1" max="7" oninput="calculerCAAnnuel()"></div>
           </div>
-          <div class="form-group"><label>Date arrivée</label><input type="date" id="newDateArrivee"></div>
-          <div class="form-group"><label>Date sortie</label><input type="date" id="newDateSortie"></div>
-          <div class="form-group"><label>Tarif (€/h)</label><input type="number" id="newTarif" value="20" oninput="calculerCAAnnuel()"></div>
-          <div class="form-group"><label>Type prestation</label><select id="newType" onchange="typeChange()"><option value="Heure">Heure</option><option value="Acte">Acte</option></select></div>
-          <div class="form-group"><label>Durée/visite (h) <span style="color:var(--text3);font-size:9px;font-weight:400;">ex: 1.5 = 1h30</span></label><input type="number" id="newHeures" value="0" step="0.01" min="0" oninput="calculerCAAnnuel()" placeholder="1, 1.5, 2..."></div>
-          <div class="form-group"><label>Passages/sem <span style="color:var(--text3);font-size:9px;font-weight:400;">nb de visites</span></label><input type="number" id="newFrequence" value="1" step="1" min="1" max="7" oninput="calculerCAAnnuel()" placeholder="1,2,3..."></div>
-          <div class="form-group"><label>CA annuel HT estimé</label><input type="number" id="newCAAnnee" readonly></div>
-          </div>
-          <div id="resumeCalcClient" style="display:none;background:rgba(74,124,247,.06);border:1px solid rgba(74,124,247,.2);border-radius:9px;padding:9px 14px;margin-bottom:12px;font-size:12px;color:var(--text2);">
+          <!-- Résumé CA inline -->
+          <div id="resumeCalcClient" style="display:none;background:rgba(74,124,247,.06);border:1px solid rgba(74,124,247,.2);border-radius:8px;padding:8px 12px;margin-top:8px;font-size:12px;color:var(--text2);">
             💡 <span id="resumeCalcTexte"></span>
           </div>
-          <div class="form-row">
-          <div class="form-group"><label>Commune</label><select id="newCommune" class="commune-select"></select></div>
-          <div class="form-group"><label>Jours</label><select id="newJours" class="jours-select" multiple><option value="lundi">Lundi</option><option value="mardi">Mardi</option><option value="mercredi">Mercredi</option><option value="jeudi">Jeudi</option><option value="vendredi">Vendredi</option><option value="samedi">Samedi</option><option value="dimanche">Dimanche</option></select></div>
-          <div class="form-group"><label>Heure début intervention</label><input type="time" id="newHeureDebut" value="09:00"></div>
         </div>
-        <button class="btn btn-success" onclick="ajouterClient()"><i class="fas fa-plus"></i> Ajouter client</button>
-        <button class="btn btn-import btn-sm" style="margin-left:8px;" onclick="document.getElementById('importClientsModal').style.display='block'"><i class="fas fa-file-import"></i> Importer clients</button>
-        <label class="btn btn-import-rapide btn-sm" id="btnImportRapide" style="margin-left:4px;cursor:pointer;" title="Import rapide XLS/CSV"><i class="fas fa-file-excel"></i> Import rapide<input type="file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importerClientsXLS(this)"></label>
+
+        <!-- ── Section 2 : Planning ── -->
+        <div style="background:var(--bg3);border-radius:10px;padding:14px;margin-bottom:10px;">
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--purple);margin-bottom:12px;display:flex;align-items:center;gap:6px;"><i class="fas fa-calendar-alt"></i> Planning</div>
+          <div class="form-row" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">
+            <div class="form-group"><label>Commune</label><select id="newCommune" class="commune-select"></select></div>
+            <div class="form-group"><label>Heure début</label><input type="time" id="newHeureDebut" value="09:00"></div>
+          </div>
+          <div class="form-group" style="margin-top:8px;">
+            <label style="margin-bottom:8px;display:block;">Jours d'intervention</label>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button type="button" class="jour-day-btn" data-jour="lundi" onclick="toggleJourBtn(this)">Lun</button>
+              <button type="button" class="jour-day-btn" data-jour="mardi" onclick="toggleJourBtn(this)">Mar</button>
+              <button type="button" class="jour-day-btn" data-jour="mercredi" onclick="toggleJourBtn(this)">Mer</button>
+              <button type="button" class="jour-day-btn" data-jour="jeudi" onclick="toggleJourBtn(this)">Jeu</button>
+              <button type="button" class="jour-day-btn" data-jour="vendredi" onclick="toggleJourBtn(this)">Ven</button>
+              <button type="button" class="jour-day-btn" data-jour="samedi" onclick="toggleJourBtn(this)">Sam</button>
+              <button type="button" class="jour-day-btn" data-jour="dimanche" onclick="toggleJourBtn(this)">Dim</button>
+            </div>
+            <!-- Input caché pour compatibilité avec ajouterClient() -->
+            <select id="newJours" class="jours-select" multiple style="display:none;">
+              <option value="lundi">Lundi</option><option value="mardi">Mardi</option>
+              <option value="mercredi">Mercredi</option><option value="jeudi">Jeudi</option>
+              <option value="vendredi">Vendredi</option><option value="samedi">Samedi</option>
+              <option value="dimanche">Dimanche</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- ── Section 3 : Options avancées (repliée) ── -->
+        <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px;">
+          <div onclick="toggleAdvClient()" style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;background:var(--bg3);user-select:none;" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='var(--bg3)'">
+            <i id="advClientIcon" class="fas fa-chevron-right" style="color:var(--text3);font-size:11px;transition:transform .2s;"></i>
+            <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);">Options avancées</span>
+            <span style="font-size:10px;color:var(--text3);margin-left:4px;">TVA · Dates · Adresse · Entreprise</span>
+          </div>
+          <div id="advClientBody" style="display:none;padding:14px;">
+            <div class="form-row">
+              <div class="form-group"><label>Type prestation</label><select id="newType" onchange="typeChange()"><option value="Heure">Heure</option><option value="Acte">Acte</option></select></div>
+              <div class="form-group"><label>Date arrivée</label><input type="date" id="newDateArrivee"></div>
+              <div class="form-group"><label>Date sortie</label><input type="date" id="newDateSortie"></div>
+              <div class="form-group"><label>Entreprise</label><input type="text" id="newEntreprise"></div>
+              <div class="form-group"><label>Adresse</label><input type="text" id="newAdresse" placeholder="12 rue des Lilas, 10000 Troyes"></div>
+              <div class="form-group"><label>CA annuel HT estimé</label><input type="number" id="newCAAnnee" readonly></div>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-success" onclick="ajouterClient()"><i class="fas fa-plus"></i> Ajouter le client</button>
       </div>
       <div class="card">
         <div class="card-header"><div class="card-icon"><i class="fas fa-list"></i></div><h3>Liste des clients</h3><span class="badge badge-blue" id="clientCount">0</span></div>
@@ -1450,10 +1496,14 @@ tr{transition:background .12s;}
 
         <!-- Lignes -->
         <div>
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px;flex-wrap:wrap;">
             <h4 style="font-size:13px;font-weight:600;">Lignes de facturation</h4>
             <button class="btn btn-ghost btn-sm" onclick="ajouterLigneFacture()"><i class="fas fa-plus"></i> Ligne</button>
             <button class="btn btn-ghost btn-sm" onclick="remplirLignesAuto()"><i class="fas fa-magic"></i> Auto</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:8px;padding:8px 10px;background:var(--green-l);border-radius:9px;border:1px solid rgba(18,184,122,.2);">
+            <span style="font-size:11px;font-weight:700;color:var(--green);white-space:nowrap;"><i class="fas fa-tshirt"></i> Linge :</span>
+            <div id="lingeBoutons_fac" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
           </div>
           <div id="lignesFacture" style="display:flex;flex-direction:column;gap:7px;"></div>
         </div>
@@ -1620,6 +1670,38 @@ tr{transition:background .12s;}
         <div class="table-wrap">
           <table><thead><tr><th>Client</th><th>Type</th><th>TVA</th><th>Tarif €/h</th><th>H/sem</th><th>Fréq.</th><th>H/mois</th><th>Montant HT/mois</th><th>TVA/mois</th><th>TTC/mois</th><th>H/an</th><th>Montant HT/an</th><th>TTC/an</th></tr></thead><tbody id="tarifsTable"></tbody></table>
         </div>
+      </div>
+
+      <!-- ─── Section Linge (fixe, dans le HTML) ─── -->
+      <div class="card" id="v13TarifLingeSection">
+        <div class="card-header">
+          <div class="card-icon" style="background:var(--green-l);color:var(--green);"><i class="fas fa-tshirt"></i></div>
+          <h3>Prix linge par passage</h3>
+          <span style="font-size:11px;color:var(--text3);margin-left:4px;">Linge fourni par le client — tarif progressif</span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 110px auto;gap:12px;align-items:end;margin-bottom:16px;">
+          <div class="form-group" style="margin:0;">
+            <label>Prix 1er lit (€)</label>
+            <input type="number" id="lingeBase" value="10" min="0" step="0.5" oninput="lingeCalculerApercu()" style="font-weight:700;font-size:16px;">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>+ par lit supplémentaire (€)</label>
+            <input type="number" id="lingeIncr" value="5" min="0" step="0.5" oninput="lingeCalculerApercu()" style="font-weight:700;font-size:16px;">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>Nb. lits max</label>
+            <input type="number" id="lingeMax" value="5" min="1" max="10" step="1" oninput="lingeCalculerApercu()" style="font-weight:700;">
+          </div>
+          <button class="btn btn-success" onclick="lingeSauvegarder()" style="margin-bottom:1px;"><i class="fas fa-save"></i> Sauvegarder</button>
+        </div>
+
+        <div style="background:var(--accent-l);border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:11px;color:var(--text2);">
+          📐 <strong>Formule :</strong> Prix(n lits) = Prix 1er lit + (n − 1) × incrément/lit
+        </div>
+
+        <div style="margin-bottom:6px;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text3);letter-spacing:.5px;">Aperçu des prix calculés</div>
+        <div id="lingePreview" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
       </div>
     </div>
 
@@ -1895,10 +1977,14 @@ tr{transition:background .12s;}
           </div>
         </div>
         <div style="margin-top:13px;">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap;">
             <h4 style="font-size:13px;font-weight:600;">Prestations</h4>
             <button class="btn btn-ghost btn-sm" onclick="ajouterLigneDevis()"><i class="fas fa-plus"></i> Ligne</button>
             <button class="btn btn-ghost btn-sm" onclick="remplirLignesDevisAuto()"><i class="fas fa-magic"></i> Auto depuis client</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:8px;padding:8px 10px;background:var(--green-l);border-radius:9px;border:1px solid rgba(18,184,122,.2);">
+            <span style="font-size:11px;font-weight:700;color:var(--green);white-space:nowrap;"><i class="fas fa-tshirt"></i> Linge :</span>
+            <div id="lingeBoutons_devis" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
           </div>
           <!-- Légende colonnes -->
           <div style="display:grid;grid-template-columns:2fr 80px 90px 100px 70px 28px;gap:6px;padding:3px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">
@@ -1914,11 +2000,25 @@ tr{transition:background .12s;}
           <label>Conditions particulières / remarques</label>
           <textarea id="devisConditions" rows="2" placeholder="Ex: Fournitures et matériaux non inclus. Accès aux locaux à la charge du client." style="resize:vertical;width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:8px;font-size:12px;background:var(--bg3);color:var(--text);"></textarea>
         </div>
-        <div style="margin-top:13px;display:flex;justify-content:flex-end;">
-          <div style="min-width:280px;background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:14px;">
-            <div style="display:flex;justify-content:space-between;margin-bottom:7px;font-size:12px;"><span style="color:var(--text2);">Sous-total HT</span><span id="devisSousTotal" style="font-weight:600;">0,00 €</span></div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:7px;font-size:12px;"><span style="color:var(--text2);">TVA (<span id="devisTVALabel">10</span>%)</span><span id="devisMontantTVA" style="font-weight:600;color:var(--amber);">0,00 €</span></div>
-            <div style="display:flex;justify-content:space-between;padding-top:9px;border-top:2px solid var(--border);"><span style="font-weight:700;font-size:14px;">TOTAL TTC</span><span id="devisTotalTTC" style="font-weight:700;font-size:14px;color:var(--green);">0,00 €</span></div>
+        <!-- Récapitulatif live -->
+        <div id="devisRecapBar" style="margin-top:16px;background:linear-gradient(135deg,var(--accent),#2e6ce0);border-radius:12px;padding:14px 20px;display:flex;align-items:center;gap:0;flex-wrap:wrap;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.6);margin-bottom:3px;">Client</div>
+            <div id="devisRecapClient" style="font-size:14px;font-weight:700;color:#fff;">—</div>
+          </div>
+          <div style="width:1px;height:40px;background:rgba(255,255,255,.2);margin:0 20px;"></div>
+          <div style="text-align:center;padding:0 20px;">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.6);margin-bottom:3px;">Sous-total HT</div>
+            <div id="devisSousTotal" style="font-size:16px;font-weight:800;color:#fff;font-family:'DM Mono',monospace;">0,00 €</div>
+          </div>
+          <div style="text-align:center;padding:0 20px;">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.6);margin-bottom:3px;">TVA <span id="devisTVALabel" style="color:rgba(255,255,255,.8);">10</span>%</div>
+            <div id="devisMontantTVA" style="font-size:16px;font-weight:800;color:rgba(255,220,100,.9);font-family:'DM Mono',monospace;">0,00 €</div>
+          </div>
+          <div style="width:1px;height:40px;background:rgba(255,255,255,.2);margin:0 20px;"></div>
+          <div style="text-align:right;">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.6);margin-bottom:3px;">Total TTC</div>
+            <div id="devisTotalTTC" style="font-size:22px;font-weight:900;color:#fff;font-family:'DM Mono',monospace;letter-spacing:-1px;">0,00 €</div>
           </div>
         </div>
       </div>
@@ -4192,6 +4292,50 @@ function fmt(v){return(v<0?'−':'')+Math.abs(v).toFixed(2)+' €';}
 function fmtN(v){return v.toFixed(2).replace('.',',')+' €';}
 function setEl(id,val,color=null){const el=document.getElementById(id);if(!el)return;el.textContent=val;if(color)el.style.color=color;}
 
+// ── Boutons jours toggle (formulaire Ajouter client) ──────
+function toggleTVA0(){
+  const btn = document.getElementById('tva0Btn');
+  const sel = document.getElementById('newTVAClient');
+  const typeClient = document.getElementById('newTypeClient');
+  const on = btn.classList.toggle('tva0-on');
+  sel.value = on ? '0' : '10';
+  if(on && typeClient) typeClient.value = 'exonere_0';
+}
+
+function toggleJourBtn(btn){
+  btn.classList.toggle('jour-on');
+  // Sync avec le select caché (compatibilité ajouterClient)
+  const sel = document.getElementById('newJours');
+  if(!sel) return;
+  Array.from(sel.options).forEach(o => {
+    const active = document.querySelector(`.jour-day-btn[data-jour="${o.value}"]`)?.classList.contains('jour-on');
+    o.selected = !!active;
+  });
+  calculerCAAnnuel();
+}
+
+function toggleAdvClient(){
+  const body = document.getElementById('advClientBody');
+  const icon = document.getElementById('advClientIcon');
+  if(!body) return;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  if(icon) icon.style.transform = open ? '' : 'rotate(90deg)';
+}
+
+// Reset formulaire client après ajout
+function _resetFormClient(){
+  ['newNom','newTel','newEmail','newEntreprise','newAdresse','newDateArrivee','newDateSortie'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const tarif=document.getElementById('newTarif'); if(tarif) tarif.value='20';
+  const h=document.getElementById('newHeures'); if(h) h.value='0';
+  const f=document.getElementById('newFrequence'); if(f) f.value='1';
+  const tc=document.getElementById('newTypeClient'); if(tc) tc.value='particulier';
+  // Reset boutons jours
+  document.querySelectorAll('.jour-day-btn').forEach(b=>b.classList.remove('jour-on'));
+  const sel=document.getElementById('newJours'); if(sel) Array.from(sel.options).forEach(o=>o.selected=false);
+  const rc=document.getElementById('resumeCalcClient'); if(rc) rc.style.display='none';
+}
+
 function horloge(){const d=new Date();document.getElementById('clockDisplay').textContent=d.toLocaleDateString('fr-FR')+' · '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
 
 // ── Sidebar rétractable ──────────────────────────────────
@@ -4247,7 +4391,9 @@ function changerTab(btn){
   setEl('topbarTitle',labels[tab]||tab);
   if(tab==='attestations'){chargerAttestations();}
   if(tab==='exports'){_chargerExportAttestSelect();}
-  if(tab==='tarifshoraires'){chargerTarifsHoraires();}
+  if(tab==='tarifshoraires'){chargerTarifsHoraires();lingeInit();}
+  if(tab==='devis'){_lingeRafraichirBoutons();}
+  if(tab==='factures'){_lingeRafraichirBoutons();}
   if(tab==='tva'){chargerTVA();}
   if(tab==='paiements'){chargerPrevisionsPaiements();}
   if(tab==='accueil'){chargerAccueil();}
@@ -4299,19 +4445,12 @@ function chargerCommunes(){
 // TVA AUTOMATIQUE PAR TYPE CLIENT
 // ══════════════════════════════════════════════════════════
 function mettreAJourTVAClient(){
-  const type=document.getElementById('newTypeClient')?.value||'particulier';
-  const tvaEl=document.getElementById('newTVAClient');
-  const chk=document.getElementById('tva0CheckClient');
+  const type = document.getElementById('newTypeClient')?.value||'particulier';
+  const tvaEl = document.getElementById('newTVAClient');
   if(!tvaEl) return;
-  if(type==='exonere_0'){
-    tvaEl.value='0';
-    if(chk) chk.checked=true;
-  } else if(type==='entreprise'||type==='airbnb_agence'){
-    // Ne pas écraser si déjà mis à 0% manuellement
-    if(tvaEl.value!=='0'){ tvaEl.value='20'; if(chk) chk.checked=false; }
-  } else {
-    if(tvaEl.value!=='0'){ tvaEl.value='10'; if(chk) chk.checked=false; }
-  }
+  // Auto-remplir TVA selon la nature — l'utilisateur peut ensuite modifier
+  if(type==='entreprise'||type==='airbnb_agence') tvaEl.value='20';
+  else tvaEl.value='10';
 }
 
 function getTVAClient(client){
@@ -4351,13 +4490,16 @@ function ajouterClient(){
   const heures=parseFloat(document.getElementById('newHeures').value)||0;
   const freq=parseFloat(document.getElementById('newFrequence').value)||1;
   const typeClient=document.getElementById('newTypeClient').value;
-  const tva=(()=>{if(typeClient==='exonere_0')return 0;const v=parseFloat(document.getElementById('newTVAClient')?.value);return isNaN(v)?(typeClient==='entreprise'||typeClient==='airbnb_agence'?20:10):v;})();
+  const tvaVal=parseFloat(document.getElementById('newTVAClient')?.value);
+  const tva=isNaN(tvaVal)?(typeClient==='entreprise'||typeClient==='airbnb_agence'?20:10):tvaVal;
+  // Si TVA = 0 et type particulier → stocker comme exonere_0 pour compatibilité
+  const typeClientFinal=(tva===0&&(typeClient==='particulier'||typeClient==='airbnb_particulier'))?'exonere_0':typeClient;
   const totalMoisHT=tarif*heures*4.33*freq;
   const totalMoisTTC=totalMoisHT*(1+tva/100);
   const refClient=_nextClientRef('CLI-');
   clientsData.push(normaliserClient({
     id:'c'+Date.now(),nom,refClient,entreprise:document.getElementById('newEntreprise').value||'',
-    typeClient,tva,
+    typeClient:typeClientFinal,tva,
     dateArrivee:document.getElementById('newDateArrivee').value,
     dateSortie:document.getElementById('newDateSortie').value,
     tarif,type:document.getElementById('newType').value,heures,frequence:freq,
@@ -4371,12 +4513,11 @@ function ajouterClient(){
     heureDebut:document.getElementById('newHeureDebut')?.value||'09:00',
     jours:(()=>{try{const s=document.getElementById('newJours');if(!s)return[];return Array.from(s.selectedOptions).map(o=>o.value);}catch(e){return[];}})(),heuresRealisees:{}
   }));
-  ['newNom','newEntreprise','newDateArrivee','newDateSortie','newTel','newEmail','newAdresse'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  _resetFormClient();
   chargerClients();calculerStats();
   if(typeof chargerPlanningPrevisionnel==='function') chargerPlanningPrevisionnel();
   if(typeof chargerTournees==='function') chargerTournees();
   sauvegarderTout(true);
-  toast('Client ajouté !','success');
 }
 
 function genererFactureDepuisClient(clientId){
@@ -10295,27 +10436,46 @@ function remplirInfosDevis(){
   const id=document.getElementById('devisClient')?.value;
   if(id==='__prospect__'){ _ouvrirModalProspect(); return; }
   const c=clientsData.find(x=>x.id===id); if(!c) return;
-  // Auto-fill référence devis DEV-2026-XXXX-NN
+
+  // 1. Référence auto
   const numEl=document.getElementById('devisNumero');
   if(numEl && c.refClient) numEl.value=_refDoc('devis',c);
+
+  // 2. TVA selon type client
   const taux=getTVAClient(c);
   const tvaSel=document.getElementById('devisTauxTVA');
   if(tvaSel) tvaSel.value=String(taux);
-  calculerTotauxDevis();
+
+  // 3. Objet par défaut
   const objet=document.getElementById('devisObjet');
   if(objet&&!objet.value) objet.value=`Prestations nettoyage – ${c.nom}`;
+
+  // 4. Surface + fréquence si disponibles
   const surf=document.getElementById('devisSurface');
   if(surf&&c.surface) surf.value=c.surface;
   const freq=document.getElementById('devisFrequence');
   if(freq&&c.frequence) freq.value=c.frequence;
-  // Activer les boutons jours du client
-  ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'].forEach(function(j){
-    var btn=document.getElementById('devisJourBtn_'+j);
+
+  // 5. Jours + heure
+  ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'].forEach(j=>{
+    const btn=document.getElementById('devisJourBtn_'+j);
     if(btn){ btn.classList.remove('jour-on'); if(c.jours&&c.jours.includes(j.toLowerCase())) btn.classList.add('jour-on'); }
   });
-  const dvHeureEl=document.getElementById('devisHeureIntervention');
-  if(dvHeureEl&&c.heureDebut) dvHeureEl.value=c.heureDebut;
-  calculerDevisAuto();
+  const heureEl=document.getElementById('devisHeureIntervention');
+  if(heureEl&&c.heureDebut) heureEl.value=c.heureDebut;
+
+  // 6. Auto-remplir les lignes immédiatement
+  // Priorité : heures configurées → surface → vide
+  if(c.heures>0 && c.tarif>0){
+    remplirLignesDevisAuto(); // utilise heures × tarif du client
+  } else if(c.surface){
+    calculerDevisAuto(); // calcul par surface
+  }
+  // Si surface saisie aussi → affiner
+  const surfVal=parseFloat(surf?.value)||0;
+  if(surfVal>0) calculerDevisAuto();
+
+  _majRecapDevis();
 }
 
 function calculerDevisAuto(){
@@ -10385,11 +10545,27 @@ function renderLignesDevis(){
 }
 
 function calculerTotauxDevis(){
+  if(!Array.isArray(lignesDevisData)) return;
   const st=lignesDevisData.reduce((s,l)=>s+(l.qte||0)*(l.prixUnit||0),0);
   const taux=parseFloat(document.getElementById('devisTauxTVA')?.value||'10');
   const tva=st*taux/100; const ttc=st+tva;
   const fmt2=v=>v.toFixed(2).replace('.',',')+' €';
   setEl('devisSousTotal',fmt2(st)); setEl('devisMontantTVA',fmt2(tva)); setEl('devisTotalTTC',fmt2(ttc)); setEl('devisTVALabel',taux);
+  _majRecapDevis();
+}
+
+function _majRecapDevis(){
+  const id=document.getElementById('devisClient')?.value;
+  const c=clientsData.find(x=>x.id===id);
+  const recap=document.getElementById('devisRecapClient');
+  if(recap) recap.textContent = c ? c.nom+(c.commune?' · '+c.commune:'') : '—';
+  // Couleur du bandeau selon montant
+  const bar=document.getElementById('devisRecapBar');
+  if(!bar) return;
+  const st=lignesDevisData.reduce((s,l)=>s+(l.qte||0)*(l.prixUnit||0),0);
+  bar.style.background = st>0
+    ? 'linear-gradient(135deg,#1d4ed8,#2e6ce0)'
+    : 'linear-gradient(135deg,var(--text3),#8fa3c0)';
 }
 
 function genererDevisPDF(){
@@ -12952,291 +13128,95 @@ function _kmRefuserGerant(fraisId) {
 // Airbnb TVA | Module Linge | Fournitures client
 // ===================================================================
 
-// --- GRILLE TARIFAIRE LINGE ---
-// Prix librement saisissables par le gérant — 1 à 5 lits
 
-var LINGE_TARIFS = (function() {
-  try {
-    var s = JSON.parse(localStorage.getItem('essentiaLingeConfig') || '{}');
-    if (s.tarifs) return s.tarifs;
-  } catch(e) {}
-  return { 1:10, 2:20, 3:30, 4:35, 5:40 };
+// ── Linge : configuration et calcul ─────────────────────────────
+var _lingeConfig = (function(){
+  try{
+    var s=JSON.parse(localStorage.getItem('essentiaLingeConfig')||'{}');
+    if(s.formule) return s.formule;
+  }catch(e){}
+  return {base:10,increment:5,maxLits:5};
 })();
 
-function calculerMontantLinge(n) {
-  n = parseInt(n) || 0;
-  if (n <= 0) return 0;
-  return parseFloat(LINGE_TARIFS[n]) || 0;
+function lingeGetPrix(n){
+  n=parseInt(n)||0;
+  if(n<=0) return 0;
+  return (_lingeConfig.base||10)+(n-1)*(_lingeConfig.increment||5);
 }
 
-// Modal simple : 5 champs, 1 prix chacun
-function v13_fermerModalLinge() {
-  var m = document.getElementById('v13ModalTarifLinge'); if(m) m.remove();
+function lingeCalculerApercu(){
+  var base=parseFloat(document.getElementById('lingeBase')?.value)||0;
+  var incr=parseFloat(document.getElementById('lingeIncr')?.value)||0;
+  var max=Math.min(Math.max(parseInt(document.getElementById('lingeMax')?.value)||5,1),10);
+  var preview=document.getElementById('lingePreview');
+  if(!preview) return;
+  var html='';
+  for(var n=1;n<=max;n++){
+    var p=base+(n-1)*incr;
+    html+='<span style="display:inline-flex;align-items:center;gap:5px;background:var(--green-l);color:var(--green);border:1px solid rgba(18,184,122,.3);border-radius:20px;padding:5px 14px;font-size:13px;font-weight:700;">'
+      +n+' lit'+(n>1?'s':'')+' — '+p.toFixed(2)+' €</span>';
+  }
+  preview.innerHTML=html;
 }
 
-function v13_editTarifsLinge() {
-  var ancien = document.getElementById('v13ModalTarifLinge');
-  if (ancien) ancien.remove();
-
-  var rows = '';
-  for (var n = 1; n <= 5; n++) {
-    rows += '<div style="display:flex;align-items:center;gap:14px;padding:10px 14px;margin-bottom:8px;background:var(--bg3);border:1.5px solid var(--border);border-radius:9px;">'
-      + '<span style="min-width:70px;font-size:13px;font-weight:700;color:var(--text);">' + n + ' lit(s)</span>'
-      + '<input type="number" id="lingePrix' + n + '" value="' + (LINGE_TARIFS[n] || 0) + '" min="0" step="0.50"'
-      + ' style="width:110px;padding:9px 12px;border:2px solid var(--accent);border-radius:8px;font-size:16px;font-weight:700;color:var(--accent);text-align:right;background:white;">'
-      + '<span style="font-size:12px;color:var(--text3);">€ / passage</span>'
-      + '</div>';
-  }
-
-  var m = document.createElement('div');
-  m.className = 'modal';
-  m.id = 'v13ModalTarifLinge';
-  m.style.display = 'flex';
-  m.innerHTML = '<div class="modal-box modal-sm">'
-    + '<div class="modal-header">'
-    + '<span class="modal-title"><i class="fas fa-tshirt" style="margin-right:8px;color:var(--accent);"></i>Prix du traitement du linge</span>'
-    + '<button class="modal-close" onclick="v13_fermerModalLinge()">&times;</button>'
-    + '</div>'
-    + '<p style="font-size:11px;color:var(--text3);margin-bottom:14px;">Saisissez librement votre prix pour chaque nombre de lits.</p>'
-    + rows
-    + '<div style="display:flex;gap:9px;margin-top:16px;">'
-    + '<button class="btn btn-success" style="flex:1;" onclick="v13_sauvegarderTarifLinge()"><i class="fas fa-save"></i> Enregistrer</button>'
-    + '<button class="btn btn-ghost" onclick="v13_fermerModalLinge()">Annuler</button>'
-    + '</div></div>';
-  document.body.appendChild(m);
-  setTimeout(function(){ var el=document.getElementById('lingePrix1'); if(el){el.focus();el.select();} }, 120);
+function lingeSauvegarder(){
+  var base=parseFloat(document.getElementById('lingeBase')?.value)||0;
+  var incr=parseFloat(document.getElementById('lingeIncr')?.value)||0;
+  var max=Math.min(Math.max(parseInt(document.getElementById('lingeMax')?.value)||5,1),10);
+  _lingeConfig={base:base,increment:incr,maxLits:max};
+  try{localStorage.setItem('essentiaLingeConfig',JSON.stringify({formule:_lingeConfig}));}catch(e){toast('Erreur sauvegarde','error');return;}
+  // Rafraîchir les boutons linge dans devis et factures si présents
+  _lingeRafraichirBoutons();
+  lingeCalculerApercu();
 }
 
-function v13_sauvegarderTarifLinge() {
-  var config = { tarifs: {} };
-  for (var n = 1; n <= 5; n++) {
-    var el = document.getElementById('lingePrix' + n);
-    if (!el) { toast('Erreur : rechargez la page', 'error'); return; }
-    var v = parseFloat(el.value);
-    if (isNaN(v) || v < 0) v = 0;
-    LINGE_TARIFS[n] = v;
-    config.tarifs[n] = v;
-  }
-  try {
-    localStorage.setItem('essentiaLingeConfig', JSON.stringify(config));
-  } catch(e) {
-    toast('Erreur sauvegarde : ' + e.message, 'error');
-    return;
-  }
-  document.getElementById('v13ModalTarifLinge').remove();
-  // Rafraîchir tous les affichages linge
-  v13_rafraichirAffichageLinge();
-  toast('Prix du linge sauvegardés ✓', 'success');
+function lingeInit(){
+  var b=document.getElementById('lingeBase');
+  var i=document.getElementById('lingeIncr');
+  var m=document.getElementById('lingeMax');
+  if(b) b.value=_lingeConfig.base||10;
+  if(i) i.value=_lingeConfig.increment||5;
+  if(m) m.value=_lingeConfig.maxLits||5;
+  lingeCalculerApercu();
 }
 
-function v13_rafraichirAffichageLinge() {
-  // Grille tarifaire (onglet Tarifs horaires)
-  for (var n = 1; n <= 5; n++) {
-    var el = document.getElementById('v13TarifLinge' + n);
-    if (el) el.textContent = parseFloat(LINGE_TARIFS[n] || 0).toFixed(2) + ' €';
-  }
-  // Select dans fiche client
-  var sel = document.getElementById('v13NbLits');
-  if (sel) {
-    var val = sel.value;
-    var html = '<option value="0">Pas de linge</option>';
-    for (var n2 = 1; n2 <= 5; n2++) {
-      html += '<option value="' + n2 + '">' + n2 + ' lit(s) — ' + (LINGE_TARIFS[n2] || 0) + ' €</option>';
-    }
-    sel.innerHTML = html;
-    sel.value = val;
-    if (typeof v13_calculerLinge === 'function') v13_calculerLinge();
-  }
-  // Boutons dans devis/facture
-  for (var n3 = 1; n3 <= 5; n3++) {
-    ['devis','fac'].forEach(function(pfx) {
-      var btn = document.getElementById('v13btn_' + pfx + '_' + n3);
-      if (btn) {
-        var m = LINGE_TARIFS[n3] || 0;
-        btn.innerHTML = n3 + ' lit(s)<br><span style="font-weight:400;font-size:10px;">' + m + ' € | +' + (n3*30) + 'min</span>';
-      }
-    });
-  }
+function _lingeRafraichirBoutons(){
+  ['devis','fac'].forEach(function(pfx){
+    var cont=document.getElementById('lingeBoutons_'+pfx);
+    if(!cont) return;
+    cont.innerHTML=_lingeHtmlBoutons(pfx);
+  });
 }
 
-// Injecter section linge dans onglet Tarifs horaires
-function v13_injecterTarifsLinge() {
-  if (document.getElementById('v13TarifLingeSection')) return;
-  var cards = document.querySelectorAll('#tab-tarifshoraires .card');
-  if (!cards.length) return;
-  var card = cards[cards.length - 1];
-  var rows = '';
-  for (var n = 1; n <= 5; n++) {
-    rows += '<tr style="background:' + (n%2===0?'#f0fdf4':'white') + ';">'
-      + '<td style="padding:9px 12px;font-weight:700;">' + n + ' lit(s)</td>'
-      + '<td style="padding:9px 12px;text-align:right;font-weight:700;color:#15803d;" id="v13TarifLinge' + n + '">' + parseFloat(LINGE_TARIFS[n]||0).toFixed(2) + ' €</td>'
-      + '<td style="padding:9px 12px;text-align:right;color:#4a7cf7;">+' + (n*30) + ' min</td>'
-      + '</tr>';
+function _lingeHtmlBoutons(pfx){
+  var max=_lingeConfig.maxLits||5;
+  var html='<button type="button" onclick="lingeAjouterLigne(\''+pfx+'\',0)" style="padding:5px 12px;border:1.5px solid var(--border);border-radius:7px;background:transparent;color:var(--text2);font-size:12px;cursor:pointer;">Pas de linge</button>';
+  for(var n=1;n<=max;n++){
+    var p=lingeGetPrix(n);
+    html+='<button type="button" onclick="lingeAjouterLigne(\''+pfx+'\','+n+')" style="padding:5px 12px;border:1.5px solid var(--green);border-radius:7px;background:var(--green-l);color:var(--green);font-size:12px;font-weight:700;cursor:pointer;">'
+      +n+' lit'+(n>1?'s':'')+' — '+p.toFixed(2)+'€</button>';
   }
-  var div = document.createElement('div');
-  div.id = 'v13TarifLingeSection';
-  div.style.cssText = 'margin-top:20px;background:#f0fdf4;border:1px solid #86efac;border-radius:11px;padding:16px;';
-  div.innerHTML = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">'
-    + '<div style="font-size:13px;font-weight:700;">Prix du traitement du linge</div>'
-    + '<button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="v13_editTarifsLinge()"><i class="fas fa-edit"></i> Modifier les prix</button>'
-    + '</div>'
-    + '<table style="width:100%;border-collapse:collapse;font-size:12px;">'
-    + '<thead><tr>'
-    + '<th style="background:#15803d;color:white;padding:9px 12px;">Nb de lits</th>'
-    + '<th style="background:#15803d;color:white;padding:9px 12px;text-align:right;">Votre prix</th>'
-    + '<th style="background:#15803d;color:white;padding:9px 12px;text-align:right;">Temps estimé</th>'
-    + '</tr></thead><tbody>' + rows + '</tbody></table>';
-  card.appendChild(div);
+  return html;
 }
 
-// Injecter bloc linge dans fiche client
-function v13_injecterBlocLingeClient() {
-  if (document.getElementById('v13BlocLingeClient')) return;
-  var form = document.querySelector('#tab-clients .card');
-  if (!form) return;
-  var btn = form.querySelector('.btn-success');
-  if (!btn) return;
-
-  var rows = '';
-  for (var n = 1; n <= 5; n++) {
-    rows += '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #d1fae5;">'
-      + '<span style="min-width:60px;font-size:12px;font-weight:700;color:#065f46;">' + n + ' lit(s)</span>'
-      + '<input type="number" id="v13prixClient_' + n + '" placeholder="Prix €" min="0" step="0.5"'
-      + ' style="width:90px;padding:6px 9px;border:1.5px solid #6ee7b7;border-radius:7px;font-size:13px;font-weight:700;text-align:right;color:#065f46;">'
-      + '<span style="font-size:11px;color:#6b7280;">€ / passage</span>'
-      + '</div>';
-  }
-
-  var div = document.createElement('div');
-  div.id = 'v13BlocLingeClient';
-  div.style.cssText = 'background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px;margin-bottom:14px;';
-  div.innerHTML = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#15803d;margin-bottom:8px;">'
-    + '<i class="fas fa-tshirt" style="margin-right:6px;"></i>Prix linge par passage (linge fourni par le client)</div>'
-    + '<div style="font-size:11px;color:#6b7280;margin-bottom:10px;">Saisissez votre prix pour chaque nombre de lits. Ces prix seront proposés dans les devis et factures.</div>'
-    + rows;
-  btn.parentNode.insertBefore(div, btn);
-}
-
-function v13_calculerLinge() { /* non utilisé */ }
-
-// Injecter bloc linge dans DEVIS
-function v13_injecterLingeDevis() {
-  if (document.getElementById('v13BlocLingeDevis')) return;
-  var zone = document.getElementById('lignesDevis');
-  if (!zone) return;
-  var div = document.createElement('div');
-  div.id = 'v13BlocLingeDevis';
-  div.innerHTML = v13_htmlBlocLinge('devis');
-  zone.parentNode.insertBefore(div, zone.nextSibling);
-}
-
-// Injecter bloc linge dans FACTURES
-function v13_injecterLingeFac() {
-  if (document.getElementById('v13BlocLingeFac')) return;
-  var zone = document.getElementById('lignesFacture');
-  if (!zone) return;
-  var div = document.createElement('div');
-  div.id = 'v13BlocLingeFac';
-  div.innerHTML = v13_htmlBlocLinge('fac');
-  zone.parentNode.insertBefore(div, zone.nextSibling);
-}
-
-function v13_htmlBlocLinge(prefix) {
-  var rows = '';
-  for (var n = 1; n <= 5; n++) {
-    rows += '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #d1fae5;">'
-      + '<span style="min-width:60px;font-size:12px;font-weight:700;color:#065f46;">' + n + ' lit(s)</span>'
-      + '<input type="number" id="v13prix_' + prefix + '_' + n + '" placeholder="Prix €" min="0" step="0.5"'
-      + ' style="width:90px;padding:6px 9px;border:1.5px solid #6ee7b7;border-radius:7px;font-size:13px;font-weight:700;text-align:right;color:#065f46;">'
-      + '<span style="font-size:11px;color:#6b7280;">€ / passage</span>'
-      + '<button type="button" onclick="v13_ajouterLinge(\'' + prefix + '\',' + n + ')"'
-      + ' style="padding:5px 12px;background:#15803d;color:white;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;">'
-      + '+ Ajouter</button>'
-      + '</div>';
-  }
-  return '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px;margin-top:14px;">'
-    + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#15803d;margin-bottom:10px;">'
-    + '<i class="fas fa-tshirt" style="margin-right:6px;"></i>Traitement du linge — saisissez votre prix</div>'
-    + rows
-    + '</div>';
-}
-
-function v13_ajouterLinge(prefix, nbLits) {
-  var input = document.getElementById('v13prix_' + prefix + '_' + nbLits);
-  if (!input) return;
-  var montant = parseFloat(input.value);
-  if (isNaN(montant) || montant <= 0) {
-    if (typeof toast === 'function') toast('Saisissez un prix pour ' + nbLits + ' lit(s)', 'warning');
-    input.focus();
-    return;
-  }
-  var desc = 'Traitement du linge — ' + nbLits + ' lit(s) — linge fourni par le client';
-  var ligne = { desc: desc, qte: 1, unite: 'forfait', prixUnit: montant, _v13linge: true };
-  if (prefix === 'devis') {
-    if (typeof lignesDevisData !== 'undefined') {
-      lignesDevisData = lignesDevisData.filter(function(l) { return !l._v13linge; });
-      lignesDevisData.push(ligne);
-      if (typeof renderLignesDevis === 'function') renderLignesDevis();
-      if (typeof calculerTotauxDevis === 'function') calculerTotauxDevis();
-    }
+function lingeAjouterLigne(pfx,nbLits){
+  nbLits=parseInt(nbLits)||0;
+  if(nbLits<=0) return;
+  var prix=lingeGetPrix(nbLits);
+  var desc='Traitement du linge — '+nbLits+' lit'+(nbLits>1?'s':'');
+  if(pfx==='devis'){
+    if(!window.lignesDevisData) lignesDevisData=[];
+    lignesDevisData.push({desc:desc,qte:1,unite:'forfait',prixUnit:prix});
+    if(typeof renderLignesDevis==='function') renderLignesDevis();
+    if(typeof calculerTotauxDevis==='function') calculerTotauxDevis();
   } else {
-    if (typeof lignesFactureData !== 'undefined') {
-      lignesFactureData = lignesFactureData.filter(function(l) { return !l._v13linge; });
-      lignesFactureData.push(ligne);
-      if (typeof renderLignesFacture === 'function') renderLignesFacture();
-      if (typeof calculerTotauxFacture === 'function') calculerTotauxFacture();
-    }
+    if(!window.lignesFactureData) lignesFactureData=[];
+    lignesFactureData.push({desc:desc,qte:1,unite:'forfait',prixUnit:prix});
+    if(typeof renderLignesFacture==='function') renderLignesFacture();
+    if(typeof calculerTotauxFacture==='function') calculerTotauxFacture();
   }
-  if (typeof toast === 'function') toast(nbLits + ' lit(s) à ' + montant + ' € ajouté ✓', 'success');
-  input.value = '';
 }
 
-function v13_selectLinge(prefix, nbLits) { /* remplacé par v13_ajouterLinge */ }
-
-// Override ajouterClient pour sauver nbLits
-var _v13_origAjouterClient = typeof ajouterClient === 'function' ? ajouterClient : null;
-
-// HOOK changerTab
-var _v13_origChangerTab = typeof changerTab === 'function' ? changerTab : null;
-changerTab = function(btn) {
-  if (_v13_origChangerTab) _v13_origChangerTab(btn);
-  var tab = btn && btn.dataset ? btn.dataset.tab : '';
-  if (tab === 'clients') setTimeout(v13_injecterBlocLingeClient, 300);
-  if (tab === 'devis') setTimeout(v13_injecterLingeDevis, 400);
-  if (tab === 'factures') setTimeout(v13_injecterLingeFac, 400);
-  if (tab === 'tarifshoraires') setTimeout(v13_injecterTarifsLinge, 300);
-};
-
-var _v13_origInitFac = typeof initFactures === 'function' ? initFactures : null;
-initFactures = function() {
-  if (_v13_origInitFac) _v13_origInitFac();
-  setTimeout(v13_injecterLingeFac, 500);
-};
-
-var _v13_origInitDevis = typeof initDevis === 'function' ? initDevis : null;
-initDevis = function() {
-  if (_v13_origInitDevis) _v13_origInitDevis();
-  setTimeout(v13_injecterLingeDevis, 500);
-};
-
-// --- Ajouter option Airbnb dans filtre liste clients ---
-var _v13_origChargerClients = typeof chargerClients === 'function' ? chargerClients : null;
-chargerClients = function() {
-  if (_v13_origChargerClients) _v13_origChargerClients();
-  setTimeout(function() {
-    var filtre = document.getElementById('filtreTypeClient');
-    if (filtre && !filtre.querySelector('[value="airbnb_particulier"]')) {
-      var o1 = document.createElement('option');
-      o1.value = 'airbnb_particulier'; o1.textContent = 'Airbnb Particulier';
-      filtre.appendChild(o1);
-      var o2 = document.createElement('option');
-      o2.value = 'airbnb_agence'; o2.textContent = 'Airbnb Agence';
-      filtre.appendChild(o2);
-    }
-  }, 200);
-};
-
-console.log('Essentia v13 charge OK - Airbnb | Linge | Fournitures client');
 
 
 
