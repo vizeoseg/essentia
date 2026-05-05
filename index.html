@@ -184,6 +184,41 @@ tr:hover td{background:rgba(74,124,247,.02);}
 .tva-badge-0 {background:#dcfce7;color:#166534;padding:2px 8px;border-radius:50px;font-size:10px;font-weight:700;}
 .tva-badge-10{background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:50px;font-size:10px;font-weight:700;}
 .tva-badge-20{background:#e0e7ff;color:#3730a3;padding:2px 8px;border-radius:50px;font-size:10px;font-weight:700;}
+/* ═══ AMÉLIORATIONS VISUELLES ═══ */
+
+/* 1. Sidebar — sections repliables */
+.nav-section{cursor:pointer;user-select:none;position:relative;}
+.nav-section::before{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%) rotate(0deg);font-size:9px;color:rgba(255,255,255,.35);transition:transform .25s ease;}
+.nav-section.collapsed::before{transform:translateY(-50%) rotate(-90deg);}
+.nav-section.collapsed::after{display:none;}
+.nav-btn-hidden{display:none !important;}
+
+/* 2. Selects — look moderne */
+select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238fa3c0' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px !important;cursor:pointer;}
+select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(74,124,247,.18);}
+select option{background:#fff;color:var(--text);padding:6px;}
+
+/* 3. Modals — animation entrée */
+@keyframes modalIn{from{opacity:0;transform:scale(.96) translateY(-8px);}to{opacity:1;transform:scale(1) translateY(0);}}
+.modal-box,.modal-sm{animation:modalIn .2s cubic-bezier(.34,1.2,.64,1);}
+#modalAirbnb > div,#modalPlanningCoGerant > div,#modalMotifAnnulation > div,#modalTableauAssignation > div{animation:modalIn .2s cubic-bezier(.34,1.2,.64,1);}
+.modal[style*="flex"] > .modal-box,.modal[style*="block"] > .modal-box{animation:modalIn .2s cubic-bezier(.34,1.2,.64,1);}
+
+/* 4. Focus inputs — glow accent */
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(74,124,247,.18);background:#fff;}
+.search-box input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(74,124,247,.18);}
+.filter-select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(74,124,247,.18);}
+
+/* 5. Tableaux — hover plus visible */
+tr:hover td{background:rgba(74,124,247,.06);transition:background .12s;}
+tr{transition:background .12s;}
+
+/* 6. Boutons — état loading */
+.btn.loading{pointer-events:none;opacity:.75;position:relative;}
+.btn.loading i{display:none;}
+.btn.loading::after{content:'';display:inline-block;width:11px;height:11px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:btnSpin .7s linear infinite;margin-left:4px;}
+@keyframes btnSpin{to{transform:rotate(360deg);}}
+
 /* RESPONSIVE */
 /* ═══ MODE SYSTEM ═══ */
 /* Écran de choix de mode */
@@ -1366,9 +1401,10 @@ tr:hover td{background:rgba(74,124,247,.02);}
           <div class="form-group"><label>Année fiscale</label><select id="attestationAnnee"></select></div>
           <div class="form-group"><label>Client (ou tous)</label><select id="attestationClient"><option value="">Tous les clients particuliers</option></select></div>
         </div>
-        <div style="display:flex;gap:9px;flex-wrap:wrap;">
-          <button class="btn btn-success" onclick="genererAttestationClient()"><i class="fas fa-file-pdf"></i> Générer attestation individuelle</button>
-          <button class="btn btn-primary" onclick="genererToutesAttestations()"><i class="fas fa-copy"></i> Générer toutes les attestations</button>
+        <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center;">
+          <button class="btn btn-success btn-sm" onclick="genererAttestationClient()"><i class="fas fa-file-pdf"></i> Générer individuelle</button>
+          <button class="btn btn-primary btn-sm" onclick="genererToutesAttestations()"><i class="fas fa-copy"></i> Toutes les attestations</button>
+          <span style="font-size:11px;color:var(--text3);">· Aussi disponibles dans <strong>Exports PDF</strong></span>
         </div>
       </div>
       <div class="card">
@@ -1495,7 +1531,8 @@ tr:hover td{background:rgba(74,124,247,.02);}
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:13px;">
           <div style="background:var(--bg3);border:1px solid var(--border);border-radius:11px;padding:16px;">
             <div style="display:flex;gap:9px;margin-bottom:10px;"><div style="width:38px;height:38px;border-radius:9px;background:var(--green-l);color:var(--green);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;"><i class="fas fa-award"></i></div><div><div style="font-weight:600;font-size:13px;color:var(--text);">Attestations fiscales</div><div style="font-size:10px;color:var(--text3);">Art. 199 sexdecies CGI</div></div></div>
-            <button class="btn btn-success btn-sm" style="width:100%;" onclick="genererToutesAttestations()"><i class="fas fa-download"></i> Toutes les attestations</button>
+            <button class="btn btn-success btn-sm" style="width:100%;margin-bottom:5px;" onclick="genererAttestationClient()"><i class="fas fa-file-pdf"></i> Individuelle</button>
+            <button class="btn btn-primary btn-sm" style="width:100%;" onclick="genererToutesAttestations()"><i class="fas fa-download"></i> Toutes</button>
           </div>
           <div style="background:var(--bg3);border:1px solid var(--border);border-radius:11px;padding:16px;">
             <div style="display:flex;gap:9px;margin-bottom:10px;"><div style="width:38px;height:38px;border-radius:9px;background:var(--purple-l);color:var(--purple);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;"><i class="fas fa-id-badge"></i></div><div><div style="font-weight:600;font-size:13px;color:var(--text);">Bulletins de salaire</div><div style="font-size:10px;color:var(--text3);">Tous salariés</div></div></div>
@@ -1639,7 +1676,15 @@ tr:hover td{background:rgba(74,124,247,.02);}
               </div>
               <div style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:12px;">
                 <div style="font-size:12px;font-weight:600;margin-bottom:5px;color:var(--red);"><i class="fas fa-exclamation-triangle" style="margin-right:5px;"></i>Zone de danger</div>
-                <button class="btn btn-danger btn-sm" style="width:100%;" onclick="reinitialiserTout()"><i class="fas fa-trash-alt"></i> Réinitialiser toutes les données</button>
+                <div style="display:flex;flex-direction:column;gap:7px;">
+                  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                    <input type="text" id="nettoyageClientNom" placeholder="Nom du client (ex: Hubert Charlene)" style="flex:1;min-width:160px;font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:7px;">
+                    <input type="date" id="nettoyageDateLimite" style="font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:7px;">
+                    <button class="btn btn-warning btn-sm" onclick="nettoyerPlanningClient()"><i class="fas fa-broom"></i> Purger plannings erronés</button>
+                  </div>
+                  <div style="font-size:10px;color:var(--text3);">Supprime les entrées planning d'un client spécifique après la date indiquée (intervention unique mal dupliquée).</div>
+                  <button class="btn btn-danger btn-sm" style="width:100%;" onclick="reinitialiserTout()"><i class="fas fa-trash-alt"></i> Réinitialiser toutes les données</button>
+                </div>
               </div>
             </div>
           </div>
@@ -1711,7 +1756,8 @@ tr:hover td{background:rgba(74,124,247,.02);}
           <h3>Nouveau devis</h3>
           <div style="margin-left:auto;display:flex;gap:8px;">
             <button class="btn btn-success btn-sm" onclick="genererDevisPDF()"><i class="fas fa-file-pdf"></i> Générer PDF</button>
-            <button class="btn btn-primary btn-sm" onclick="convertirDevisEnFacture()"><i class="fas fa-exchange-alt"></i> Convertir en facture</button>
+            <button class="btn btn-sm" style="background:var(--purple);color:#fff;" onclick="creerContratDepuisDevisForm()"><i class="fas fa-file-contract"></i> Créer contrat</button>
+            <button class="btn btn-primary btn-sm" onclick="convertirDevisEnFacture()"><i class="fas fa-exchange-alt"></i> → Facture</button>
           </div>
         </div>
         <div class="form-row">
@@ -2779,6 +2825,7 @@ function activerModeGerant(){
   const at = document.getElementById('tab-accueil');
   if(at) at.classList.add('active');
   setEl('topbarTitle','Accueil');
+  _filtreCoGerant = ''; // reset filtre employé
   // Rafraîchir données — forcer rechargement cloud si Supabase actif
   if (typeof chargerDonnees === 'function' && typeof window.supabaseLoad === 'function') {
     chargerDonnees(); // version overridée qui charge depuis Supabase en priorité
@@ -2876,6 +2923,9 @@ function initModeEmploye(){
   const today = new Date().toISOString().split('T')[0];
   const ef = document.getElementById('empFraisDate');
   if(ef) ef.value = today;
+  // Filtrer le planning sur le nom de l'employé connecté
+  const _empNomInit = localStorage.getItem('progestEmployeNom')||'';
+  if(_empNomInit) _filtreCoGerant = _empNomInit;
   chargerAccueilEmp();
   chargerTourneesEmp();
   chargerFraisEmp();
@@ -3002,16 +3052,48 @@ function chargerTourneesEmp(){
   const grid = document.getElementById('empTourneeGrid');
   const todayStr = new Date().toLocaleDateString('fr-FR',{weekday:'long'}).toLowerCase();
 
+  // Calcul des dates de la semaine courante (lundi→dimanche)
+  const _now = new Date(); _now.setHours(0,0,0,0);
+  const _dow = _now.getDay(); // 0=dim
+  const _lundi = new Date(_now); _lundi.setDate(_now.getDate() - ((_dow===0?7:_dow)-1));
+  const JOURS_IDX2 = {lundi:0,mardi:1,mercredi:2,jeudi:3,vendredi:4,samedi:5,dimanche:6};
+  function _dateKeyJour(jour){ const d=new Date(_lundi); d.setDate(_lundi.getDate()+(JOURS_IDX2[jour]||0)); return d.toISOString().split('T')[0]; }
+
   if(grid){
     grid.innerHTML = jours.map(function(jour){
-      const cj = clientsData.filter(function(c){return c.jours&&c.jours.includes(jour)&&c.commune;});
+      const dateKey = _dateKeyJour(jour);
+
+      // Clients récurrents — filtrés par date de validité ET intervenant assigné
+      const cj = clientsData.filter(function(c){
+        if(!_getJoursClientDate(c, dateKey).includes(jour)||!c.commune) return false;
+        if(empNom){
+          const interv=(c.interventions||[]).find(i=>i.jour===jour);
+          return interv&&interv.intervenant&&interv.intervenant.toLowerCase()===empNom.toLowerCase();
+        }
+        return true;
+      });
+
+      // Interventions ponctuelles ce jour précis (via Planifier)
+      const poncts = (window.interventionsData||[]).filter(function(i){
+        return i.date===dateKey && i.statut!=='annule'
+          && (!empNom || (i.intervenante&&i.intervenante.toLowerCase()===empNom.toLowerCase()));
+      });
+
+      // Interventions Airbnb ce jour précis (via deplacementsData)
+      const airbnbs = (deplacementsData||[]).filter(function(d){
+        return d.dateNouvelle===dateKey && d.airbnb
+          && (!empNom || (d.intervenant&&d.intervenant.toLowerCase()===empNom.toLowerCase()));
+      }).map(function(d){
+        const cl = clientsData.find(function(x){return x.id===d.clientId;})||{};
+        return Object.assign({},d,{clientNom:cl.nom||'Airbnb',commune:cl.commune||''});
+      });
+
       const toMinE=function(t){var s=String(t||'00:00');var p=s.includes(':')?s.split(':'):['0','0'];return (parseInt(p[0])||0)*60+(parseInt(p[1])||0);};
       const avecDist = cj.map(function(c){
         const d = communesAube.find(function(x){return x.nom===c.commune;})||{distance:0};
         return Object.assign({},c,{dd: d.distance||0});
       }).sort(function(a,b){return toMinE(a.heureDebut)-toMinE(b.heureDebut);});
 
-      // Calcul km : domicile → 1er client → ... → dernier client → retour dépôt
       let dist=0, last=depotDist;
       const km1erClient = avecDist.length ? Math.abs((avecDist[0].dd||0) - domicileDist) : 0;
       avecDist.forEach(function(c){dist+=Math.abs(c.dd-last);last=c.dd;});
@@ -3021,12 +3103,29 @@ function chargerTourneesEmp(){
       const isToday = jour===todayStr;
 
       var clientItems = avecDist.length
-        ? avecDist.map(function(c, idx){
+        ? avecDist.map(function(c){
             return '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px dashed var(--border);font-size:11px;">'
               + '<span>'+(c.heureDebut?'<strong>'+c.heureDebut+'</strong> ':'')+c.nom+'</span>'
               + '<span class="badge badge-blue">'+c.dd+'km</span></div>';
           }).join('')
-        : '<p style="color:var(--text3);font-size:10px;text-align:center;padding:5px;">Aucun client</p>';
+        : '';
+
+      // Ajout des ponctuels avec badge orange
+      var ponctItems = poncts.map(function(i){
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 5px;border-radius:4px;margin-bottom:2px;background:rgba(249,115,22,.05);border:1px dashed #fed7aa;font-size:11px;">'
+          + '<span>⚡ <strong>'+(i.heure||'—')+'</strong> '+(i.clientNom||i.type)+'</span>'
+          + '<span style="background:#fff7ed;color:#f97316;border:1px solid #fed7aa;border-radius:10px;font-size:9px;padding:1px 6px;font-weight:700;">1 acte</span></div>';
+      }).join('');
+
+      // Airbnb planifiés ce jour
+      var airbnbItems = airbnbs.map(function(d){
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 5px;border-radius:4px;margin-bottom:2px;background:rgba(16,185,129,.05);border:1px dashed #6ee7b7;font-size:11px;">'
+          + '<span>🏠 <strong>'+(d.heureNouvelle||'—')+'</strong> '+(d.clientNom||'Airbnb')+(d.commune?' · '+d.commune:'')+'</span>'
+          + '<span style="background:#ecfdf5;color:#059669;border:1px solid #6ee7b7;border-radius:10px;font-size:9px;padding:1px 6px;font-weight:700;">Airbnb</span></div>';
+      }).join('');
+
+      const aucun = !avecDist.length && !poncts.length && !airbnbs.length
+        ? '<p style="color:var(--text3);font-size:10px;text-align:center;padding:5px;">Aucun client</p>' : '';
 
       const kmDomicileStr = (avecDist.length && communeDomicile)
         ? '<div style="font-size:11px;color:var(--accent);margin-bottom:6px;padding:5px 8px;background:rgba(74,124,247,.1);border-radius:6px;border-left:3px solid var(--accent);">🏠 <strong>'+communeDomicile+'</strong> → 1er client : <strong>'+Math.round(km1erClient)+' km</strong></div>'
@@ -3034,10 +3133,10 @@ function chargerTourneesEmp(){
 
       return '<div style="background:'+(isToday?'rgba(74,124,247,.08)':'var(--bg3)')+';border:1px solid '+(isToday?'rgba(74,124,247,.3)':'var(--border)')+';border-radius:11px;padding:11px;">'
         + '<h4 style="font-size:12px;font-weight:700;color:var(--accent);text-transform:capitalize;margin-bottom:7px;">'+jour+(isToday?' 📍':'')+'</h4>'
-        + kmDomicileStr
-        + clientItems
+        + kmDomicileStr + clientItems + ponctItems + airbnbItems + aucun
         + '<div style="margin-top:7px;padding-top:6px;border-top:1px solid var(--border);display:flex;justify-content:space-between;">'
-        + '<span class="badge badge-blue">'+Math.round(dist)+'km total</span>'
+        + '<span class="badge badge-blue">'+Math.round(dist)+'km</span>'
+        + (poncts.length?'<span style="font-size:9px;color:#f97316;font-weight:700;">+'+poncts.length+' ponctuel'+(poncts.length>1?'s':'')+'</span>':'')
         + '</div></div>';
     }).join('');
   }
@@ -3051,7 +3150,12 @@ function chargerTourneesEmp(){
   const cal = document.getElementById('empCalendrierSemaine');
   if(!cal) return;
   cal.innerHTML = jours.map(function(jour){
-    const cj = clientsData.filter(function(c){return c.jours&&c.jours.includes(jour);});
+    const dateKeyC = _dateKeyJour(jour);
+    const cj = clientsData.filter(function(c){
+      if(!_getJoursClientDate(c, dateKeyC).includes(jour)) return false;
+      if(empNom){const interv=(c.interventions||[]).find(i=>i.jour===jour);return interv&&interv.intervenant&&interv.intervenant.toLowerCase()===empNom.toLowerCase();}
+      return true;
+    });
     const isToday = jour===todayStr;
     const jourLabel = jour.charAt(0).toUpperCase()+jour.slice(1);
     var items = cj.length
@@ -3489,6 +3593,7 @@ function ouvrirDrawerJour(dateKey, jourNom){
           ${c._deplaceVers && c._deplacement ? `<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;" onclick="if(confirm('Supprimer cette intervention ?')){annulerDeplacement('${c._deplacement.id}');fermerDrawerJour();}"><i class="fas fa-trash"></i> Supprimer</button>` : ''}
           ${entryPrev?.statut !== 'absent' ? `<button class="btn btn-danger btn-sm" onclick="setPlanStatut('${c.id}','${dateKey}','absent');ouvrirDrawerJour('${dateKey}','${jourNom}');"><i class="fas fa-times-circle"></i> Absent</button>` : `<button class="btn btn-ghost btn-sm" onclick="setPlanStatut('${c.id}','${dateKey}','prevu');ouvrirDrawerJour('${dateKey}','${jourNom}');"><i class="fas fa-undo"></i> Rétablir</button>`}
           ${(!entryPrev || entryPrev.statut==='prevu' || entryPrev.statut==='prevu_passe') ? `<button class="btn btn-success btn-sm" onclick="setPlanStatut('${c.id}','${dateKey}','confirme');ouvrirDrawerJour('${dateKey}','${jourNom}');"><i class="fas fa-check"></i> Confirmer</button>` : ''}
+          <button class="btn btn-sm" style="background:#fef9c3;color:#854d0e;border:1px solid #fde68a;font-size:10px;" onclick="stopperRecurrenceClient('${c.id}','${dateKey}','${jourNom}')" title="Arrêter la récurrence à partir de cette date"><i class="fas fa-ban"></i> Arrêter ici</button>
         </div>
       </div>`;
     });
@@ -3730,14 +3835,8 @@ function renderPlanningMois(containerId, offset){
     const toMinM=t=>{const s=String(t||'00:00');const p=s.includes(':')?s.split(':'):['0','0'];return (parseInt(p[0])||0)*60+(parseInt(p[1])||0);};
     const dateKey = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     // Clients habituels : lire les bons jours selon date d'effet changement
-    const _getJoursClient = (c, dateKey) => {
-      if(c.joursChangement && c.joursChangement.dateEffet && dateKey < c.joursChangement.dateEffet) {
-        return c.joursChangement.joursAnciens;
-      }
-      return c.jours||[];
-    };
     const clientsHab = clientsData.filter(c => {
-      if(!_getJoursClient(c, dateKey).includes(jourNom)) return false;
+      if(!_getJoursClientDate(c, dateKey).includes(jourNom)) return false;
       if(clientEstAbsentCeJour(c.id, dateKey)) return false;
       if(_filtreCoGerant) {
         const interv = (c.interventions||[]).find(i=>i.jour===jourNom);
@@ -3950,6 +4049,29 @@ function fmtN(v){return v.toFixed(2).replace('.',',')+' €';}
 function setEl(id,val,color=null){const el=document.getElementById(id);if(!el)return;el.textContent=val;if(color)el.style.color=color;}
 
 function horloge(){const d=new Date();document.getElementById('clockDisplay').textContent=d.toLocaleDateString('fr-FR')+' · '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
+
+// ── Sidebar sections repliables ──────────────────────────
+function initSidebarCollapse(){
+  document.querySelectorAll('.nav-section').forEach(section=>{
+    section.addEventListener('click',()=>{
+      const collapsed=section.classList.toggle('collapsed');
+      let el=section.nextElementSibling;
+      while(el && !el.classList.contains('nav-section')){
+        if(el.classList.contains('nav-btn')||el.tagName==='BUTTON'){
+          el.classList.toggle('nav-btn-hidden',collapsed);
+        }
+        el=el.nextElementSibling;
+      }
+    });
+  });
+}
+
+// ── Bouton loading state ──────────────────────────────────
+function btnLoading(btn,promise){
+  if(!btn) return promise;
+  btn.classList.add('loading');
+  return promise.finally(()=>btn.classList.remove('loading'));
+}
 
 // ══════════════════════════════════════════════════════════
 // NAVIGATION
@@ -4216,11 +4338,11 @@ function afficherClients(clients){
       <td><span style="font-weight:600;color:var(--teal);">${caMoisTTC.toFixed(2)} €</span></td>
       <td><span style="font-weight:600;">${caAnHT.toFixed(2)} €</span></td>
       <td style="white-space:nowrap;">
-        <button class="icon-btn" style="color:var(--purple);" title="Envoyer un contrat par email" onclick="envoyerContratClient('${c.id}')"><i class="fas fa-file-contract"></i></button>
-        <button class="icon-btn" style="color:var(--green);" title="Générer facture mensuelle" onclick="genererFactureDepuisClient('${c.id}')"><i class="fas fa-file-invoice-dollar"></i></button>
         <button class="icon-btn" style="color:var(--accent);" title="Créer un devis" onclick="creerDevisDepuisClient('${c.id}')"><i class="fas fa-file-signature"></i></button>
-        <button class="icon-btn edit" onclick="modifierClient('${c.id}')"><i class="fas fa-edit"></i></button>
-        <button class="icon-btn del" onclick="supprimerClient('${c.id}')"><i class="fas fa-trash"></i></button>
+        <button class="icon-btn" style="color:var(--purple);" title="Générer / envoyer un contrat" onclick="envoyerContratClient('${c.id}')"><i class="fas fa-file-contract"></i></button>
+        <button class="icon-btn" style="color:var(--green);" title="Générer facture mensuelle" onclick="genererFactureDepuisClient('${c.id}')"><i class="fas fa-file-invoice-dollar"></i></button>
+        <button class="icon-btn edit" title="Modifier le client" onclick="modifierClient('${c.id}')"><i class="fas fa-edit"></i></button>
+        <button class="icon-btn del" title="Supprimer le client" onclick="supprimerClient('${c.id}')"><i class="fas fa-trash"></i></button>
       </td>
     </tr>`;
   }).join('');
@@ -4312,6 +4434,12 @@ function modifierClient(id){
 
 // Helper : retourne les bons jours d'un client selon la date (gestion changement permanent)
 function _getJoursClientDate(c, dateKey){
+  // Clients Airbnb : jamais récurrents, uniquement via deplacementsData
+  if(c.typeClient==='airbnb_particulier'||c.typeClient==='airbnb_agence') return [];
+  // Vérifier plage de validité
+  if(c.dateArrivee && dateKey < c.dateArrivee) return [];
+  if(c.dateSortie  && dateKey > c.dateSortie)  return [];
+  // Changement de jours planifié
   if(c.joursChangement && c.joursChangement.dateEffet && dateKey < c.joursChangement.dateEffet){
     return c.joursChangement.joursAnciens||[];
   }
@@ -5435,7 +5563,7 @@ function chargerAttestationsTable(){
 function genererAttestationClient(){
   const clientId=document.getElementById('attestationClient').value;
   const annee=parseInt(document.getElementById('attestationAnnee').value)||new Date().getFullYear();
-  if(!clientId){genererToutesAttestations();return;}
+  if(!clientId){toast('Sélectionnez un client ou cliquez sur "Toutes les attestations"','warning');return;}
   genererAttestationPourClient(clientId,annee);
 }
 
@@ -7559,6 +7687,57 @@ function changerPINEmploye(){
   toast('Code PIN Employé modifié ✓','success');
 }
 
+function stopperRecurrenceClient(clientId, dateKey, jourNom){
+  const c = clientsData.find(x=>x.id===clientId);
+  if(!c) return;
+  if(!confirm('Arrêter "'+c.nom+'" à partir du '+new Date(dateKey+'T12:00').toLocaleDateString('fr-FR')+'?\n\nToutes les occurrences futures seront supprimées. Cette date reste confirmée.')) return;
+
+  // Poser dateSortie = dateKey pour bloquer la récurrence
+  c.dateSortie = dateKey;
+
+  // Supprimer les entrées planningPrevData après cette date
+  const entries = planningPrevData[clientId]||{};
+  let count = 0;
+  Object.keys(entries).forEach(function(dk){
+    if(dk > dateKey){ delete planningPrevData[clientId][dk]; count++; }
+  });
+
+  sauvegarderTout(true);
+  chargerTournees();
+  if(typeof renderPlanningMois==='function') renderPlanningMois('planningMoisCalendar', planningMoisOffset);
+  fermerDrawerJour();
+  toast(c.nom+' — récurrence arrêtée · '+count+' entrée'+(count>1?'s':'')+' future'+(count>1?'s':'')+' supprimée'+(count>1?'s':''), 'success');
+}
+window.stopperRecurrenceClient = stopperRecurrenceClient;
+
+function nettoyerPlanningClient(){
+  const nomSaisi = (document.getElementById('nettoyageClientNom')?.value||'').trim().toLowerCase();
+  const dateLimit = document.getElementById('nettoyageDateLimite')?.value;
+  if(!nomSaisi || !dateLimit){ toast('Renseignez le nom du client et la date limite','warning'); return; }
+
+  // Chercher le client par nom (partiel, insensible casse)
+  const clients = clientsData.filter(c => c.nom && c.nom.toLowerCase().includes(nomSaisi));
+  if(!clients.length){ toast('Aucun client trouvé pour "'+nomSaisi+'"','warning'); return; }
+
+  if(!confirm('Supprimer les entrées planning de "'+clients.map(c=>c.nom).join(', ')+'" après le '+dateLimit+' ?\n\nL\'intervention du '+dateLimit+' sera conservée.')) return;
+
+  let count = 0;
+  clients.forEach(function(c){
+    const entries = planningPrevData[c.id]||{};
+    Object.keys(entries).forEach(function(dateKey){
+      if(dateKey > dateLimit){ delete planningPrevData[c.id][dateKey]; count++; }
+    });
+    // Bloquer les récurrences futures en posant une dateSortie
+    if(!c.dateSortie || c.dateSortie > dateLimit) c.dateSortie = dateLimit;
+  });
+
+  sauvegarderTout(true);
+  calculerStats();
+  chargerAccueil();
+  if(typeof renderPlanningMois==='function') renderPlanningMois('planningMoisCalendar', planningMoisOffset);
+  toast('Purge terminée — '+count+' entrée'+(count>1?'s':'')+' supprimée'+(count>1?'s':'')+' · dateSortie fixée au '+dateLimit, count>=0?'success':'info');
+}
+
 function reinitialiserTout(){
   if(!confirm('⚠️ ATTENTION : Toutes les données seront supprimées. Cette action est irréversible. Continuer ?'))return;
   if(!confirm('Dernière confirmation : supprimer TOUTES les données et Supabase ?'))return;
@@ -8029,6 +8208,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   const today=new Date().toISOString().split('T')[0];
   ['newRecetteDate','newDepenseDate','newFraisDate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today;});
   horloge();setInterval(horloge,1000);
+  initSidebarCollapse();
   chargerCommunes();
   // Init années select
   const a=new Date().getFullYear();
@@ -10110,6 +10290,21 @@ function renderHistoriqueDevis(){
     </div>`).join('');
 }
 
+function creerContratDepuisDevisForm(){
+  const clientId=document.getElementById('devisClient')?.value||'';
+  if(!clientId){toast('Sélectionnez un client','warning');return;}
+  const numDev=document.getElementById('devisNumero')?.value||'';
+  const d=numDev?devisData.find(x=>x.numero===numDev&&x.clientId===clientId):null;
+  if(d){ creerContratDepuisDevis(d.id); return; }
+  // Devis non sauvegardé : aller sur l'onglet contrat avec le client pré-rempli
+  changerTabNom('contrats');
+  setTimeout(()=>{
+    const cEl=document.getElementById('contratClient')||document.getElementById('newContratClient');
+    if(cEl) cEl.value=clientId;
+    toast('Client pré-rempli — complétez le contrat','info');
+  },400);
+}
+
 function creerContratDepuisDevis(devisId){
   const d=devisData.find(x=>x.id===devisId); if(!d) return;
   changerTabNom('contrats');
@@ -10185,13 +10380,21 @@ function convertirDevisIdEnFacture(id){
 function convertirDevisEnFacture(){
   const clientId=document.getElementById('devisClient')?.value||'';
   if(!clientId){toast('Sélectionnez un client','warning');return;}
+  // Chercher le devis sauvegardé par son numéro
+  const numDev=document.getElementById('devisNumero')?.value||'';
+  const d=numDev?devisData.find(x=>x.numero===numDev&&x.clientId===clientId):null;
+  if(d){ convertirDevisIdEnFacture(d.id); return; }
+  // Fallback : devis non encore sauvegardé — conversion directe depuis le formulaire
   changerTabNom('factures');
   setTimeout(()=>{
     const cEl=document.getElementById('facClient'); if(cEl){cEl.value=clientId;remplirInfosFacture();}
-    const obj=document.getElementById('devisObjet')?.value||'';
-    document.getElementById('facPeriode').value=obj;
-    lignesFactureData=JSON.parse(JSON.stringify(lignesDevisData));
+    document.getElementById('facPeriode').value=document.getElementById('devisObjet')?.value||'';
+    lignesFactureData=JSON.parse(JSON.stringify(lignesDevisData||[]));
     renderLignesFacture(); calculerTotauxFacture();
+    // Mettre à jour le workflow client
+    const c=clientsData.find(x=>x.id===clientId);
+    if(c) c.workflowStatut='client_actif';
+    sauvegarderTout(true); chargerClients();
     toast('Devis converti en facture ✓','success');
   }, 400);
 }
@@ -13857,6 +14060,8 @@ function sauvegarderAirbnb(){
   const duree = c.heures||2;
   const note = document.getElementById('airbnbNote').value.trim();
   const intervenant = document.getElementById('airbnbIntervenant').value;
+  // Sécurité : vider les jours récurrents du client Airbnb pour éviter la duplication
+  if(c.jours && c.jours.length){ c.jours = []; }
   deplacementsData.push({
     id: 'airbnb_'+Date.now(),
     clientId, dateOrigine: null, heureOrigine: null,
