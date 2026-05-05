@@ -67,15 +67,36 @@ body{font-family:'DM Sans',sans-serif;background:#111827;color:var(--text);displ
 .main{transition:margin-left .25s cubic-bezier(.4,0,.2,1);}
 /* MAIN */
 .main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#0f172a 100%);min-height:100vh;overflow-x:hidden;min-width:0;}
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;background:rgba(10,20,45,.8);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:100;min-width:0;overflow:hidden;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;background:rgba(8,16,40,.75);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:100;min-width:0;overflow:hidden;box-shadow:0 1px 20px rgba(0,0,0,.2);}
 .topbar-title{font-size:15px;font-weight:600;color:#e8f0ff;white-space:nowrap;}
 .topbar-right{display:flex;align-items:center;gap:6px;flex-shrink:0;}
 .page-content{padding:18px 20px;flex:1;min-width:0;overflow-x:hidden;}
 /* CARDS */
-.card{background:rgba(255,255,255,.97);border-radius:var(--radius);padding:18px;margin-bottom:16px;box-shadow:var(--shadow);border:1px solid rgba(255,255,255,.2);}
+.card{background:#fff;border-radius:var(--radius);padding:18px;margin-bottom:16px;box-shadow:0 2px 16px rgba(0,0,0,.08),0 1px 3px rgba(0,0,0,.06);border:1px solid rgba(0,0,0,.06);position:relative;overflow:hidden;transition:box-shadow .2s,transform .2s;}
+.card:hover{box-shadow:0 6px 24px rgba(0,0,0,.12),0 2px 6px rgba(0,0,0,.08);}
+/* Liseré coloré en haut de chaque card */
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--ca,var(--accent)),transparent 80%);border-radius:var(--radius) var(--radius) 0 0;}
+/* Couleurs accent par section */
+#tab-clients .card{--ca:#4a7cf7;}
+#tab-tournees .card{--ca:#7c6cf0;}
+#tab-devis .card{--ca:#4a7cf7;}
+#tab-contrats .card{--ca:#7c6cf0;}
+#tab-factures .card{--ca:#0891b2;}
+#tab-salaries .card{--ca:#7c6cf0;}
+#tab-finances .card{--ca:#12b87a;}
+#tab-frais .card{--ca:#f0991f;}
+#tab-tva .card{--ca:#e64545;}
+#tab-resultat .card{--ca:#12b87a;}
+#tab-stock .card{--ca:#f0991f;}
+#tab-fournisseurs .card{--ca:#f0991f;}
+#tab-attestations .card{--ca:#0891b2;}
+#tab-parametres .card{--ca:#8fa3c0;}
+#tab-paiements .card{--ca:#12b87a;}
+#tab-exports .card{--ca:#7c6cf0;}
+#tab-tarifshoraires .card{--ca:#4a7cf7;}
 .card-header{display:flex;align-items:center;gap:9px;padding-bottom:13px;margin-bottom:15px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
-.card-header h3{font-size:14px;font-weight:600;flex:1;color:var(--text);}
-.card-icon{width:30px;height:30px;border-radius:8px;background:var(--accent-l);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:12px;flex-shrink:0;}
+.card-header h3{font-size:14px;font-weight:700;flex:1;color:var(--text);}
+.card-icon{width:32px;height:32px;border-radius:9px;background:var(--accent-l);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:13px;flex-shrink:0;box-shadow:0 2px 6px rgba(74,124,247,.15);}
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .18s;font-family:'DM Sans',sans-serif;}
 .btn:active{transform:scale(.97);}
@@ -95,11 +116,17 @@ body{font-family:'DM Sans',sans-serif;background:#111827;color:var(--text);displ
 .btn-sm{padding:6px 12px;font-size:12px;border-radius:7px;}
 /* STATS */
 .stats-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:11px;margin-bottom:18px;}
-.stat-card{background:rgba(255,255,255,.97);border-radius:var(--radius);padding:14px;cursor:pointer;transition:all .2s;box-shadow:var(--shadow);border:1px solid rgba(255,255,255,.2);}
-.stat-card:hover{transform:translateY(-3px);}
-.stat-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;margin-bottom:9px;}
-.stat-label{font-size:10px;color:var(--text3);margin-bottom:3px;font-weight:600;letter-spacing:.3px;}
-.stat-number{font-size:18px;font-weight:700;font-family:'DM Mono',monospace;}
+.stat-card{background:#fff;border-radius:var(--radius);padding:14px 14px 12px;cursor:pointer;transition:all .2s cubic-bezier(.34,1.2,.64,1);box-shadow:0 2px 12px rgba(0,0,0,.07);border:1px solid rgba(0,0,0,.06);position:relative;overflow:hidden;}
+.stat-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--sc,var(--accent)),transparent);opacity:.6;}
+.stat-card:hover{transform:translateY(-4px) scale(1.02);box-shadow:0 8px 24px rgba(0,0,0,.14);}
+.stat-card:active{transform:translateY(-1px);}
+.stat-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;margin-bottom:9px;box-shadow:0 2px 8px rgba(0,0,0,.08);}
+.stat-label{font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;}
+.stat-number{font-size:19px;font-weight:800;font-family:'DM Mono',monospace;letter-spacing:-.5px;}
+/* Transition fondu entre onglets */
+.tab-pane{display:none;animation:fadeTab .18s ease;}
+.tab-pane.active{display:block;}
+@keyframes fadeTab{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 /* FORMS */
 .form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:11px;margin-bottom:14px;}
 .form-group{display:flex;flex-direction:column;gap:4px;}
@@ -788,13 +815,13 @@ tr{transition:background .12s;}
   <div class="page-content">
     <!-- STATS -->
     <div class="stats-grid" id="statsGrid">
-      <div class="stat-card" onclick="changerTabNom('clients')"><div class="stat-icon" style="background:var(--accent-l);color:var(--accent);"><i class="fas fa-users"></i></div><div class="stat-label">Clients actifs</div><div class="stat-number" id="statsClients" style="color:var(--accent);">0</div></div>
-      <div class="stat-card" onclick="changerTabNom('finances')"><div class="stat-icon" style="background:var(--green-l);color:var(--green);"><i class="fas fa-euro-sign"></i></div><div class="stat-label">CA mensuel</div><div class="stat-number" id="statsCAMensuel" style="color:var(--green);">0 €</div></div>
-      <div class="stat-card" onclick="changerTabNom('salaries')"><div class="stat-icon" style="background:var(--purple-l);color:var(--purple);"><i class="fas fa-id-badge"></i></div><div class="stat-label">Salariés</div><div class="stat-number" id="statsSalaries" style="color:var(--purple);">0</div></div>
-      <div class="stat-card" onclick="changerTabNom('paiements')"><div class="stat-icon" style="background:var(--amber-l);color:var(--amber);"><i class="fas fa-money-bill-wave"></i></div><div class="stat-label">Masse salariale</div><div class="stat-number" id="statsMasseSalariale" style="color:var(--amber);">0 €</div></div>
-      <div class="stat-card" onclick="changerTabNom('factures')"><div class="stat-icon" style="background:var(--teal-l);color:var(--teal);"><i class="fas fa-file-invoice"></i></div><div class="stat-label">Factures impayées</div><div class="stat-number" id="statsImpayees" style="color:var(--teal);">0</div></div>
-      <div class="stat-card" onclick="changerTabNom('tva')"><div class="stat-icon" style="background:var(--red-l);color:var(--red);"><i class="fas fa-percentage"></i></div><div class="stat-label">TVA à déclarer</div><div class="stat-number" id="statsTVA" style="color:var(--red);">0 €</div></div>
-      <div class="stat-card" onclick="changerTabNom('stock')"><div class="stat-icon" style="background:var(--amber-l);color:var(--amber);"><i class="fas fa-boxes"></i></div><div class="stat-label">Alertes stock</div><div class="stat-number" id="statsStock" style="color:var(--amber);">0</div></div>
+      <div class="stat-card" style="--sc:var(--accent);" onclick="changerTabNom('clients')"><div class="stat-icon" style="background:var(--accent-l);color:var(--accent);"><i class="fas fa-users"></i></div><div class="stat-label">Clients actifs</div><div class="stat-number" id="statsClients" style="color:var(--accent);">0</div></div>
+      <div class="stat-card" style="--sc:var(--green);" onclick="changerTabNom('finances')"><div class="stat-icon" style="background:var(--green-l);color:var(--green);"><i class="fas fa-euro-sign"></i></div><div class="stat-label">CA mensuel</div><div class="stat-number" id="statsCAMensuel" style="color:var(--green);">0 €</div></div>
+      <div class="stat-card" style="--sc:var(--purple);" onclick="changerTabNom('salaries')"><div class="stat-icon" style="background:var(--purple-l);color:var(--purple);"><i class="fas fa-id-badge"></i></div><div class="stat-label">Salariés</div><div class="stat-number" id="statsSalaries" style="color:var(--purple);">0</div></div>
+      <div class="stat-card" style="--sc:var(--amber);" onclick="changerTabNom('paiements')"><div class="stat-icon" style="background:var(--amber-l);color:var(--amber);"><i class="fas fa-money-bill-wave"></i></div><div class="stat-label">Masse salariale</div><div class="stat-number" id="statsMasseSalariale" style="color:var(--amber);">0 €</div></div>
+      <div class="stat-card" style="--sc:var(--teal);" onclick="changerTabNom('factures')"><div class="stat-icon" style="background:var(--teal-l);color:var(--teal);"><i class="fas fa-file-invoice"></i></div><div class="stat-label">Factures impayées</div><div class="stat-number" id="statsImpayees" style="color:var(--teal);">0</div></div>
+      <div class="stat-card" style="--sc:var(--red);" onclick="changerTabNom('tva')"><div class="stat-icon" style="background:var(--red-l);color:var(--red);"><i class="fas fa-percentage"></i></div><div class="stat-label">TVA à déclarer</div><div class="stat-number" id="statsTVA" style="color:var(--red);">0 €</div></div>
+      <div class="stat-card" style="--sc:var(--amber);" onclick="changerTabNom('stock')"><div class="stat-icon" style="background:var(--amber-l);color:var(--amber);"><i class="fas fa-boxes"></i></div><div class="stat-label">Alertes stock</div><div class="stat-number" id="statsStock" style="color:var(--amber);">0</div></div>
     </div>
 
     <!-- ═══ ACCUEIL ═══ -->
@@ -948,7 +975,7 @@ tr{transition:background .12s;}
             </div>
             <button class="btn btn-success btn-sm" onclick="ouvrirModalIntervention()"><i class="fas fa-plus"></i> Planifier</button>
             <button class="btn btn-sm" style="background:#f97316;color:#fff;font-weight:700;" onclick="ouvrirModalAirbnb()"><i class="fas fa-bolt"></i> Airbnb</button>
-            <button class="btn btn-primary btn-sm" onclick="exportPlanningMoisPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
+            <button class="btn btn-sm" style="background:#1d4ed8;color:#fff;font-weight:700;box-shadow:0 2px 8px rgba(29,78,216,.35);" onclick="exportPlanningMoisPDF()"><i class="fas fa-file-pdf"></i> Exporter PDF</button>
             <div id="filtresSalaries" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;"></div>
           </div>
         </div>
@@ -973,14 +1000,27 @@ tr{transition:background .12s;}
       <!-- Vue semaine détaillée -->
       <div class="card" style="margin-top:14px;">
         <div class="card-header"><div class="card-icon"><i class="fas fa-calendar-week"></i></div><h3>Vue semaine — tournées optimisées</h3></div>
-        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><div id="tourneeGrid" style="display:grid;grid-template-columns:repeat(5,minmax(160px,1fr));gap:11px;margin-top:4px;min-width:480px;"></div></div>
+        <div id="tourneeGrid" style="margin-top:4px;"></div>
       </div>
       <!-- Planning prévisionnel -->
       <div class="card" style="margin-top:14px;">
-        <div class="card-header">
+        <div class="card-header" style="flex-wrap:wrap;gap:8px;">
           <div class="card-icon" style="background:var(--purple-l);color:var(--purple);"><i class="fas fa-calendar-check"></i></div>
-          <h3>Planning prévisionnel — Confirmation &amp; Δ Heures</h3>
-          <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+          <h3>Planning prévisionnel</h3>
+          <!-- Toggle Jour / Mois -->
+          <div style="display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;">
+            <button id="btnPPJour" onclick="setPPVue('jour')" style="border:none;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;background:var(--accent);color:#fff;">📅 Jour</button>
+            <button id="btnPPMois" onclick="setPPVue('mois')" style="border:none;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:var(--text2);">📆 Mois</button>
+          </div>
+          <!-- Nav jour -->
+          <div id="ppNavJour" style="display:flex;align-items:center;gap:6px;">
+            <button class="btn btn-sm" style="background:var(--bg3);border:1.5px solid var(--border);color:var(--text2);font-weight:700;" onclick="navPPJour(-1)"><i class="fas fa-chevron-left"></i></button>
+            <span id="ppJourLabel" style="font-size:13px;font-weight:700;color:var(--accent);min-width:160px;text-align:center;"></span>
+            <button class="btn btn-sm" style="background:var(--bg3);border:1.5px solid var(--border);color:var(--text2);font-weight:700;" onclick="navPPJour(1)"><i class="fas fa-chevron-right"></i></button>
+            <button class="btn btn-sm" style="background:var(--accent-l);color:var(--accent);border:1.5px solid rgba(74,124,247,.3);" onclick="navPPJour(0)">Aujourd'hui</button>
+          </div>
+          <!-- Mois/Année (mode mois) -->
+          <div id="ppNavMois" style="display:none;align-items:center;gap:6px;">
             <select id="planPrevMoisSel" onchange="chargerPlanningPrevisionnel()" style="font-size:12px;padding:5px 9px;border:1px solid var(--border);border-radius:7px;background:var(--bg3);color:var(--text);">
               <option value="1">Janvier</option><option value="2">Février</option><option value="3">Mars</option>
               <option value="4">Avril</option><option value="5">Mai</option><option value="6">Juin</option>
@@ -988,20 +1028,18 @@ tr{transition:background .12s;}
               <option value="10">Octobre</option><option value="11">Novembre</option><option value="12">Décembre</option>
             </select>
             <select id="planPrevAnneeSel" onchange="chargerPlanningPrevisionnel()" style="font-size:12px;padding:5px 9px;border:1px solid var(--border);border-radius:7px;background:var(--bg3);color:var(--text);"></select>
+          </div>
+          <div style="margin-left:auto;">
             <button class="btn btn-success btn-sm" onclick="exporterPlanningPrevPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
           </div>
         </div>
-        <div style="background:var(--accent-l);border:1px solid var(--accent);border-radius:9px;padding:8px 13px;margin-bottom:12px;font-size:11px;color:var(--text2);">
-          <i class="fas fa-info-circle" style="color:var(--accent);"></i>
-          Confirmez les interventions, signalez les absences, saisissez les heures réelles.
-          <strong>Δ positif = heures supplémentaires</strong> · <strong>Δ négatif = heures manquantes</strong>.
-          Bouton <strong>→ Facture</strong> : injecte les heures confirmées directement dans la facture.
-        </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;font-size:11px;">
-          <span style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:var(--green);display:inline-block;"></span>Confirmé</span>
-          <span style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:var(--red);display:inline-block;"></span>Absent</span>
-          <span style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:var(--amber);display:inline-block;"></span>Partiel / À confirmer</span>
-          <span style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:var(--text3);display:inline-block;"></span>Prévu</span>
+        <!-- Légende compacte -->
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;font-size:11px;color:var(--text3);">
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--green);margin-right:4px;"></span>Confirmé</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--red);margin-right:4px;"></span>Absent</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--amber);margin-right:4px;"></span>Partiel</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--text3);margin-right:4px;"></span>Prévu</span>
+          <span style="margin-left:auto;color:var(--text3);font-size:10px;"><strong>Δ+</strong> = sup. · <strong>Δ-</strong> = manquant</span>
         </div>
         <div id="planningPrevContainer"></div>
         <div id="planningPrevDeltaRecap" style="margin-top:14px;"></div>
@@ -2714,24 +2752,42 @@ function _renderFiltresSalaries(){
   if(noms.length===0 && nomsSal.length>0){
     noms = nomsSal;
   }
-  var html = '<button id="btnFiltreTous" onclick="setFiltreCoGerant(\'\')" style="background:var(--accent);color:#fff;border:2px solid var(--accent);border-radius:7px;font-size:11px;padding:4px 12px;cursor:pointer;font-weight:700;"><i class="fas fa-users"></i> Tous</button>';
+  var html = '<button id="btnFiltreTous" onclick="setFiltreCoGerant(\'\')" style="background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:12px;padding:6px 14px;cursor:pointer;font-weight:700;box-shadow:0 2px 10px rgba(74,124,247,.4);"><i class="fas fa-users"></i> Tous</button>';
   noms.forEach(function(nom){
     var cl = _getCouleurSal(nom);
-    html += '<button onclick="setFiltreCoGerant(\''+nom+'\')" data-sal="'+nom+'" style="background:transparent;color:'+cl.color+';border:1px solid '+cl.color+';border-radius:7px;font-size:11px;padding:4px 10px;cursor:pointer;font-weight:600;"><i class="fas fa-user-tie"></i> '+nom+'</button>';
-    html += '<button onclick="exportPlanningSelSalariePDF(\''+nom+'\')" title="PDF planning '+nom+'" style="background:'+cl.color+';color:#fff;border:none;border-radius:0 0 0 0;font-size:11px;padding:4px 8px;cursor:pointer;border-left:1px solid rgba(255,255,255,.3);"><i class="fas fa-file-pdf"></i></button>';
-    html += '<button onclick="envoyerPlanningSalarieMail(\''+nom+'\')" title="Envoyer planning '+nom+' par email" style="background:var(--teal);color:#fff;border:none;border-radius:0 7px 7px 0;font-size:11px;padding:4px 8px;cursor:pointer;border-left:1px solid rgba(255,255,255,.3);"><i class="fas fa-envelope"></i></button>';
+    var bgLight = cl.bg.replace('.18',',.15');
+    html += '<div style="display:inline-flex;align-items:center;border-radius:9px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.15);">';
+    html += '<button onclick="setFiltreCoGerant(\''+nom+'\')" data-sal="'+nom+'" style="background:'+cl.color+';color:#fff;border:none;font-size:12px;padding:6px 12px;cursor:pointer;font-weight:600;"><i class="fas fa-user-tie"></i> '+nom+'</button>';
+    html += '<button onclick="exportPlanningSelSalariePDF(\''+nom+'\')" title="PDF planning '+nom+'" style="background:rgba(0,0,0,.25);color:#fff;border:none;border-left:1px solid rgba(255,255,255,.2);font-size:12px;padding:6px 10px;cursor:pointer;font-weight:700;" onmouseover="this.style.background=\'rgba(0,0,0,.45)\'" onmouseout="this.style.background=\'rgba(0,0,0,.25)\'"><i class="fas fa-file-pdf"></i> PDF</button>';
+    html += '<button onclick="envoyerPlanningSalarieMail(\''+nom+'\')" title="Envoyer planning par email" style="background:rgba(0,0,0,.2);color:#fff;border:none;border-left:1px solid rgba(255,255,255,.2);font-size:12px;padding:6px 10px;cursor:pointer;font-weight:700;" onmouseover="this.style.background=\'rgba(0,0,0,.4)\'" onmouseout="this.style.background=\'rgba(0,0,0,.2)\'"><i class="fas fa-envelope"></i> Mail</button>';
+    html += '</div>';
   });
   wrap.innerHTML = html;
   _updateFiltresBtns();
 }
 function _updateFiltresBtns(){
   var wrap = document.getElementById('filtresSalaries'); if(!wrap) return;
-  wrap.querySelectorAll('button').forEach(function(btn){
+  wrap.querySelectorAll('button[data-sal]').forEach(function(btn){
     var sal = btn.dataset.sal||'';
-    if(sal === _filtreCoGerant){ var cl=_getCouleurSal(sal); btn.style.background=cl.bg; btn.style.fontWeight='800'; }
-    else if(!sal && _filtreCoGerant===''){ btn.style.background='var(--accent)'; btn.style.fontWeight='700'; }
-    else { btn.style.background='transparent'; btn.style.fontWeight='600'; }
+    var cl = _getCouleurSal(sal);
+    if(sal === _filtreCoGerant){
+      btn.style.background = cl.color;
+      btn.style.outline = '3px solid rgba(255,255,255,.6)';
+      btn.style.outlineOffset = '-3px';
+      btn.style.fontWeight = '800';
+    } else {
+      btn.style.background = cl.color;
+      btn.style.outline = 'none';
+      btn.style.fontWeight = '600';
+      btn.style.opacity = '0.75';
+    }
   });
+  var btnTous = document.getElementById('btnFiltreTous');
+  if(btnTous){
+    btnTous.style.opacity = _filtreCoGerant === '' ? '1' : '0.65';
+    btnTous.style.outline = _filtreCoGerant === '' ? '3px solid rgba(255,255,255,.6)' : 'none';
+    btnTous.style.outlineOffset = '-3px';
+  }
 }
 var _semaineOffset = 0;
 let pinTarget    = 'gerant'; // 'gerant' | 'employe' | 'switch'
@@ -4661,6 +4717,26 @@ function chargerSelectClients(){
 // ══════════════════════════════════════════════════════════
 // TOURNÉES
 // ══════════════════════════════════════════════════════════
+function _toggleTG(uid){
+  const body=document.getElementById(uid);
+  const icon=document.getElementById(uid+'-icon');
+  if(!body) return;
+  const open=body.style.display!=='none';
+  body.style.display=open?'none':'block';
+  if(icon) icon.style.transform=open?'rotate(-90deg)':'rotate(0deg)';
+}
+
+// Date du jour de la semaine courante (utilisée pour filtrer _getJoursClientDate)
+function _dateKeyJour2(jourNom){
+  const JOURS={lundi:0,mardi:1,mercredi:2,jeudi:3,vendredi:4,samedi:5,dimanche:6};
+  const now=new Date(); now.setHours(0,0,0,0);
+  const dow=now.getDay(); // 0=dim
+  const lundiOffset=dow===0?-6:1-dow;
+  const lundi=new Date(now); lundi.setDate(now.getDate()+lundiOffset);
+  const d=new Date(lundi); d.setDate(lundi.getDate()+(JOURS[jourNom]||0));
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
 function chargerTournees(){
   _renderFiltresSalaries();
   setTimeout(_renderFiltresSalaries, 2000); // Re-render après sync Supabase
@@ -4671,16 +4747,53 @@ function chargerTournees(){
   const prix=parseFloat(document.getElementById('prixCarburant').value)||1.95;
   const conso=parseFloat(document.getElementById('consommation').value)||6.5;
   let totalDist=0,totalCout=0;
-  document.getElementById('tourneeGrid').innerHTML=jours.map(jour=>{
-    const cj=clientsData.filter(c=>c.jours&&c.jours.includes(jour)&&c.commune);
-    const toMin=t=>{const s=String(t||'00:00');const p=s.includes(':')?s.split(':'):['0','0'];return (parseInt(p[0])||0)*60+(parseInt(p[1])||0);};
-    const avecDist=cj.map(c=>({...c,dd:Math.abs((communesAube.find(x=>x.nom===c.commune)?.distance||0)-depotDist)})).sort((a,b)=>toMin(a.heureDebut)-toMin(b.heureDebut));
+  const todayJourNom = new Date().toLocaleDateString('fr-FR',{weekday:'long'}).toLowerCase();
+  const joursFr = {lundi:'Lundi',mardi:'Mardi',mercredi:'Mercredi',jeudi:'Jeudi',vendredi:'Vendredi',samedi:'Samedi',dimanche:'Dimanche'};
+
+  document.getElementById('tourneeGrid').innerHTML = jours.map(jour=>{
+    const dateKey = _dateKeyJour2(jour);
+    const cj = clientsData.filter(c => _getJoursClientDate(c, dateKey).includes(jour) && c.commune);
+    const toMin = t=>{const s=String(t||'00:00');const p=s.includes(':')?s.split(':'):['0','0'];return (parseInt(p[0])||0)*60+(parseInt(p[1])||0);};
+    const avecDist = cj.map(c=>({...c,dd:Math.abs((communesAube.find(x=>x.nom===c.commune)?.distance||0)-depotDist)})).sort((a,b)=>toMin(a.heureDebut)-toMin(b.heureDebut));
     let dist=0,last=depotDist;
     avecDist.forEach(c=>{const d=communesAube.find(x=>x.nom===c.commune)?.distance||0;dist+=Math.abs(d-last);last=d;});
-    if(avecDist.length)dist+=Math.abs(depotDist-last);
+    if(avecDist.length) dist+=Math.abs(depotDist-last);
     const cout=((dist*conso)/100*prix).toFixed(2);
-    totalDist+=dist;totalCout+=parseFloat(cout);
-    return `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:11px;padding:11px;"><h4 style="font-size:12px;font-weight:700;color:var(--accent);text-transform:capitalize;margin-bottom:7px;">${jour}</h4>${avecDist.length?avecDist.map(c=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px dashed var(--border);font-size:11px;"><span>${c.heureDebut?`<span style="font-weight:700;color:var(--accent);margin-right:5px;">${c.heureDebut}</span>`:''}${c.nom}</span><span class="badge badge-blue">${c.dd}km</span></div>`).join(''):'<p style="color:var(--text3);font-size:10px;text-align:center;padding:5px;">Aucun client</p>'}<div style="margin-top:7px;padding-top:6px;border-top:1px solid var(--border);display:flex;justify-content:space-between;"><span class="badge badge-blue">${Math.round(dist)}km</span><span class="badge badge-green">${cout}€</span></div></div>`;
+    totalDist+=dist; totalCout+=parseFloat(cout);
+
+    const isToday = jour === todayJourNom;
+    const isEmpty = avecDist.length === 0;
+    const uid = 'tg-'+jour;
+
+    const headerBg = isToday ? 'background:rgba(74,124,247,.08);border-color:rgba(74,124,247,.3);' : isEmpty ? 'opacity:.55;' : '';
+    const dayLabel = `<span style="font-weight:700;font-size:13px;text-transform:capitalize;color:${isToday?'var(--accent)':'var(--text)'};">${joursFr[jour]||jour}${isToday?' <span style="font-size:9px;background:var(--accent);color:#fff;border-radius:10px;padding:1px 7px;font-weight:700;vertical-align:middle;">AUJOURD\'HUI</span>':''}</span>`;
+    const summary = `<span style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+      <span style="font-size:11px;color:var(--text3);">${avecDist.length} client${avecDist.length>1?'s':''}</span>
+      ${avecDist.length?`<span class="badge badge-blue">${Math.round(dist)}km</span><span class="badge badge-green">${cout}€</span>`:'<span style="font-size:11px;color:var(--text3);">—</span>'}
+    </span>`;
+
+    const rows = avecDist.length ? avecDist.map((c,i)=>{
+      const isLast = i===avecDist.length-1;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;${isLast?'':'border-bottom:1px dashed var(--border);'}">
+        <div style="width:50px;text-align:right;font-weight:700;color:var(--accent);font-size:12px;font-family:'DM Mono',monospace;flex-shrink:0;">${c.heureDebut||'—'}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.nom}</div>
+          <div style="font-size:10px;color:var(--text3);">${c.commune||'—'} · ${c.heures||'?'}h</div>
+        </div>
+        <span class="badge badge-blue" style="flex-shrink:0;">${c.dd}km</span>
+      </div>`;
+    }).join('') : `<div style="text-align:center;padding:16px 0;color:var(--text3);font-size:12px;"><i class="fas fa-moon" style="margin-right:6px;opacity:.4;"></i>Jour libre</div>`;
+
+    return `<div style="border:1px solid var(--border);border-radius:11px;overflow:hidden;margin-bottom:6px;${isToday?'border-color:rgba(74,124,247,.35);box-shadow:0 2px 12px rgba(74,124,247,.1);':''}">
+      <div onclick="_toggleTG('${uid}')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;${headerBg}user-select:none;" onmouseover="this.style.background='rgba(0,0,0,.02)'" onmouseout="this.style.background='${isToday?'rgba(74,124,247,.08)':'transparent'}'">
+        <i id="${uid}-icon" class="fas fa-chevron-down" style="color:var(--text3);font-size:11px;transition:transform .2s;${isToday?'':'transform:rotate(-90deg);'}"></i>
+        ${dayLabel}
+        ${summary}
+      </div>
+      <div id="${uid}" style="display:${isToday?'block':'none'};padding:0 14px 10px;">
+        ${rows}
+      </div>
+    </div>`;
   }).join('');
   const s=document.getElementById('statsTournees');if(s)s.innerHTML=`<span>Distance totale semaine : <strong>${Math.round(totalDist)} km</strong></span><span>Coût carburant estimé : <strong>${totalCout.toFixed(2)} €</strong></span><button class="btn btn-warning btn-sm" onclick="injecterTourneesEnFrais()" title="Envoyer le coût carburant en notes de frais et dépenses"><i class="fas fa-gas-pump"></i> Injecter en frais</button>`;
   renderPlanningMois('planningMoisCalendar', planningMoisOffset);
@@ -10820,6 +10933,102 @@ function initPlanPrevSelectors(){
   }
 }
 
+// ── Vue Jour : rendu simplifié pour un seul jour ─────────
+function _chargerPlanningPrevJour(cont, deltaRecap, jourKey, jourNomJ, mois, annee){
+  var joursNoms=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+  var html='';
+  var totalPrev=0, totalReal=0;
+
+  // Clients intervenant ce jour
+  var clientsJour = clientsData.filter(function(c){
+    if(_getJoursClientDate(c,jourKey).includes(jourNomJ)) return true;
+    return deplacementsData.some(function(d){ return d.clientId===c.id && d.dateNouvelle===jourKey; });
+  });
+
+  if(!clientsJour.length){
+    cont.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text3);">'
+      +'<i class="fas fa-calendar-check" style="font-size:32px;margin-bottom:12px;opacity:.3;"></i>'
+      +'<div style="font-size:14px;font-weight:600;margin-bottom:6px;">Aucune intervention ce jour</div>'
+      +'<div style="font-size:12px;">Naviguez avec ← → ou passez en vue Mois</div></div>';
+    if(deltaRecap) deltaRecap.innerHTML='';
+    return;
+  }
+
+  clientsJour.forEach(function(c){
+    if(!planningPrevData[c.id]) planningPrevData[c.id]={};
+    var hPrev = parseFloat(c.heures)||0;
+    var entry = planningPrevData[c.id][jourKey];
+    if(!entry){ entry={statut:'prevu',heuresReelles:hPrev,note:''}; planningPrevData[c.id][jourKey]=entry; }
+    var hReal = entry.statut==='absent'?0:(parseFloat(entry.heuresReelles)||hPrev);
+    totalPrev+=hPrev;
+    if(entry.statut==='confirme'||entry.statut==='partiel') totalReal+=hReal;
+    var delta=hReal-hPrev;
+    var deltaStr=delta===0?'±0h':(delta>0?'+'+delta.toFixed(2)+'h':delta.toFixed(2)+'h');
+    var dcol=delta>0?'var(--green)':delta<0?'var(--red)':'var(--text3)';
+    var statOpts=['prevu','prevu_passe','confirme','partiel','absent'].map(function(s){
+      return '<option value="'+s+'"'+(entry.statut===s?' selected':'')+'>'+{prevu:'⧖ Prévu',prevu_passe:'? À confirmer',confirme:'✓ Confirmé',partiel:'~ Partiel',absent:'✗ Absent'}[s]+'</option>';
+    }).join('');
+    var bgCard=entry.statut==='confirme'?'rgba(18,184,122,.04)':entry.statut==='absent'?'rgba(230,69,69,.04)':'';
+    html+='<div style="'+bgCard+'border:1px solid var(--border);border-radius:11px;padding:12px 14px;margin-bottom:8px;display:grid;grid-template-columns:1fr 1fr 70px 70px 60px 1fr;gap:8px;align-items:center;">'
+      +'<div><div style="font-weight:700;font-size:13px;">'+c.nom+'</div>'
+      +'<div style="font-size:10px;color:var(--text3);">'+(c.commune||'—')+(c.heureDebut?' · <strong style="color:var(--accent);">'+c.heureDebut+'</strong>':'')+'</div></div>'
+      +'<select class="pp-statut" data-cid="'+c.id+'" data-key="'+jourKey+'" style="font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:7px;background:#fff;font-weight:600;">'+statOpts+'</select>'
+      +'<div style="text-align:center;"><div style="font-size:10px;color:var(--text3);margin-bottom:2px;">Prévu</div><div style="font-weight:700;font-family:\'DM Mono\',monospace;">'+hPrev.toFixed(1)+'h</div></div>'
+      +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:2px;">Réel</div>'
+      +'<div style="display:flex;align-items:center;gap:3px;"><input class="pp-heures" data-cid="'+c.id+'" data-key="'+jourKey+'" type="number" value="'+hReal.toFixed(2)+'" step="0.25" min="0" style="width:55px;font-size:12px;padding:3px 5px;border:1px solid var(--border);border-radius:6px;text-align:center;font-family:\'DM Mono\',monospace;">h</div></div>'
+      +'<div style="text-align:center;font-weight:700;color:'+dcol+';font-family:\'DM Mono\',monospace;font-size:12px;">'+(entry.statut==='confirme'||entry.statut==='partiel'?deltaStr:'—')+'</div>'
+      +'<div><input class="pp-note" data-cid="'+c.id+'" data-key="'+jourKey+'" type="text" value="'+(entry.note||'')+'" placeholder="Note…" style="width:100%;font-size:11px;padding:4px 7px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);"></div>'
+      +'</div>';
+  });
+
+  cont.innerHTML=html||'<p style="color:var(--text3);text-align:center;padding:20px;">Aucun client ce jour.</p>';
+
+  // Récap bas de page
+  var dc=totalReal-totalPrev;
+  if(deltaRecap) deltaRecap.innerHTML='<div style="display:flex;gap:16px;background:var(--bg3);border-radius:9px;padding:10px 14px;font-size:12px;">'
+    +'<span>Prévu : <strong>'+totalPrev.toFixed(1)+'h</strong></span>'
+    +'<span>Réalisé : <strong style="color:var(--green);">'+totalReal.toFixed(1)+'h</strong></span>'
+    +'<span>Δ : <strong style="color:'+(dc>0?'var(--green)':dc<0?'var(--red)':'var(--text3)')+';">'+(dc===0?'±0h':(dc>0?'+':'')+dc.toFixed(1)+'h')+'</strong></span>'
+    +'</div>';
+
+  // Attacher listeners
+  setTimeout(function(){
+    var newCont=cont.cloneNode(true); cont.parentNode.replaceChild(newCont,cont);
+    newCont.addEventListener('change',_ppHandleChange);
+    newCont.addEventListener('input',_ppHandleChange);
+  },50);
+}
+
+// ── Planning prévisionnel : vue Jour / Mois ──────────────
+var _ppVue = 'jour';
+var _ppJourOffset = 0;
+
+function setPPVue(vue){
+  _ppVue = vue;
+  document.getElementById('btnPPJour').style.background = vue==='jour' ? 'var(--accent)' : 'transparent';
+  document.getElementById('btnPPJour').style.color = vue==='jour' ? '#fff' : 'var(--text2)';
+  document.getElementById('btnPPMois').style.background = vue==='mois' ? 'var(--accent)' : 'transparent';
+  document.getElementById('btnPPMois').style.color = vue==='mois' ? '#fff' : 'var(--text2)';
+  document.getElementById('ppNavJour').style.display = vue==='jour' ? 'flex' : 'none';
+  document.getElementById('ppNavMois').style.display = vue==='mois' ? 'flex' : 'none';
+  chargerPlanningPrevisionnel();
+}
+
+function navPPJour(dir){
+  if(dir===0) _ppJourOffset=0;
+  else _ppJourOffset+=dir;
+  chargerPlanningPrevisionnel();
+}
+
+function _ppToggleClient(cid){
+  const body = document.getElementById('pp-body-'+cid);
+  const icon = document.getElementById('pp-icon-'+cid);
+  if(!body) return;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : '';
+  if(icon) icon.style.transform = open ? 'rotate(-90deg)' : 'rotate(0deg)';
+}
+
 function chargerPlanningPrevisionnel(){
   initPlanPrevSelectors();
   var moisEl = document.getElementById('planPrevMoisSel');
@@ -10835,6 +11044,23 @@ function chargerPlanningPrevisionnel(){
     return;
   }
 
+  // ── Mode Jour ──
+  if(_ppVue === 'jour'){
+    var jourDate = new Date(); jourDate.setHours(0,0,0,0);
+    jourDate.setDate(jourDate.getDate() + _ppJourOffset);
+    var jourKey = jourDate.getFullYear()+'-'+String(jourDate.getMonth()+1).padStart(2,'0')+'-'+String(jourDate.getDate()).padStart(2,'0');
+    var jourNomJ = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'][jourDate.getDay()];
+    var jourLabel = jourDate.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+    jourLabel = jourLabel.charAt(0).toUpperCase()+jourLabel.slice(1);
+    var lbl = document.getElementById('ppJourLabel');
+    if(lbl) lbl.textContent = jourLabel;
+    // Mettre à jour mois/annee pour compatibilité
+    mois = jourDate.getMonth()+1; annee = jourDate.getFullYear();
+    _chargerPlanningPrevJour(cont, deltaRecap, jourKey, jourNomJ, mois, annee);
+    return;
+  }
+
+  // ── Mode Mois : init selectors ──
   var joursNoms = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
   var lastDay = new Date(annee, mois, 0).getDate();
   var today = new Date(); today.setHours(0,0,0,0);
@@ -10981,14 +11207,17 @@ function chargerPlanningPrevisionnel(){
     var dcStr = dC === 0 ? '±0h' : (dC > 0 ? '+'+dC.toFixed(2)+'h' : dC.toFixed(2)+'h');
     var dcColor = dC > 0 ? 'var(--green)' : dC < 0 ? 'var(--red)' : 'var(--text3)';
 
-    html += '<div style="margin-bottom:14px;border:1px solid var(--border);border-radius:11px;overflow:hidden;">'
-      + '<div style="background:var(--bg3);padding:9px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);flex-wrap:wrap;">'
+    var hasToday = sessions.some(function(s){ return s.key === new Date().toISOString().split('T')[0]; });
+    html += '<div style="margin-bottom:10px;border:1px solid var(--border);border-radius:11px;overflow:hidden;">'
+      + '<div style="background:var(--bg3);padding:8px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);flex-wrap:wrap;cursor:pointer;" onclick="_ppToggleClient(\''+client.id+'\')">'
+      + '<i id="pp-icon-'+client.id+'" class="fas fa-chevron-down" style="color:var(--text3);font-size:11px;transition:transform .2s;'+(hasToday?'':'transform:rotate(-90deg);')+'"></i>'
       + '<span style="font-weight:700;font-size:13px;">'+client.nom+'</span>'
       + '<span class="badge badge-blue">'+(client.commune||'—')+'</span>'
-      + '<span style="font-size:11px;color:var(--text3);">'+hPrev+'h/visite · '+(client.heureDebut?'<strong style="color:var(--accent);">'+client.heureDebut+'</strong> · ':'')+client.jours.join(', ')+'</span>'
+      + '<span style="font-size:11px;color:var(--text3);">'+(client.heureDebut?'<strong style="color:var(--accent);">'+client.heureDebut+'</strong> · ':'')+client.jours.join(', ')+'</span>'
       + '<span style="margin-left:auto;font-size:11px;">Prévu:<strong> '+clientPrev.toFixed(1)+'h</strong> · Réalisé:<strong style="color:var(--green);"> '+clientReal.toFixed(1)+'h</strong> · Δ:<strong style="color:'+dcColor+';"> '+dcStr+'</strong></span>'
-      + '<button class="btn btn-primary btn-sm pp-inject" data-cid="'+client.id+'" data-mois="'+mois+'" data-annee="'+annee+'" title="Injecter dans facture"><i class="fas fa-file-invoice"></i> → Facture</button>'
+      + '<button class="btn btn-primary btn-sm pp-inject" data-cid="'+client.id+'" data-mois="'+mois+'" data-annee="'+annee+'" title="Injecter dans facture" onclick="event.stopPropagation()"><i class="fas fa-file-invoice"></i> → Facture</button>'
       + '</div>'
+      + '<div id="pp-body-'+client.id+'" style="display:'+(hasToday?'':'none')+';">'
       + '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">'
       + '<thead><tr style="background:var(--bg);">'
       + '<th style="padding:5px 8px;font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;">Date</th>'
@@ -10997,7 +11226,7 @@ function chargerPlanningPrevisionnel(){
       + '<th style="padding:5px 8px;font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;text-align:center;">H réelles</th>'
       + '<th style="padding:5px 8px;font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;text-align:center;">Δ</th>'
       + '<th style="padding:5px 8px;font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;">Note</th>'
-      + '</tr></thead><tbody>'+rowsHTML+'</tbody></table></div></div>';
+      + '</tr></thead><tbody>'+rowsHTML+'</tbody></table></div></div></div>';
   });
 
   // ── Section interventions à l'acte ──────────────────────────────
