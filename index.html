@@ -3665,7 +3665,14 @@ function renderVueSemaine(offset){
       }
       return true;
     });
-    const clientsDepS = _filtreCoGerant ? [] : deplacementsData.filter(d=>d.dateNouvelle===dateKey).map(d=>{const c=clientsData.find(x=>x.id===d.clientId);return c?{...c,heureDebut:d.heureNouvelle,_deplacement:d}:null;}).filter(Boolean);
+    const clientsDepS = deplacementsData.filter(d=>d.dateNouvelle===dateKey).map(d=>{const c=clientsData.find(x=>x.id===d.clientId);return c?{...c,heureDebut:d.heureNouvelle,_deplacement:d,_airbnb:d.airbnb||false}:null;}).filter(dep=>{
+      if(!dep) return false;
+      if(!_filtreCoGerant) return true;
+      const d=dep._deplacement;
+      if(d.airbnb) return !d.intervenant||d.intervenant.toLowerCase()===_filtreCoGerant.toLowerCase();
+      if(d.dateOrigine){const jOrig=['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'][new Date(d.dateOrigine+'T12:00').getDay()];const interv=(dep.interventions||[]).find(i=>i.jour===jOrig);if(interv&&interv.intervenant) return interv.intervenant.toLowerCase()===_filtreCoGerant.toLowerCase();}
+      return false;
+    });
     const clients = [...clientsHabS,...clientsDepS].sort((a,b)=>toMinS(a.heureDebut)-toMinS(b.heureDebut));
     const totalH = clients.reduce((s,c) => s + (parseFloat(c.heures)||0), 0);
     const totalCA = clients.reduce((s,c) => s + (parseFloat(c.heures)||0) * (parseFloat(c.tarif)||0), 0);
@@ -3721,12 +3728,19 @@ function ouvrirDrawerJour(dateKey, jourNom){
     .map(c => ({...c, _deplaceVers: false}));
 
   // Clients déplacés VERS cette date
-  const clientsDep = _filtreCoGerant ? [] : deplacementsData
+  const clientsDep = deplacementsData
     .filter(d => d.dateNouvelle === dateKey)
     .map(d => {
       const c = clientsData.find(x => x.id === d.clientId);
-      return c ? {...c, heureDebut: d.heureNouvelle || c.heureDebut, _deplaceVers: true, _deplacement: d} : null;
-    }).filter(Boolean);
+      return c ? {...c, heureDebut: d.heureNouvelle || c.heureDebut, _deplaceVers: true, _deplacement: d, _airbnb: d.airbnb||false} : null;
+    }).filter(dep => {
+      if(!dep) return false;
+      if(!_filtreCoGerant) return true;
+      const d=dep._deplacement;
+      if(d.airbnb) return !d.intervenant||d.intervenant.toLowerCase()===_filtreCoGerant.toLowerCase();
+      if(d.dateOrigine){const jOrig=['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'][new Date(d.dateOrigine+'T12:00').getDay()];const interv=(dep.interventions||[]).find(i=>i.jour===jOrig);if(interv&&interv.intervenant) return interv.intervenant.toLowerCase()===_filtreCoGerant.toLowerCase();}
+      return false;
+    });
 
   const clients = [...clientsHab, ...clientsDep]
     .sort((a,b) => toMin(a.heureDebut) - toMin(b.heureDebut));
@@ -4068,7 +4082,14 @@ function renderPlanningMois(containerId, offset){
       }
       return true;
     });
-    const clientsDep = _filtreCoGerant ? [] : deplacementsData.filter(d=>d.dateNouvelle===dateKey).map(d=>{const c=clientsData.find(x=>x.id===d.clientId);return c?{...c,heureDebut:d.heureNouvelle,_deplacement:d,_airbnb:d.airbnb||false}:null;}).filter(Boolean);
+    const clientsDep = deplacementsData.filter(d=>d.dateNouvelle===dateKey).map(d=>{const c=clientsData.find(x=>x.id===d.clientId);return c?{...c,heureDebut:d.heureNouvelle,_deplacement:d,_airbnb:d.airbnb||false}:null;}).filter(dep=>{
+      if(!dep) return false;
+      if(!_filtreCoGerant) return true;
+      const d=dep._deplacement;
+      if(d.airbnb) return !d.intervenant||d.intervenant.toLowerCase()===_filtreCoGerant.toLowerCase();
+      if(d.dateOrigine){const jOrig=['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'][new Date(d.dateOrigine+'T12:00').getDay()];const interv=(dep.interventions||[]).find(i=>i.jour===jOrig);if(interv&&interv.intervenant) return interv.intervenant.toLowerCase()===_filtreCoGerant.toLowerCase();}
+      return false;
+    });
     const clients = [...clientsHab,...clientsDep].sort((a,b)=>toMinM(a.heureDebut)-toMinM(b.heureDebut));
     const bg = isToday ? 'rgba(74,124,247,.12)' : isWeekend ? 'rgba(0,0,0,.03)' : 'var(--bg3)';
     const border = isToday ? '2px solid var(--accent)' : '1px solid var(--border)';
@@ -8218,8 +8239,14 @@ function exportCalendrierEmpPDF(){
     doc.setFontSize(9);doc.setFont('helvetica','normal');
     doc.text(new Date().toLocaleDateString('fr-FR',{weekday:'long',year:'numeric',month:'long',day:'numeric'}),140,14);
     let y=30;
+    const _empNomPDF = localStorage.getItem('progestEmployeNom')||'';
     jours.forEach(jour=>{
-      const cj=clientsData.filter(c=>c.jours&&c.jours.includes(jour));
+      const cj=clientsData.filter(c=>{
+        if(!c.jours||!c.jours.includes(jour)) return false;
+        if(!_empNomPDF) return true;
+        const interv=(c.interventions||[]).find(i=>i.jour===jour);
+        return !interv||!interv.intervenant||interv.intervenant.toLowerCase()===_empNomPDF.toLowerCase();
+      });
       doc.setFillColor(240,245,255);doc.rect(14,y,182,7,'F');
       doc.setTextColor(26,46,74);doc.setFontSize(10);doc.setFont('helvetica','bold');
       doc.text(jour.charAt(0).toUpperCase()+jour.slice(1)+' ('+cj.length+' client'+(cj.length>1?'s':'')+')',16,y+5);
@@ -14222,6 +14249,21 @@ function exportPlanningSelSalariePDF(nomSal){
           activite:ACTIVITE_LABELS[interv.activite||'domicile']||interv.activite||'Domicile'
         });
       });
+      // Urgences Airbnb assignées à cet employé ce jour
+      deplacementsData.filter(function(d){
+        return d.airbnb && d.dateNouvelle===dateKey && d.intervenant && d.intervenant.toLowerCase()===nomSal.toLowerCase();
+      }).forEach(function(d){
+        const c=clientsData.find(function(x){return x.id===d.clientId;});
+        lignes.push({
+          date:new Date(cur),
+          dateKey,
+          client:(c?c.nom:'Airbnb')+' 🏠',
+          commune:c?c.commune||'—':'—',
+          heure:d.heureNouvelle||'—',
+          duree:(d.dureeEstimee||(c&&c.heures)||2)+'h',
+          activite:'Airbnb'
+        });
+      });
     }
     cur.setDate(cur.getDate()+1);
   }
@@ -14292,6 +14334,13 @@ async function envoyerPlanningSalarieMail(nomSal){
         const interv=(c.interventions||[]).find(i=>i.jour===jourNom);
         if(!interv||!interv.intervenant||interv.intervenant.toLowerCase()!==nomSal.toLowerCase()) return;
         lignes.push({date:new Date(cur),client:c.nom,commune:c.commune||'—',heure:c.heureDebut||'—',duree:parseFloat(c.heures)||0,activite:ACTIVITE_LABELS[interv.activite||'domicile']||'Domicile'});
+      });
+      // Urgences Airbnb assignées à cet employé ce jour
+      deplacementsData.filter(function(d){
+        return d.airbnb && d.dateNouvelle===dateKey && d.intervenant && d.intervenant.toLowerCase()===nomSal.toLowerCase();
+      }).forEach(function(d){
+        const c=clientsData.find(function(x){return x.id===d.clientId;});
+        lignes.push({date:new Date(cur),client:(c?c.nom:'Airbnb')+' 🏠',commune:c?c.commune||'—':'—',heure:d.heureNouvelle||'—',duree:parseFloat(d.dureeEstimee||(c&&c.heures)||2),activite:'Airbnb'});
       });
     }
     cur.setDate(cur.getDate()+1);
