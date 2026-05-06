@@ -11304,18 +11304,24 @@ function chargerPlanningPrevisionnel(){
     });
 
     // Ignorer le client seulement s'il n'a ni jours réguliers ni déplacements vers ce mois
-    if((!client.jours || !client.jours.length) && !depVersMois.length) return;
+    var _aJoursReguliersMois = false;
+    for(var _td = 1; _td <= lastDay; _td++){
+      var _tdk = annee+'-'+String(mois).padStart(2,'0')+'-'+String(_td).padStart(2,'0');
+      if(_getJoursClientDate(client, _tdk).length){ _aJoursReguliersMois = true; break; }
+    }
+    if(!_aJoursReguliersMois && !depVersMois.length) return;
     if(!hPrev && !depVersMois.length) return;
 
     var sessions = [];
-    if(client.jours && client.jours.length) {
+    if(_aJoursReguliersMois) {
       for(var d = 1; d <= lastDay; d++){
         var dt = new Date(annee, mois-1, d);
         var jourNom = joursNoms[dt.getDay() === 0 ? 6 : dt.getDay()-1];
-        if(client.jours.indexOf(jourNom) !== -1){
-          var mm = String(mois).padStart(2,'0');
-          var dd = String(d).padStart(2,'0');
-          var sKey = annee+'-'+mm+'-'+dd;
+        var mm = String(mois).padStart(2,'0');
+        var dd = String(d).padStart(2,'0');
+        var sKey = annee+'-'+mm+'-'+dd;
+        // Utiliser _getJoursClientDate pour respecter joursChangement
+        if(_getJoursClientDate(client, sKey).indexOf(jourNom) !== -1){
           // Check if client was displaced FROM this date
           var depFrom = deplacementsData.find(function(dep){ return dep.clientId===client.id && dep.dateOrigine===sKey; });
           sessions.push({date: dt, key: sKey, jourNom: jourNom, deplacement: depFrom||null, deplace: !!depFrom});
