@@ -1830,7 +1830,7 @@ tr{transition:background .12s;}
           <div class="form-group" style="margin-bottom:10px;"><label>IBAN (pour paiements)</label><input type="text" id="paramIBAN" placeholder="FR76 0000 0000 0000 0000 0000 000" oninput="sauvegarderParametres()"></div>
           <div class="form-group" style="margin-bottom:10px;"><label>BIC / SWIFT</label><input type="text" id="paramBIC" placeholder="BNPAFRPP" oninput="sauvegarderParametres()"></div>
           <div class="form-group" style="margin-bottom:10px;"><label>Capital social (€)</label><input type="number" id="paramCapital" placeholder="1000" oninput="sauvegarderParametres()"></div>
-          <div class="form-group" style="margin-bottom:13px;"><label>Mention légale factures</label><textarea id="paramMentionLegale" rows="2" placeholder="TVA non applicable, art. 293 B du CGI" oninput="sauvegarderParametres()" style="resize:vertical;"></textarea></div>
+          <div class="form-group" style="margin-bottom:13px;"><label>Mention légale factures</label><textarea id="paramMentionLegale" rows="2" placeholder="Exonération de TVA — Art. 261 D 4° du CGI (services à la personne agréés)" oninput="sauvegarderParametres()" style="resize:vertical;"></textarea></div>
           <div style="background:var(--green-l);border:1px solid var(--green);border-radius:8px;padding:9px 12px;font-size:11px;color:var(--green);"><i class="fas fa-check-circle"></i> Les informations sont sauvegardées automatiquement</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:14px;">
@@ -6139,12 +6139,37 @@ function mettreAJourTypeOp(){
   }
 }
 function remplirLignesAuto(){
-  const id=document.getElementById('facClient').value;const c=clientsData.find(x=>x.id===id);if(!c){if(id)toast('Client introuvable','warning');return;}
+  const id=document.getElementById('facClient').value;
+  const c=clientsData.find(x=>x.id===id);if(!c){if(id)toast('Client introuvable','warning');return;}
   const periode=document.getElementById('facPeriode').value||'ce mois';
-  const hMois=Math.round((c.heures||0)*(c.frequence||1)*4.33*10)/10;
   lignesFactureData=[];
-  if(c.type==='Heure'&&hMois>0)lignesFactureData.push({desc:`Prestations nettoyage – ${periode}`,qte:hMois,unite:'heures',prixUnit:c.tarif||0});
-  else lignesFactureData.push({desc:`Prestation forfaitaire – ${periode}`,qte:1,unite:'forfait',prixUnit:c.totalMoisHT||0});
+
+  // Lire les interventions confirmées du planning pour le mois de la facture
+  const dateFacRaw=document.getElementById('facDate')?.value||'';
+  const periodeRef=dateFacRaw?new Date(dateFacRaw):new Date();
+  const clientPrev=(planningPrevData&&id)?(planningPrevData[id]||{}):{};
+  const interventions=Object.entries(clientPrev)
+    .filter(([,e])=>e&&(e.statut==='confirme'||e.statut==='partiel'))
+    .filter(([dk])=>{const d=new Date(dk+'T12:00:00');return d.getFullYear()===periodeRef.getFullYear()&&d.getMonth()===periodeRef.getMonth();});
+
+  if(interventions.length>0){
+    // Heures réelles confirmées
+    const hReelles=interventions.reduce((s,[,e])=>{
+      const h=parseFloat(e.heuresReelles);
+      return s+((!isNaN(h)&&h>0)?h:(c.heures||0));
+    },0);
+    const hTotal=Math.round(hReelles*10)/10;
+    const label=`Prestations nettoyage – ${periode} (${interventions.length} intervention${interventions.length>1?'s':''} confirmée${interventions.length>1?'s':''})`;
+    if(c.type==='Heure'&&hTotal>0) lignesFactureData.push({desc:label,qte:hTotal,unite:'heures',prixUnit:c.tarif||0});
+    else lignesFactureData.push({desc:`Prestation forfaitaire – ${periode}`,qte:1,unite:'forfait',prixUnit:c.totalMoisHT||0});
+    toast(`${interventions.length} intervention(s) confirmée(s) — ${hTotal}h réelles utilisées`,'success');
+  } else {
+    // Fallback : formule moyenne 4,33 semaines/mois
+    const hMois=Math.round((c.heures||0)*(c.frequence||1)*4.33*10)/10;
+    if(c.type==='Heure'&&hMois>0) lignesFactureData.push({desc:`Prestations nettoyage – ${periode}`,qte:hMois,unite:'heures',prixUnit:c.tarif||0});
+    else lignesFactureData.push({desc:`Prestation forfaitaire – ${periode}`,qte:1,unite:'forfait',prixUnit:c.totalMoisHT||0});
+    toast('Aucune intervention confirmée pour ce mois — formule moyenne utilisée (×4,33)','info');
+  }
   renderLignesFacture();calculerTotauxFacture();
 }
 function ajouterLigneFacture(){lignesFactureData.push({desc:'',qte:1,unite:'h',prixUnit:0});renderLignesFacture();calculerTotauxFacture();}
@@ -6484,7 +6509,7 @@ function genererFacturePDF(){
   // ── Données client ────────────────────────────────────────
   const c=clientsData.find(x=>x.id===clientId)||{};
   const clientNom=c.nom||'—';
-  const tauxTVA=parseFloat(gv('facTauxTVA')||'20');
+  const tauxTVA=parseFloat(gv('facTauxTVA')||'10');
   const numFac=gv('facNumero')||`FAC-${new Date().getFullYear()}-001`;
   const dateFacRaw=gv('facDate');
   const dateFac=dateFacRaw?new Date(dateFacRaw).toLocaleDateString('fr-FR'):new Date().toLocaleDateString('fr-FR');
@@ -6739,7 +6764,7 @@ function genererFacturePDF(){
   doc.setTextColor(120,140,170);doc.setFontSize(6.5);doc.setFont('helvetica','normal');
   const footerLines=[
     `${nomSoc}${formeSoc?' — '+formeSoc:''}${siretSoc?' · SIRET : '+siretSoc:''}`,
-    mentionLeg||'Pénalités de retard : 3× taux légal. Indemnité forfaitaire : 40 €.',
+    tauxTVA===0?(mentionLeg||'Exonération de TVA — Art. 261 D 4° du CGI (services à la personne agréés)'):(mentionLeg||'Pénalités de retard : 3× taux légal. Indemnité forfaitaire : 40 €.'),
     `En cas de litige, tribunal compétent : ${adresseSoc.split(/[\n,]/).pop()?.trim()||'ville compétente'}.`
   ];
   doc.text(footerLines,M,pageH-16,{lineHeightFactor:1.6});
@@ -6784,8 +6809,6 @@ function genererFacturePDF(){
     typeOp:typeOpVal, sirenClient:sirenClientVal,
     lignes:JSON.parse(JSON.stringify(lignesFactureData))
   });
-  // facNumeroAutoIncrement obsolète (ref facture basée sur client) — retiré
-  document.getElementById('facNumero').value=`FAC-${new Date().getFullYear()}-${String(facNumeroAutoIncrement).padStart(3,'0')}`;
   renderHistoriqueFactures();
   sauvegarderTout(true);
   calculerStats();
@@ -7069,9 +7092,10 @@ function telechargerXMLFacture(id){
   const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
   const d={
     numero:f.numero, date:f.dateRaw||f.date, dateEch:'', periode:f.periode,
-    condPaie:30, tauxTVA:f.tva, sousTotal:f.totalHT,
+    condPaie:f.condPaie||30, tauxTVA:f.tva, sousTotal:f.totalHT,
     montantTVA:f.totalHT*f.tva/100, totalTTC:f.totalTTC,
-    emailClient:f.emailClient||'', client:c, societe:p,
+    typeOp:f.typeOp||'b2c',
+    emailClient:f.emailClient||'', sirenClient:f.sirenClient||'', client:c, societe:p,
     lignes:f.lignes||[{desc:'Prestation',qte:1,unite:'forfait',prixUnit:f.totalHT}]
   };
   const xml=genererXMLFacturX(d);
@@ -7411,20 +7435,25 @@ function supprimerFacture(id){
 }
 
 function reediterFacture(id){
-  // Recrée le PDF depuis les données sauvegardées
   const f=facturesData.find(x=>x.id===id);if(!f)return;
-  const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
-  const c=clientsData.find(x=>x.nom===f.client)||{nom:f.client,commune:'',typeClient:'particulier'};
   const {jsPDF}=window.jspdf;if(!jsPDF)return;
-  // Remettre les données dans le formulaire puis générer
+  const c=clientsData.find(x=>x.id===f.clientId||x.nom===f.client)||{};
   document.getElementById('facNumero').value=f.numero;
   document.getElementById('facDate').value=f.dateRaw||'';
   document.getElementById('facPeriode').value=f.periode||'';
-  document.getElementById('facTauxTVA').value=String(f.tva);
   document.getElementById('facClient').value=f.clientId||'';
+  document.getElementById('facTauxTVA').value=String(f.tva);
+  const tvaDisp=document.getElementById('facTVADisplay');
+  if(tvaDisp) tvaDisp.value=f.tva+'% ('+(c.typeClient==='entreprise'||c.typeClient==='airbnb_agence'?'Entreprise':c.typeClient==='exonere_0'?'Exonéré SAP':'Particulier')+')';
+  if(f.typeOp){const typeOpEl=document.getElementById('facTypeOp');if(typeOpEl)typeOpEl.value=f.typeOp;}
+  if(f.emailClient){const el=document.getElementById('facEmailClient');if(el)el.value=f.emailClient;}
+  if(f.sirenClient){const el=document.getElementById('facSirenClient');if(el)el.value=f.sirenClient;}
+  if(f.condPaie!=null){const el=document.getElementById('facCondPaiement');if(el)el.value=String(f.condPaie);}
+  mettreAJourTypeOp();
   lignesFactureData=f.lignes||[{desc:'Prestation',qte:1,unite:'forfait',prixUnit:f.totalHT}];
   renderLignesFacture();calculerTotauxFacture();
-  toast('Données rechargées — cliquez PDF pour télécharger','info');
+  changerTabNom('factures');
+  toast('Données rechargées — vérifiez puis cliquez PDF','info');
 }
 
 // ══════════════════════════════════════════════════════════
@@ -8617,7 +8646,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       siteWeb: '',
       iban: '',
       bic: '',
-      mentionLegale: 'TVA non applicable, art. 293 B du CGI',
+      mentionLegale: 'Exonération de TVA — Art. 261 D 4° du CGI (services à la personne agréés)',
       geranteName: 'Amandine Sautière'
     };
     const existing = JSON.parse(localStorage.getItem('progestParams')||'{}');
@@ -10822,6 +10851,7 @@ function convertirDevisIdEnFacture(id){
   setTimeout(()=>{
     const cEl=document.getElementById('facClient'); if(cEl){cEl.value=d.clientId||'';remplirInfosFacture();}
     document.getElementById('facPeriode').value=d.objet||'';
+    if(d.tva!=null){const tEl=document.getElementById('facTauxTVA');if(tEl)tEl.value=String(d.tva);}
     lignesFactureData=d.lignes||[];
     renderLignesFacture(); calculerTotauxFacture();
     d.statut='converti';
@@ -14266,7 +14296,7 @@ function exportPlanningSelSalariePDF(nomSal){
           client:(c?c.nom:'Airbnb')+' 🏠',
           commune:c?c.commune||'—':'—',
           heure:d.heureNouvelle||'—',
-          duree:(d.dureeEstimee||(c&&c.heures)||2)+'h',
+          duree:(d.dureeEstimee||c&&c.heures||2)+'h',
           activite:'Airbnb'
         });
       });
