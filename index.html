@@ -6757,8 +6757,6 @@ function genererFacturePDF(){
   }
 
   // ── Bloc signature ────────────────────────────────────────
-  // Forcer nouvelle page si le contenu est trop proche de la zone QR (pageH-48)
-  {const _ph=doc.internal.pageSize.getHeight();if(y>_ph-102){doc.addPage();y=M;}}
   y=_blocSignaturePDF(doc,y+4,W,M,clientNom,'du client');
 
   // ── Pied de page ──────────────────────────────────────────
