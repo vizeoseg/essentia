@@ -10309,7 +10309,7 @@ function genererRetractationPDF(){
   const {jsPDF}=window.jspdf; if(!jsPDF){toast('PDF non disponible','error');return;}
   const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
   const nomSoc=p.nomSociete||'Essentia Services';
-  const formeSoc=p.forme||'SARL';
+  const formeSoc=p.forme||'SAS';
   const adresseSoc=p.adresse||'';
   const siret=p.siret||'';
   const emailSoc=p.email||'';
