@@ -1822,7 +1822,7 @@ tr{transition:background .12s;}
           <div class="form-group" style="margin-bottom:10px;"><label>Nom de la société *</label><input type="text" id="paramNomSociete" placeholder="Ma Société SARL" oninput="sauvegarderParametres()"></div>
           <div class="form-group" style="margin-bottom:10px;"><label>SIRET</label><input type="text" id="paramSiret" placeholder="000 000 000 00000" oninput="sauvegarderParametres()"></div>
           <div class="form-group" style="margin-bottom:10px;"><label>N° TVA Intracommunautaire</label><input type="text" id="paramTVAIntra" placeholder="FR 00 000000000" oninput="sauvegarderParametres()"></div>
-          <div class="form-group" style="margin-bottom:10px;"><label>Forme juridique</label><select id="paramForme" onchange="sauvegarderParametres()"><option value="SARL">SARL</option><option value="SAS">SAS</option><option value="EURL">EURL</option><option value="Auto-entrepreneur">Auto-entrepreneur</option><option value="EI">Entreprise Individuelle</option><option value="SA">SA</option></select></div>
+          <div class="form-group" style="margin-bottom:10px;"><label>Forme juridique</label><select id="paramForme" onchange="sauvegarderParametres()"><option value="SAS">SAS</option><option value="SARL">SARL</option><option value="EURL">EURL</option><option value="Auto-entrepreneur">Auto-entrepreneur</option><option value="EI">Entreprise Individuelle</option><option value="SA">SA</option></select></div>
           <div class="form-group" style="margin-bottom:10px;"><label>Adresse complète</label><textarea id="paramAdresse" rows="2" placeholder="1 rue de la Paix, 10000 Troyes" oninput="sauvegarderParametres()" style="resize:vertical;"></textarea></div>
           <div class="form-group" style="margin-bottom:10px;"><label>Téléphone</label><input type="text" id="paramTel" placeholder="03 25 00 00 00" oninput="sauvegarderParametres()"></div>
           <div class="form-group" style="margin-bottom:10px;"><label>Email</label><input type="email" id="paramEmail" placeholder="contact@masociete.fr" oninput="sauvegarderParametres()"></div>
@@ -8034,7 +8034,7 @@ function sauvegarderParametres(){
     nomSociete:document.getElementById('paramNomSociete')?.value||'',
     siret:document.getElementById('paramSiret')?.value||'',
     tvaIntra:document.getElementById('paramTVAIntra')?.value||'',
-    forme:document.getElementById('paramForme')?.value||'SARL',
+    forme:document.getElementById('paramForme')?.value||'SAS',
     adresse:document.getElementById('paramAdresse')?.value||'',
     tel:document.getElementById('paramTel')?.value||'',
     email:document.getElementById('paramEmail')?.value||'',
@@ -8348,7 +8348,7 @@ function sauvegarderTout(auto=false){
         nomSociete:   nomEl.value||'',
         siret:        document.getElementById('paramSiret')?.value||'',
         tvaIntra:     document.getElementById('paramTVAIntra')?.value||'',
-        forme:        document.getElementById('paramForme')?.value||'SARL',
+        forme:        document.getElementById('paramForme')?.value||'SAS',
         adresse:      document.getElementById('paramAdresse')?.value||'',
         tel:          document.getElementById('paramTel')?.value||'',
         email:        document.getElementById('paramEmail')?.value||'',
