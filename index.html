@@ -6757,6 +6757,8 @@ function genererFacturePDF(){
   }
 
   // ── Bloc signature ────────────────────────────────────────
+  // Forcer nouvelle page si le contenu est trop proche de la zone QR (pageH-48)
+  {const _ph=doc.internal.pageSize.getHeight();if(y>_ph-102){doc.addPage();y=M;}}
   y=_blocSignaturePDF(doc,y+4,W,M,clientNom,'du client');
 
   // ── Pied de page ──────────────────────────────────────────
@@ -6788,12 +6790,12 @@ function genererFacturePDF(){
     for(let r=0;r<6;r++)for(let cc=0;cc<6;cc++){if(bits[(r*6+cc)%bits.length]%2===0)qrCtx.fillRect(5+cc*8,5+r*8,7,7);}
     const pageH2=doc.internal.pageSize.getHeight();
     // QR positionné en bas-droit, au-dessus du footer
-    const qrX=W-M-22; const qrY=pageH2-48;
+    const qrX=W-M-22; const qrY=pageH2-50;
     doc.addImage(qrCanvas.toDataURL(),'PNG',qrX,qrY,20,20);
-    doc.setTextColor(29,78,216);doc.setFontSize(6);doc.setFont('helvetica','bold');
-    doc.text('FACTUR-X',qrX+10,pageH2-26,{align:'center'});
-    doc.setTextColor(120,140,170);doc.setFontSize(5.5);doc.setFont('helvetica','normal');
-    doc.text('EN 16931',qrX+10,pageH2-23,{align:'center'});
+    doc.setTextColor(29,78,216);doc.setFontSize(5.5);doc.setFont('helvetica','bold');
+    doc.text('FACTUR-X',qrX+10,pageH2-29,{align:'center'});
+    doc.setTextColor(120,140,170);doc.setFontSize(5);doc.setFont('helvetica','normal');
+    doc.text('EN 16931',qrX+10,pageH2-26.5,{align:'center'});
   }catch(qrErr){/* QR optionnel */}
 
   // ── Sauvegarde ────────────────────────────────────────────
@@ -7291,9 +7293,10 @@ function _regenererContratPDFb64(contrat){
     const footerC=[
       nomSoc+(p.forme?' — '+p.forme:'')+(p.siret?' · SIRET : '+p.siret:'')+(p.tvaIntra?' · TVA : '+p.tvaIntra:''),
       ...(p.numSAP||p.assurance?[[p.numSAP?'Agrément SAP : '+p.numSAP:'',p.assurance?'Assurance RCP : n° '+p.assurance:''].filter(Boolean).join(' · ')]:[]),
-      (p.mentionLegale||'Pénalités de retard : 3× taux légal. Indemnité forfaitaire : 40 €.')+' — Réf. '+ref
+      p.mentionLegale||'Tout règlement doit intervenir à la date d\'échéance indiquée. Tout retard de paiement entraîne des pénalités égales à 3 fois le taux d\'intérêt légal, ainsi qu\'une indemnité forfaitaire pour frais de recouvrement de 40 €.',
+      `En cas de litige, le tribunal compétent est le Tribunal de Commerce de Troyes (10000). — Réf. ${ref}`
     ];
-    doc.text(footerC,W/2,pH-20,{align:'center',lineHeightFactor:1.6});
+    doc.text(footerC,W/2,pH-22,{align:'center',lineHeightFactor:1.6});
 
     const b64=_pdfB64(doc);
     _savePDFCache(ref,b64,ref+'_contrat_prestation.pdf');
@@ -9785,12 +9788,14 @@ function genererContratPrestation(){
   // ── Pied de page ─────────────────────────────────────────
   const pH=doc.internal.pageSize.getHeight();
   doc.setDrawColor(0,0,0); doc.setLineWidth(0.3);
-  doc.line(M,pH-15,W-M,pH-15);
+  doc.line(M,pH-22,W-M,pH-22);
   doc.setTextColor(80,80,80); doc.setFontSize(6.5); doc.setFont('helvetica','normal');
   doc.text([
     `${nomSoc}${p.forme?' — '+p.forme:''}${p.siret?' · SIRET : '+p.siret:''} — Réf. ${ref}`,
-    ...(p.numSAP||p.assurance?[[p.numSAP?'Agrément SAP : '+p.numSAP:'',p.assurance?'Assurance RCP : n° '+p.assurance:''].filter(Boolean).join(' · ')]:[])
-  ],W/2,pH-12,{align:'center',lineHeightFactor:1.6});
+    ...(p.numSAP||p.assurance?[[p.numSAP?'Agrément SAP : '+p.numSAP:'',p.assurance?'Assurance RCP : n° '+p.assurance:''].filter(Boolean).join(' · ')]:[]),
+    p.mentionLegale||'Tout règlement doit intervenir à la date d\'échéance indiquée. Tout retard de paiement entraîne des pénalités égales à 3 fois le taux d\'intérêt légal, ainsi qu\'une indemnité forfaitaire pour frais de recouvrement de 40 €.',
+    'En cas de litige, le tribunal compétent est le Tribunal de Commerce de Troyes (10000).'
+  ],W/2,pH-19,{align:'center',lineHeightFactor:1.5,maxWidth:W-2*M});
 
   const _fname1=`${ref}_contrat_prestation.pdf`;
   _savePDFCache(ref,_pdfB64(doc),_fname1);
