@@ -8356,7 +8356,9 @@ function sauvegarderTout(auto=false){
         iban:         document.getElementById('paramIBAN')?.value||'',
         bic:          document.getElementById('paramBIC')?.value||'',
         capital:      document.getElementById('paramCapital')?.value||'',
-        mentionLegale:document.getElementById('paramMentionLegale')?.value||''
+        mentionLegale:document.getElementById('paramMentionLegale')?.value||'',
+        numSAP:document.getElementById('paramNumSAP')?.value||'',
+        assurance:document.getElementById('paramAssurance')?.value||''
       };
       // Ne sauvegarder que si au moins le nom est rempli, ou si une sauvegarde existe déjà
       const existing = localStorage.getItem('progestParams');
@@ -8537,6 +8539,8 @@ function importerJSON(input){
         sv('paramIBAN',       d.params.iban);
         sv('paramCapital',    d.params.capital);
         sv('paramMentionLegale', d.params.mentionLegale);
+        sv('paramNumSAP',     d.params.numSAP);
+        sv('paramAssurance',  d.params.assurance);
         const formeEl = document.getElementById('paramForme');
         if(formeEl && d.params.forme) formeEl.value = d.params.forme;
         // Sidebar
