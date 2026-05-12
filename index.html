@@ -6762,8 +6762,8 @@ function genererFacturePDF(){
   // ── Pied de page ──────────────────────────────────────────
   const pageH=doc.internal.pageSize.getHeight();
   doc.setDrawColor(200,215,240);doc.setLineWidth(0.3);
-  doc.line(M,pageH-26,W-M,pageH-26);
-  doc.setTextColor(120,140,170);doc.setFontSize(6.5);doc.setFont('helvetica','normal');
+  doc.line(M,pageH-30,W-M,pageH-30);
+  doc.setTextColor(120,140,170);doc.setFontSize(6);doc.setFont('helvetica','normal');
   const footerLines=[
     `${nomSoc}${formeSoc?' — '+formeSoc:''}${siretSoc?' · SIRET : '+siretSoc:''}${p.numSAP?' · Agrément SAP : '+p.numSAP:''}`,
     ...(p.assurance?[`Assurance RCP : n° ${p.assurance}`]:[]),
@@ -6772,7 +6772,7 @@ function genererFacturePDF(){
     `En cas de litige, le tribunal compétent est le Tribunal de Commerce de Troyes (10000).${p.tvaIntra?' N° TVA : '+p.tvaIntra:''}`,
   ];
   // maxWidth limité pour laisser la colonne QR (25mm) sur la droite
-  doc.text(footerLines,M,pageH-21,{lineHeightFactor:1.5,maxWidth:W-2*M-27});
+  doc.text(footerLines,M,pageH-25,{lineHeightFactor:1.4,maxWidth:W-2*M-27});
 
   // ── QR Code Factur-X — coin bas-droit ─────────────────────
   try{
