@@ -6782,11 +6782,12 @@ function genererFacturePDF(){
     const bits=qrData.split('').map(c=>c.charCodeAt(0));
     for(let r=0;r<6;r++)for(let cc=0;cc<6;cc++){if(bits[(r*6+cc)%bits.length]%2===0)qrCtx.fillRect(5+cc*8,5+r*8,7,7);}
     const pageH2=doc.internal.pageSize.getHeight();
-    doc.addImage(qrCanvas.toDataURL(),'PNG',M,pageH2-42,20,20);
+    const qrX=W-M-22;
+    doc.addImage(qrCanvas.toDataURL(),'PNG',qrX,pageH2-42,20,20);
     doc.setTextColor(29,78,216);doc.setFontSize(6);doc.setFont('helvetica','bold');
-    doc.text('FACTUR-X',M+2,pageH2-20);
+    doc.text('FACTUR-X',qrX+10,pageH2-20,{align:'center'});
     doc.setTextColor(120,140,170);doc.setFontSize(5.5);doc.setFont('helvetica','normal');
-    doc.text('EN 16931',M+2,pageH2-17);
+    doc.text('EN 16931',qrX+10,pageH2-17,{align:'center'});
   }catch(qrErr){/* QR optionnel */}
 
   // ── Sauvegarde ────────────────────────────────────────────
