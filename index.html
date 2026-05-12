@@ -11302,7 +11302,22 @@ function _chargerPlanningPrevJour(cont, deltaRecap, jourKey, jourNomJ, mois, ann
   setTimeout(function(){
     var newCont=cont.cloneNode(true); cont.parentNode.replaceChild(newCont,cont);
     newCont.addEventListener('change',_ppHandleChange);
-    newCont.addEventListener('input',_ppHandleChange);
+    // FIX: blur indispensable pour sauvegarder heures et notes en vue Jour
+    newCont.addEventListener('blur',_ppHandleBlur,true);
+    // FIX: mise à jour live du delta + sauvegarde intermédiaire heures
+    newCont.addEventListener('input',function(e){
+      if(e.target.classList.contains('pp-heures')){
+        var el=e.target; var hVal=parseFloat(el.value);
+        if(!isNaN(hVal)){
+          _ppEnsureEntry(el.dataset.cid,el.dataset.key);
+          planningPrevData[el.dataset.cid][el.dataset.key].heuresReelles=hVal;
+          var s=planningPrevData[el.dataset.cid][el.dataset.key].statut;
+          if(s==='prevu'||s==='prevu_passe')
+            planningPrevData[el.dataset.cid][el.dataset.key].statut='confirme';
+          _ppRafraichirLigne(el.dataset.cid,el.dataset.key);
+        }
+      }
+    });
   },50);
 }
 
@@ -11526,7 +11541,7 @@ function chargerPlanningPrevisionnel(){
       + '<i id="pp-icon-'+client.id+'" class="fas fa-chevron-down" style="color:var(--text3);font-size:11px;transition:transform .2s;'+(hasToday?'':'transform:rotate(-90deg);')+'"></i>'
       + '<span style="font-weight:700;font-size:13px;">'+client.nom+'</span>'
       + '<span class="badge badge-blue">'+(client.commune||'—')+'</span>'
-      + '<span style="font-size:11px;color:var(--text3);">'+(client.heureDebut?'<strong style="color:var(--accent);">'+client.heureDebut+'</strong> · ':'')+client.jours.join(', ')+'</span>'
+      + '<span style="font-size:11px;color:var(--text3);">'+(client.heureDebut?'<strong style="color:var(--accent);">'+client.heureDebut+'</strong> · ':'')+((client.jours||[]).join(', ') || '<em style="color:var(--text3);">Airbnb</em>')+'</span>'
       + '<span style="margin-left:auto;font-size:11px;">Prévu:<strong> '+clientPrev.toFixed(1)+'h</strong> · Réalisé:<strong style="color:var(--green);"> '+clientReal.toFixed(1)+'h</strong> · Δ:<strong style="color:'+dcColor+';"> '+dcStr+'</strong></span>'
       + '<button class="btn btn-primary btn-sm pp-inject" data-cid="'+client.id+'" data-mois="'+mois+'" data-annee="'+annee+'" title="Injecter dans facture" onclick="event.stopPropagation()"><i class="fas fa-file-invoice"></i> → Facture</button>'
       + '</div>'
@@ -11764,18 +11779,25 @@ function _ppRafraichirLigne(clientId, dateKey){
   // Trouver l'input heures de cette ligne pour sync
   var inputH = cont.querySelector('.pp-heures[data-cid="'+clientId+'"][data-key="'+dateKey+'"]');
   if(inputH && entry.statut !== 'absent') inputH.value = hReal.toFixed(2);
-  // Trouver la cellule delta (td suivant l'input heures)
+  // Trouver la cellule delta :
+  // Vue Mois (tableau) → td suivant ; Vue Jour (grille CSS) → parentElement x2 → nextSibling
   if(inputH) {
     var td = inputH.closest('td');
+    var deltaTd;
     if(td) {
-      var deltaTd = td.nextElementSibling;
-      if(deltaTd) {
-        deltaTd.textContent = showDelta ? deltaStr : '—';
-        deltaTd.style.color = deltaColor;
-      }
+      deltaTd = td.nextElementSibling; // Vue Mois
+    } else {
+      // Vue Jour : inputH → div.flex → div.colReel → nextSibling = div.delta
+      var colReel = inputH.parentElement && inputH.parentElement.parentElement;
+      if(colReel) deltaTd = colReel.nextElementSibling;
+    }
+    if(deltaTd) {
+      deltaTd.textContent = showDelta ? deltaStr : '—';
+      deltaTd.style.color = deltaColor;
+      deltaTd.style.fontWeight = '700';
     }
   }
-  // Mettre à jour les totaux dans l'en-tête client
+  // Mettre à jour les totaux dans l'en-tête client (Mois) ou le récap journalier (Jour)
   _ppRafraichirTotauxClient(clientId);
 }
 
@@ -11786,16 +11808,54 @@ function _ppRafraichirTotauxClient(clientId){
   var hPrev = parseFloat(client.heures) || 0;
   var data = planningPrevData[clientId] || {};
   var clientPrev = 0, clientReal = 0;
-  Object.values(data).forEach(function(entry){
+  // Filtrer par mois/année affichés (évite d'accumuler les données de tous les mois)
+  var moisEl=document.getElementById('planPrevMoisSel');
+  var anneeEl=document.getElementById('planPrevAnneeSel');
+  var moisAff=parseInt(moisEl?moisEl.value:new Date().getMonth()+1);
+  var anneeAff=parseInt(anneeEl?anneeEl.value:new Date().getFullYear());
+  Object.keys(data).forEach(function(dateKey){
+    var parts=dateKey.split('-').map(Number);
+    if(parts[0]!==anneeAff||parts[1]!==moisAff) return;
+    var entry=data[dateKey];
     clientPrev += hPrev;
     if(entry.statut === 'confirme' || entry.statut === 'partiel'){
-      clientReal += entry.statut === 'absent' ? 0 : (parseFloat(entry.heuresReelles) || hPrev);
+      clientReal += (parseFloat(entry.heuresReelles) || hPrev);
     }
   });
   var dC = clientReal - clientPrev;
   var dcStr = dC === 0 ? '±0h' : (dC > 0 ? '+'+dC.toFixed(2)+'h' : dC.toFixed(2)+'h');
   var dcColor = dC > 0 ? 'var(--green)' : dC < 0 ? 'var(--red)' : 'var(--text3)';
-  // Trouver le span de totaux dans l'en-tête du client
+  // Vue Jour : rafraîchir le récap journalier (Prévu / Réalisé / Δ du jour)
+  if(_ppVue === 'jour') {
+    var recapEl = document.getElementById('planningPrevDeltaRecap');
+    if(recapEl) {
+      var jourDate2 = new Date(); jourDate2.setHours(0,0,0,0);
+      jourDate2.setDate(jourDate2.getDate() + _ppJourOffset);
+      var jourKey2 = jourDate2.getFullYear()+'-'+String(jourDate2.getMonth()+1).padStart(2,'0')+'-'+String(jourDate2.getDate()).padStart(2,'0');
+      var jourNomJ2 = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'][jourDate2.getDay()];
+      var tPrev2=0, tReal2=0;
+      clientsData.filter(function(c){
+        if(_getJoursClientDate(c,jourKey2).includes(jourNomJ2)) return true;
+        return deplacementsData.some(function(d){ return d.clientId===c.id && d.dateNouvelle===jourKey2; });
+      }).forEach(function(c){
+        var hP2 = parseFloat(c.heures)||0;
+        var ent2 = (planningPrevData[c.id]||{})[jourKey2];
+        tPrev2 += hP2;
+        if(ent2 && (ent2.statut==='confirme'||ent2.statut==='partiel'))
+          tReal2 += ent2.statut==='absent'?0:(parseFloat(ent2.heuresReelles)||hP2);
+      });
+      var dc2=tReal2-tPrev2;
+      recapEl.innerHTML='<div style="display:flex;gap:16px;background:var(--bg3);border-radius:9px;padding:10px 14px;font-size:12px;">'
+        +'<span>Prévu : <strong>'+tPrev2.toFixed(1)+'h</strong></span>'
+        +'<span>Réalisé : <strong style="color:var(--green);">'+tReal2.toFixed(1)+'h</strong></span>'
+        +'<span>Δ : <strong style="color:'+(dc2>0?'var(--green)':dc2<0?'var(--red)':'var(--text3)')+';">'+(dc2===0?'±0h':(dc2>0?'+':'')+dc2.toFixed(1)+'h')+'</strong></span>'
+        +'</div>';
+    }
+    _ppRafraichirRecap(); // retourne immédiatement car _ppVue==='jour'
+    return;
+  }
+
+  // Vue Mois : trouver le span de totaux dans l'en-tête du client
   var cont = document.getElementById('planningPrevContainer');
   if(!cont) return;
   var btn = cont.querySelector('.pp-inject[data-cid="'+clientId+'"]');
@@ -11816,15 +11876,24 @@ function _ppRafraichirTotauxClient(clientId){
 
 // Recalculer le récap KPI global sans reconstruire le DOM
 function _ppRafraichirRecap(){
+  // Ne s'applique qu'en vue Mois (en vue Jour le récap journalier a son propre format)
+  if(_ppVue !== 'mois') return;
   var totalPrev = 0, totalReal = 0, aConf = 0;
+  var moisEl=document.getElementById('planPrevMoisSel');
+  var anneeEl=document.getElementById('planPrevAnneeSel');
+  var moisAff=parseInt(moisEl?moisEl.value:new Date().getMonth()+1);
+  var anneeAff=parseInt(anneeEl?anneeEl.value:new Date().getFullYear());
   clientsData.forEach(function(client){
-    if(!client.jours || !client.jours.length || !parseFloat(client.heures)) return;
     var hPrev = parseFloat(client.heures) || 0;
+    if(!hPrev) return; // aucune heure configurée → pas de contribution
     var data = planningPrevData[client.id] || {};
-    Object.values(data).forEach(function(entry){
+    Object.keys(data).forEach(function(dateKey){
+      var parts=dateKey.split('-').map(Number);
+      if(parts[0]!==anneeAff||parts[1]!==moisAff) return;
+      var entry=data[dateKey];
       totalPrev += hPrev;
       if(entry.statut === 'confirme' || entry.statut === 'partiel')
-        totalReal += entry.statut === 'absent' ? 0 : (parseFloat(entry.heuresReelles) || hPrev);
+        totalReal += (parseFloat(entry.heuresReelles) || hPrev);
       if(entry.statut === 'prevu_passe') aConf++;
     });
   });
