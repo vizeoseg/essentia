@@ -4924,7 +4924,9 @@ function chargerTournees(){
     const dateKey = _dateKeyJour2(jour);
     const cj = clientsData.filter(c => _getJoursClientDate(c, dateKey).includes(jour) && c.commune);
     const toMin = t=>{const s=String(t||'00:00');const p=s.includes(':')?s.split(':'):['0','0'];return (parseInt(p[0])||0)*60+(parseInt(p[1])||0);};
-    const avecDist = cj.map(c=>({...c,dd:Math.abs((communesAube.find(x=>x.nom===c.commune)?.distance||0)-depotDist)})).sort((a,b)=>toMin(a.heureDebut)-toMin(b.heureDebut));
+    // Interventions RBNB ponctuelles planifiées ce jour
+    const airbnbsJour = (deplacementsData||[]).filter(d=>d.airbnb&&d.dateNouvelle===dateKey).map(d=>{const c=clientsData.find(x=>x.id===d.clientId);return c?{...c,heureDebut:d.heureNouvelle||c.heureDebut,_airbnb:true}:null;}).filter(Boolean);
+    const avecDist = [...cj,...airbnbsJour].map(c=>({...c,dd:Math.abs((communesAube.find(x=>x.nom===c.commune)?.distance||0)-depotDist)})).sort((a,b)=>toMin(a.heureDebut)-toMin(b.heureDebut));
     let dist=0,last=depotDist;
     avecDist.forEach(c=>{const d=communesAube.find(x=>x.nom===c.commune)?.distance||0;dist+=Math.abs(d-last);last=d;});
     if(avecDist.length) dist+=Math.abs(depotDist-last);
@@ -4944,11 +4946,12 @@ function chargerTournees(){
 
     const rows = avecDist.length ? avecDist.map((c,i)=>{
       const isLast = i===avecDist.length-1;
-      return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;${isLast?'':'border-bottom:1px dashed var(--border);'}">
-        <div style="width:50px;text-align:right;font-weight:700;color:var(--accent);font-size:12px;font-family:'DM Mono',monospace;flex-shrink:0;">${c.heureDebut||'—'}</div>
+      const isAirbnb = c._airbnb||false;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;${isLast?'':'border-bottom:1px dashed var(--border);'}${isAirbnb?'background:rgba(249,115,22,.04);border-radius:6px;':''}">
+        <div style="width:50px;text-align:right;font-weight:700;color:${isAirbnb?'#f97316':'var(--accent)'};font-size:12px;font-family:'DM Mono',monospace;flex-shrink:0;">${c.heureDebut||'—'}</div>
         <div style="flex:1;min-width:0;">
-          <div style="font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.nom}</div>
-          <div style="font-size:10px;color:var(--text3);">${c.commune||'—'} · ${c.heures||'?'}h</div>
+          <div style="font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${isAirbnb?'🏠 ':''}${c.nom}</div>
+          <div style="font-size:10px;color:var(--text3);">${c.commune||'—'} · ${c.heures||'?'}h${isAirbnb?' · <span style="color:#f97316;font-weight:700;">Airbnb</span>':''}</div>
         </div>
         <span class="badge badge-blue" style="flex-shrink:0;">${c.dd}km</span>
       </div>`;
@@ -14006,8 +14009,28 @@ function lingeAjouterLigne(pfx,nbLits){
   var _origCharger = typeof chargerDonnees === 'function' ? chargerDonnees : null;
   chargerDonnees = function() {
     if (SUPA_ENABLED) {
+      // Charger le localStorage immédiatement (données visibles sans attendre le réseau)
+      if (typeof _origCharger === "function") _origCharger();
       supabaseLoad().then(function(remoteData) {
         if (remoteData) {
+          // Si une sauvegarde locale est très récente (< 30s), fusionner les déplacements
+          // locaux absents du cloud (ex : RBNB ajouté juste avant fermeture de l'onglet)
+          var lastLocalTs = parseInt(localStorage.getItem('_lastSaveTs')||'0');
+          if (Date.now() - lastLocalTs < 30000) {
+            try {
+              var localStr = localStorage.getItem('progestV10');
+              if (localStr) {
+                var localDeps = (JSON.parse(localStr).deplacements || []);
+                var remoteDeps = remoteData.deplacements || [];
+                localDeps.forEach(function(ld) {
+                  if (!remoteDeps.find(function(rd) { return rd.id === ld.id; })) {
+                    remoteDeps.push(ld);
+                  }
+                });
+                remoteData.deplacements = remoteDeps;
+              }
+            } catch(e) {}
+          }
           appliquerDonneesDistantes(remoteData);
           // Aussi écrire en localStorage (cache local)
           try { localStorage.setItem('progestV10', JSON.stringify(remoteData)); } catch(e) {}
@@ -14016,13 +14039,13 @@ function lingeAjouterLigne(pfx,nbLits){
           // Démarrer le temps réel (sera ignoré si déjà actif grâce au guard realtimePollingTimer)
           supabaseRealtime();
         } else {
-          // Fallback localStorage
+          // localStorage déjà chargé — démarrer le temps réel quand même
           console.log('[Supabase] Aucune donnée cloud — chargement local');
-          if (typeof _origCharger === "function") _origCharger();
+          supabaseRealtime();
         }
       }).catch(function() {
-        // Fallback localStorage
-        if (typeof _origCharger === "function") _origCharger();
+        // localStorage déjà chargé — démarrer le temps réel
+        supabaseRealtime();
       });
     } else {
       // Mode local pur (Supabase non configuré)
@@ -14262,6 +14285,12 @@ CREATE POLICY "anon_delete" ON storage.objects
   window.SUPA_ENABLED     = SUPA_ENABLED;
   window.supabaseLoad     = supabaseLoad;
   window.supabaseRealtime = supabaseRealtime;
+  // Force une sauvegarde Supabase immédiate (bypasse le debounce 2s)
+  window.supabaseForceSync = function() {
+    if (!SUPA_ENABLED) return;
+    clearTimeout(_supaDebounceTimer);
+    _supaSnapshotEtSave();
+  };
 
   window.SUPA_ENABLED     = SUPA_ENABLED;
   window.supabaseLoad     = supabaseLoad;
@@ -14557,8 +14586,12 @@ function sauvegarderAirbnb(){
     motif: 'Intervention Airbnb'+(note?' — '+note:'')
   });
   sauvegarderTout(true);
+  // Forcer la sauvegarde Supabase immédiate (bypass debounce 2s) pour éviter perte si rechargement rapide
+  if(typeof window.supabaseForceSync === 'function') window.supabaseForceSync();
   fermerModalAirbnb();
-  renderPlanningMois('planningMoisCalendar', planningMoisOffset);
+  if(typeof chargerTournees === 'function') chargerTournees();
+  else renderPlanningMois('planningMoisCalendar', planningMoisOffset);
+  if(typeof chargerPlanningPrevisionnel === 'function') chargerPlanningPrevisionnel();
   toast(`Airbnb planifié : ${c.nom} le ${new Date(date+'T12:00').toLocaleDateString('fr-FR')} à ${heure} ✓`, 'success');
 }
 
