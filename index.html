@@ -1830,6 +1830,8 @@ tr{transition:background .12s;}
           <div class="form-group" style="margin-bottom:10px;"><label>IBAN (pour paiements)</label><input type="text" id="paramIBAN" placeholder="FR76 0000 0000 0000 0000 0000 000" oninput="sauvegarderParametres()"></div>
           <div class="form-group" style="margin-bottom:10px;"><label>BIC / SWIFT</label><input type="text" id="paramBIC" placeholder="BNPAFRPP" oninput="sauvegarderParametres()"></div>
           <div class="form-group" style="margin-bottom:10px;"><label>Capital social (€)</label><input type="number" id="paramCapital" placeholder="1000" oninput="sauvegarderParametres()"></div>
+          <div class="form-group" style="margin-bottom:10px;"><label>N° Agrément SAP</label><input type="text" id="paramNumSAP" placeholder="N° agrément Services à la Personne" oninput="sauvegarderParametres()"></div>
+          <div class="form-group" style="margin-bottom:13px;"><label>Assurance RCP (n° police)</label><input type="text" id="paramAssurance" placeholder="Ex : 110044568 Q" oninput="sauvegarderParametres()"></div>
           <div class="form-group" style="margin-bottom:13px;"><label>Mention légale factures</label><textarea id="paramMentionLegale" rows="2" placeholder="Exonération de TVA — Art. 261 D 4° du CGI (services à la personne agréés)" oninput="sauvegarderParametres()" style="resize:vertical;"></textarea></div>
           <div style="background:var(--green-l);border:1px solid var(--green);border-radius:8px;padding:9px 12px;font-size:11px;color:var(--green);"><i class="fas fa-check-circle"></i> Les informations sont sauvegardées automatiquement</div>
         </div>
@@ -6760,16 +6762,18 @@ function genererFacturePDF(){
   // ── Pied de page ──────────────────────────────────────────
   const pageH=doc.internal.pageSize.getHeight();
   doc.setDrawColor(200,215,240);doc.setLineWidth(0.3);
-  doc.line(M,pageH-22,W-M,pageH-22);
+  doc.line(M,pageH-26,W-M,pageH-26);
   doc.setTextColor(120,140,170);doc.setFontSize(6.5);doc.setFont('helvetica','normal');
   const footerLines=[
-    `${nomSoc}${formeSoc?' — '+formeSoc:''}${siretSoc?' · SIRET : '+siretSoc:''}`,
+    `${nomSoc}${formeSoc?' — '+formeSoc:''}${siretSoc?' · SIRET : '+siretSoc:''}${p.numSAP?' · Agrément SAP : '+p.numSAP:''}`,
+    ...(p.assurance?[`Assurance RCP : n° ${p.assurance}`]:[]),
     tauxTVA===0?(mentionLeg||'Exonération de TVA — Art. 261 D 4° du CGI (services à la personne agréés)'):(mentionLeg||'Pénalités de retard : 3× taux légal. Indemnité forfaitaire : 40 €.'),
     `En cas de litige, tribunal compétent : ${adresseSoc.split(/[\n,]/).pop()?.trim()||'ville compétente'}.`
   ];
-  doc.text(footerLines,M,pageH-16,{lineHeightFactor:1.6});
+  // maxWidth limité pour laisser la colonne QR (25mm) sur la droite
+  doc.text(footerLines,M,pageH-21,{lineHeightFactor:1.5,maxWidth:W-2*M-27});
 
-  // ── QR Code Factur-X sur le PDF ───────────────────────────
+  // ── QR Code Factur-X — coin bas-droit ─────────────────────
   try{
     const qrData=`FACTUR-X|${numFac}|${dateFac}|${clientNom}|${fmt2(sousTotal)}|${fmt2(montantTVA)}|${fmt2(totalTTC)}|${tauxTVA}%|${nomSoc}`;
     const qrCanvas=document.createElement('canvas');
@@ -6782,12 +6786,13 @@ function genererFacturePDF(){
     const bits=qrData.split('').map(c=>c.charCodeAt(0));
     for(let r=0;r<6;r++)for(let cc=0;cc<6;cc++){if(bits[(r*6+cc)%bits.length]%2===0)qrCtx.fillRect(5+cc*8,5+r*8,7,7);}
     const pageH2=doc.internal.pageSize.getHeight();
-    const qrX=W-M-22;
-    doc.addImage(qrCanvas.toDataURL(),'PNG',qrX,pageH2-42,20,20);
+    // QR positionné en bas-droit, au-dessus du footer
+    const qrX=W-M-22; const qrY=pageH2-48;
+    doc.addImage(qrCanvas.toDataURL(),'PNG',qrX,qrY,20,20);
     doc.setTextColor(29,78,216);doc.setFontSize(6);doc.setFont('helvetica','bold');
-    doc.text('FACTUR-X',qrX+10,pageH2-20,{align:'center'});
+    doc.text('FACTUR-X',qrX+10,pageH2-26,{align:'center'});
     doc.setTextColor(120,140,170);doc.setFontSize(5.5);doc.setFont('helvetica','normal');
-    doc.text('EN 16931',qrX+10,pageH2-17,{align:'center'});
+    doc.text('EN 16931',qrX+10,pageH2-23,{align:'center'});
   }catch(qrErr){/* QR optionnel */}
 
   // ── Sauvegarde ────────────────────────────────────────────
@@ -7162,11 +7167,12 @@ function _regenererContratPDFb64(contrat){
     doc.setFontSize(8); doc.setFont('helvetica','normal');
     if(p.adresse) doc.text(p.adresse.replace(/\n/g,' '),tx,y+15);
     if(p.siret) doc.text('SIRET : '+p.siret+(p.tvaIntra?' · TVA : '+p.tvaIntra:''),tx,y+20);
+    if(p.numSAP||p.assurance) doc.text([p.numSAP?'Agrément SAP : '+p.numSAP:'',p.assurance?'Assurance RCP : n° '+p.assurance:''].filter(Boolean).join(' · '),tx,y+25);
     doc.setFontSize(14); doc.setFont('helvetica','bold');
     doc.text('CONTRAT DE PRESTATION DE SERVICES',W-M,y+9,{align:'right'});
     doc.setFontSize(8); doc.setFont('helvetica','normal');
     doc.text('Réf. : '+ref+'  |  Date : '+debut,W-M,y+15,{align:'right'});
-    doc.setLineWidth(0.5); doc.line(M,y+24,W-M,y+24); y+=30;
+    doc.setLineWidth(0.5); doc.line(M,y+29,W-M,y+29); y+=35;
 
     // ── Parties — hauteur dynamique pour textes longs ──
     var colW=87; var colGap=W/2+2; var maxTxt=colW-8;
@@ -7253,7 +7259,7 @@ function _regenererContratPDFb64(contrat){
       +'• Réaliser les prestations avec soin et diligence, selon les règles de l\'art.\n'
       +'• Respecter la confidentialité des informations du Client.\n'
       +'• Fournir du personnel qualifié, assuré et déclaré.\n'
-      +'• Souscrire et maintenir en vigueur une assurance responsabilité civile professionnelle.');
+      +'• Souscrire et maintenir en vigueur une assurance responsabilité civile professionnelle'+(p.assurance?' (police n° '+p.assurance+')':'')+'.');
 
     section('ARTICLE 6 — OBLIGATIONS DU CLIENT',
       'Le Client s\'engage à :\n'
@@ -7263,6 +7269,11 @@ function _regenererContratPDFb64(contrat){
 
     section('ARTICLE 7 — DROIT DE RÉTRACTATION',
       'Conformément aux articles L.221-18 et suivants du Code de la consommation, le Client dispose d\'un délai de 14 jours à compter de la signature du présent contrat pour exercer son droit de rétractation, sans avoir à justifier de motifs ni à payer de pénalités.');
+
+    section('ARTICLE 8 — PROTECTION DES DONNÉES PERSONNELLES (RGPD)',
+      'Conformément au Règlement (UE) 2016/679 (RGPD) et à la loi Informatique et Libertés, les données personnelles du Client collectées dans le cadre du présent contrat sont traitées par '+nomSoc+' en qualité de responsable de traitement, aux fins d\'exécution des prestations et de facturation.\n'
+      +'Les données ne sont pas transmises à des tiers sans consentement, sauf obligation légale. Le Client dispose des droits d\'accès, rectification, effacement, portabilité et opposition sur ses données, exercés par email à : '+(p.email||'contact@essentia-services.fr')+'.\n'
+      +'Les données sont conservées pendant la durée du contrat et 5 ans après sa résiliation (obligations comptables et légales).');
 
     // ── Signatures ──
     y+=6;
@@ -7278,9 +7289,10 @@ function _regenererContratPDFb64(contrat){
     doc.setTextColor(120,140,170); doc.setFontSize(6.5); doc.setFont('helvetica','normal');
     const footerC=[
       nomSoc+(p.forme?' — '+p.forme:'')+(p.siret?' · SIRET : '+p.siret:'')+(p.tvaIntra?' · TVA : '+p.tvaIntra:''),
+      ...(p.numSAP||p.assurance?[[p.numSAP?'Agrément SAP : '+p.numSAP:'',p.assurance?'Assurance RCP : n° '+p.assurance:''].filter(Boolean).join(' · ')]:[]),
       (p.mentionLegale||'Pénalités de retard : 3× taux légal. Indemnité forfaitaire : 40 €.')+' — Réf. '+ref
     ];
-    doc.text(footerC,W/2,pH-16,{align:'center',lineHeightFactor:1.6});
+    doc.text(footerC,W/2,pH-20,{align:'center',lineHeightFactor:1.6});
 
     const b64=_pdfB64(doc);
     _savePDFCache(ref,b64,ref+'_contrat_prestation.pdf');
@@ -8031,6 +8043,8 @@ function sauvegarderParametres(){
     bic:document.getElementById('paramBIC')?.value||'',
     capital:document.getElementById('paramCapital')?.value||'',
     mentionLegale:document.getElementById('paramMentionLegale')?.value||'',
+    numSAP:document.getElementById('paramNumSAP')?.value||'',
+    assurance:document.getElementById('paramAssurance')?.value||'',
     clientRefCounter:existing.clientRefCounter,
     contratCONTCounter:existing.contratCONTCounter,
     contratCDICounter:existing.contratCDICounter,
@@ -8241,7 +8255,7 @@ function reinitialiserTout(){
 
   // 7. Vider les champs paramètres visuellement
   ['paramNomSociete','paramSiret','paramTVAIntra','paramAdresse','paramTel',
-   'paramEmail','paramSiteWeb','paramIBAN','paramBIC','paramCapital','paramMentionLegale'].forEach(id=>{
+   'paramEmail','paramSiteWeb','paramIBAN','paramBIC','paramCapital','paramMentionLegale','paramNumSAP','paramAssurance'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
   const logoPreview=document.getElementById('logoPreview');
@@ -8433,6 +8447,7 @@ function chargerDonnees(){
       sv('paramAdresse',p.adresse);sv('paramTel',p.tel);sv('paramEmail',p.email);
       sv('paramSiteWeb',p.siteWeb);sv('paramIBAN',p.iban);sv('paramBIC',p.bic||'');sv('paramCapital',p.capital);
       sv('paramMentionLegale',p.mentionLegale);sv('paramTarifKm',p.tarifKm||0.30);
+      sv('paramNumSAP',p.numSAP);sv('paramAssurance',p.assurance);
       const formeEl=document.getElementById('paramForme');if(formeEl&&p.forme)formeEl.value=p.forme;
       // Mettre à jour la sidebar avec nom société
       if(p.nomSociete){const sub=document.getElementById('sidebarSub');if(sub)sub.textContent=p.nomSociete;}
@@ -9366,8 +9381,10 @@ function _genererContratPDF(contrat){
     const typeLabel=tLabels[contrat.type]||'Contrat';
     const doc=new jsPDF();
     doc.setFillColor(26,46,74); doc.rect(0,0,210,24,'F');
+    const _logoG=localStorage.getItem('progestLogo');
+    if(_logoG){try{doc.addImage(_logoG,_logoFmt(_logoG),M,2,16,16);}catch(e){}}
     doc.setTextColor(255,255,255); doc.setFontSize(13); doc.setFont('helvetica','bold');
-    doc.text(p.nomSociete||'Essentia Services',14,10);
+    doc.text(p.nomSociete||'Essentia Services',_logoG?M+20:14,10);
     doc.setFontSize(9); doc.setFont('helvetica','normal');
     doc.text(typeLabel,14,17);
     doc.text(new Date().toLocaleDateString('fr-FR'),196,17,{align:'right'});
@@ -9642,12 +9659,13 @@ function genererContratPrestation(){
   doc.setFontSize(8); doc.setFont('helvetica','normal');
   if(p.adresse) doc.text(p.adresse.replace(/\n/g,' '),logo?M+20:M,y+15);
   if(p.siret) doc.text('SIRET : '+p.siret,logo?M+20:M,y+20);
+  if(p.numSAP||p.assurance) doc.text([p.numSAP?'Agrément SAP : '+p.numSAP:'',p.assurance?'Assurance RCP : n° '+p.assurance:''].filter(Boolean).join(' · '),logo?M+20:M,y+25);
   doc.setFontSize(14); doc.setFont('helvetica','bold');
   doc.text('CONTRAT DE PRESTATION DE SERVICES',W-M,y+9,{align:'right'});
   doc.setFontSize(8); doc.setFont('helvetica','normal');
   doc.text('Réf. : '+ref+'  |  Date : '+debut,W-M,y+15,{align:'right'});
-  doc.setLineWidth(0.5); doc.line(M,y+24,W-M,y+24);
-  y+=30;
+  doc.setLineWidth(0.5); doc.line(M,y+29,W-M,y+29);
+  y+=35;
 
   // ── Parties ──────────────────────────────────────────────
   doc.setDrawColor(0,0,0); doc.setLineWidth(0.3);
@@ -9736,7 +9754,7 @@ function genererContratPrestation(){
 
   if(document.getElementById('clauseAssurance')?.checked){
     section('ARTICLE 7 — RESPONSABILITÉ ET ASSURANCE',
-      'Le Prestataire est assuré pour sa responsabilité civile professionnelle. Tout dommage constaté doit être signalé dans les 48 heures. Le Client est responsable de la mise à disposition des accès et de la sécurisation de ses biens.',
+      'Le Prestataire est assuré pour sa responsabilité civile professionnelle'+(p.assurance?' (police n° '+p.assurance+')'  :'')+'. Tout dommage constaté doit être signalé dans les 48 heures. Le Client est responsable de la mise à disposition des accès et de la sécurisation de ses biens.',
       [100,60,20]
     );
   }
@@ -9751,6 +9769,10 @@ function genererContratPrestation(){
   const condLib=gv('contratConditions');
   if(condLib) section('CONDITIONS PARTICULIÈRES', condLib, [60,60,60]);
 
+  section('PROTECTION DES DONNÉES PERSONNELLES (RGPD)',
+    'Conformément au Règlement (UE) 2016/679 (RGPD) et à la loi Informatique et Libertés, les données personnelles du Client sont traitées par '+nomSoc+' aux fins d\'exécution des prestations et de facturation. Les données ne sont pas transmises à des tiers sans consentement, sauf obligation légale. Le Client dispose des droits d\'accès, rectification, effacement et opposition, exercés par email à : '+(p.email||'contact@essentia-services.fr')+'. Conservation : durée du contrat + 5 ans.'
+  );
+
   // ── Signatures ───────────────────────────────────────────
   y+=6;
   y=_blocSignaturePDF(doc,y,W,M,c.nom,'du client',_signatureData);
@@ -9760,7 +9782,10 @@ function genererContratPrestation(){
   doc.setDrawColor(0,0,0); doc.setLineWidth(0.3);
   doc.line(M,pH-15,W-M,pH-15);
   doc.setTextColor(80,80,80); doc.setFontSize(6.5); doc.setFont('helvetica','normal');
-  doc.text(`${nomSoc}${p.siret?' · SIRET : '+p.siret:''} — Réf. ${ref}`,W/2,pH-9,{align:'center'});
+  doc.text([
+    `${nomSoc}${p.siret?' · SIRET : '+p.siret:''} — Réf. ${ref}`,
+    ...(p.numSAP||p.assurance?[[p.numSAP?'Agrément SAP : '+p.numSAP:'',p.assurance?'Assurance RCP : n° '+p.assurance:''].filter(Boolean).join(' · ')]:[])
+  ],W/2,pH-12,{align:'center',lineHeightFactor:1.6});
 
   const _fname1=`${ref}_contrat_prestation.pdf`;
   _savePDFCache(ref,_pdfB64(doc),_fname1);
@@ -9817,15 +9842,17 @@ function genererContratTravail(){
   var y=M;
 
   // ─ En-tête ─
-  doc.setFillColor(26,10,60); doc.rect(0,0,W,26,'F');
+  doc.setFillColor(26,10,60); doc.rect(0,0,W,30,'F');
   if(logo){try{doc.addImage(logo,_logoFmt(logo),M,3,18,18);}catch(e){}}
   doc.setTextColor(255,255,255); doc.setFontSize(12); doc.setFont('helvetica','bold');
-  doc.text(p.nomSociete||'Essentia Services',logo?M+22:M,13);
-  doc.setTextColor(200,180,255); doc.setFontSize(14);
-  doc.text('CONTRAT DE TRAVAIL '+type,W-M,13,{align:'right'});
+  doc.text(p.nomSociete||'Essentia Services',logo?M+22:M,11);
+  doc.setTextColor(180,200,240); doc.setFontSize(7); doc.setFont('helvetica','normal');
+  if(p.numSAP||p.assurance) doc.text([p.numSAP?'Agrément SAP : '+p.numSAP:'',p.assurance?'Assurance RCP : n° '+p.assurance:''].filter(Boolean).join(' · '),logo?M+22:M,17);
+  doc.setTextColor(200,180,255); doc.setFontSize(14); doc.setFont('helvetica','bold');
+  doc.text('CONTRAT DE TRAVAIL '+type,W-M,11,{align:'right'});
   doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(200,200,255);
   doc.text('Réf. : '+ref+'  |  Embauche le : '+dateEmb,W-M,20,{align:'right'});
-  y=33;
+  y=36;
 
   // ─ Parties ─
   doc.setFillColor(245,240,255); doc.roundedRect(M,y,87,38,2,2,'F');
@@ -10015,15 +10042,20 @@ function genererAvenant(){
   if(!objet||!contenu){toast('Objet et contenu requis','warning');return;}
   const contratOriginal=contratsData.find(c=>c.id===refOriginal)||{};
   const doc=new jsPDF({unit:'mm',format:'a4'}); const W=210,M=15; let y=M;
-  doc.setFillColor(60,40,0); doc.rect(0,0,W,22,'F');
+  const _logoAv=localStorage.getItem('progestLogo');
+  doc.setFillColor(60,40,0); doc.rect(0,0,W,28,'F');
+  if(_logoAv){try{doc.addImage(_logoAv,_logoFmt(_logoAv),M,4,18,18);}catch(e){}}
   doc.setTextColor(255,220,100); doc.setFontSize(13); doc.setFont('helvetica','bold');
-  doc.text('AVENANT AU CONTRAT',W/2,13,{align:'center'});
+  doc.text('AVENANT AU CONTRAT',W/2,11,{align:'center'});
   doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(255,200,100);
-  doc.text(`Réf. : ${ref}  |  Date d'effet : ${date}  |  Contrat original : ${contratOriginal.ref||refOriginal}`,W/2,19,{align:'center'});
-  y=30;
+  doc.text(`Réf. : ${ref}  |  Date d'effet : ${date}  |  Contrat original : ${contratOriginal.ref||refOriginal}`,W/2,17,{align:'center'});
+  doc.setTextColor(255,180,80); doc.setFontSize(7);
+  doc.text(`${p.nomSociete||'Essentia Services'}${p.numSAP?' · Agrément SAP : '+p.numSAP:''}${p.assurance?' · Assurance RCP : n° '+p.assurance:''}`,W/2,23,{align:'center'});
+  y=36;
   doc.setFillColor(255,248,230); doc.roundedRect(M,y,W-2*M,16,2,2,'F');
   doc.setTextColor(100,60,0); doc.setFontSize(9); doc.setFont('helvetica','bold');
   doc.text(`Objet de l'avenant : ${objet}`,M+4,y+6);
+
   doc.setFontSize(8); doc.setFont('helvetica','normal');
   doc.text(`Parties : ${p.nomSociete||'—'} et ${contratOriginal.clientOuSalarie||'—'}`,M+4,y+12);
   y+=22;
@@ -10651,13 +10683,15 @@ function genererDevisPDF(){
   doc.setFontSize(7.5); doc.setFont('helvetica','normal');
   if(adresse) doc.text(adresse,tx,y+15);
   if(siret) doc.text('SIRET : '+siret,tx,y+20);
+  doc.setFontSize(6.5);
+  if(p.numSAP||p.assurance) doc.text([p.numSAP?'Agrément SAP : '+p.numSAP:'',p.assurance?'Ass. RCP : n° '+p.assurance:''].filter(Boolean).join(' · '),tx,y+25);
   doc.setFontSize(14); doc.setFont('helvetica','bold');
   doc.text('DEVIS N° '+numDev,W-M,y+9,{align:'right'});
   doc.setFontSize(7.5); doc.setFont('helvetica','normal');
   doc.text('Date : '+dateDev,W-M,y+15,{align:'right'});
   doc.text('Valable jusqu\'au : '+dateExp.toLocaleDateString('fr-FR'),W-M,y+20,{align:'right'});
-  doc.setLineWidth(0.4); doc.line(M,y+24,W-M,y+24);
-  y+=30;
+  doc.setLineWidth(0.4); doc.line(M,y+29,W-M,y+29);
+  y+=35;
   // Bloc client + objet — hauteur dynamique
   let _destH=20;
   if(c.entreprise) _destH+=5; if(c.adresse) _destH+=5; if(c.commune) _destH+=5; if(c.email) _destH+=5;
@@ -10730,9 +10764,15 @@ function genererDevisPDF(){
 
   // Pied de page
   const pH=doc.internal.pageSize.getHeight();
-  doc.setDrawColor(0,0,0); doc.setLineWidth(0.3); doc.line(M,pH-22,W-M,pH-22);
-  doc.setTextColor(80,80,80); doc.setFontSize(6.5); doc.setFont('helvetica','normal');
-  doc.text([`${nomSoc}${siret?' · SIRET : '+siret:''}`,`Devis valable ${validite} jours — Bon pour accord avec signature et mention manuscrite "Bon pour accord"`],M,pH-16,{lineHeightFactor:1.6});
+  doc.setDrawColor(0,0,0); doc.setLineWidth(0.3); doc.line(M,pH-34,W-M,pH-34);
+  doc.setTextColor(80,80,80); doc.setFontSize(6); doc.setFont('helvetica','normal');
+  doc.text([
+    `${nomSoc}${siret?' · SIRET : '+siret:''}${p.numSAP?' · Agrément SAP : '+p.numSAP:''}${p.assurance?' · Assurance RCP : n° '+p.assurance:''}`,
+    `Devis valable ${validite} jours — Bon pour accord avec signature et mention manuscrite "Bon pour accord"`,
+    `Crédit d'impôt de 50% des sommes versées (art. 199 sexdecies du CGI) — Attestation fiscale annuelle remise avant le 31/03 de chaque année`,
+    `Droit de rétractation : 14 jours à compter de la signature du contrat (art. L.221-18 du Code de la consommation)`,
+    `Pénalités de retard : 3× taux légal en vigueur — Indemnité forfaitaire pour frais de recouvrement : 40 € (art. L.441-10 du Code de commerce)`
+  ],M,pH-28,{lineHeightFactor:1.5});
   doc.save(`${numDev}_${(c.nom||'client').replace(/\s+/g,'_')}.pdf`);
   // Enregistrer
   devisData.push({id:'DEV'+Date.now(),numero:numDev,client:c.nom||'—',clientId,date:dateDev,objet:gv('devisObjet'),totalHT:st,totalTTC:ttc,tva:tauxTVA,statut:'en_attente',validite,lignes:JSON.parse(JSON.stringify(lignesDevisData))});
