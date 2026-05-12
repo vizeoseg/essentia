@@ -13833,7 +13833,8 @@ function lingeAjouterLigne(pfx,nbLits){
       if (d.contrats) {
         contratsData = _restaurerPhotosLocales(d.contrats, contratsData, 'signature');
       }
-      if (d.planningPrev) planningPrevData = d.planningPrev;
+      if (d.planningPrev)  planningPrevData  = d.planningPrev;
+      if (d.deplacements)  deplacementsData  = d.deplacements;
       if (d.fournisseurs) fournisseursData = d.fournisseurs;
       if (d.facNumeroAutoIncrement) facNumeroAutoIncrement = d.facNumeroAutoIncrement;
       if (d.devisAutoIncrement)     devisAutoIncrement     = d.devisAutoIncrement;
@@ -13925,6 +13926,7 @@ function lingeAjouterLigne(pfx,nbLits){
       pointage:               pointageData,
       contrats:               contratsData,
       planningPrev:           planningPrevData,
+      deplacements:           deplacementsData,
       taches:                 tachesChecklist,
       checkEtat:              (function(){ try{ return JSON.parse(localStorage.getItem('progestCheckEtat')||'{}'); }catch(e){ return {}; } })(),
       charges:                _charges,
