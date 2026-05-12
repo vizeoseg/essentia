@@ -11777,7 +11777,8 @@ function _ppRafraichirLigne(clientId, dateKey){
   if(!cont) return;
   // Trouver l'input heures de cette ligne pour sync
   var inputH = cont.querySelector('.pp-heures[data-cid="'+clientId+'"][data-key="'+dateKey+'"]');
-  if(inputH && entry.statut !== 'absent') inputH.value = hReal.toFixed(2);
+  // Ne pas écraser la valeur si l'utilisateur est en train de taper dedans
+  if(inputH && entry.statut !== 'absent' && document.activeElement !== inputH) inputH.value = hReal.toFixed(2);
   // Trouver la cellule delta :
   // Vue Mois (tableau) → td suivant ; Vue Jour (grille CSS) → parentElement x2 → nextSibling
   if(inputH) {
