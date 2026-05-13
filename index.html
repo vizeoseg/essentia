@@ -6683,8 +6683,6 @@ function genererFacturePDF(){
       doc.setFont('helvetica','bold');
       doc.setTextColor(_absent?160:20,_absent?160:37,_absent?160:64);
       doc.text(`${_hReal}h`,M+50,y+4,{align:'right'});
-      // Note
-      if(entry.note){doc.setFont('helvetica','italic');doc.setFontSize(6.5);doc.setTextColor(100,100,130);doc.text(entry.note,M+53,y+4,{maxWidth:82});}
       // Montant
       doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(20,37,64);
       doc.text(`${fmt2(_hReal*(c.tarif||0))} €`,W-M-2,y+4,{align:'right'});
