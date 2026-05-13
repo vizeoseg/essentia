@@ -6557,6 +6557,7 @@ function genererFacturePDF(){
   const montantTVA=sousTotal*tauxTVA/100;
   const totalTTC=sousTotal+montantTVA;
   const fmt2=v=>v.toFixed(2).replace('.',',');
+  const fmtH=h=>{const hrs=Math.floor(h);const mins=Math.round((h-hrs)*60);return mins>0?`${hrs}h${String(mins).padStart(2,'0')}`:`${hrs}h`;};
   const dateEch=new Date(dateFacRaw||new Date());
   dateEch.setDate(dateEch.getDate()+(condPaie===0?0:condPaie));
 
@@ -6682,7 +6683,7 @@ function genererFacturePDF(){
       // Heures réelles — alignées
       doc.setFont('helvetica','bold');
       doc.setTextColor(_absent?160:20,_absent?160:37,_absent?160:64);
-      doc.text(`${_hReal}h`,M+50,y+4,{align:'right'});
+      doc.text(fmtH(_hReal),M+50,y+4,{align:'right'});
       // Montant
       doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(20,37,64);
       doc.text(`${fmt2(_hReal*(c.tarif||0))} €`,W-M-2,y+4,{align:'right'});
@@ -6693,7 +6694,7 @@ function genererFacturePDF(){
     const _totalMt=_totalH*(c.tarif||0);
     doc.setFillColor(220,228,248);doc.rect(M,y,W-2*M,5.5,'F');
     doc.setTextColor(40,60,120);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
-    doc.text(`${_interventions.length} intervention${_interventions.length>1?'s':''} · ${Math.round(_totalH*10)/10}h`,M+3,y+4);
+    doc.text(`${_interventions.length} intervention${_interventions.length>1?'s':''} · ${fmtH(_totalH)}`,M+3,y+4);
     doc.text(`${fmt2(_totalMt)} €`,W-M-2,y+4,{align:'right'});
     y+=7;
   } else if(interventionLine){
