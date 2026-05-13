@@ -6656,7 +6656,6 @@ function genererFacturePDF(){
   const _interventions=Object.entries(_clientPrev)
     .filter(([,entry])=>entry&&(entry.statut==='confirme'||entry.statut==='partiel'||entry.statut==='prevu'||entry.statut==='absent'))
     .filter(([dateKey])=>{
-      if(!dateFacRaw) return dateKey<=_today;
       const d=new Date(dateKey);
       return d.getFullYear()===_periodeStart.getFullYear()&&d.getMonth()===_periodeStart.getMonth()&&dateKey<=_today;
     })
