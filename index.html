@@ -1020,7 +1020,7 @@ tr{transition:background .12s;}
               <button id="btnVueSemaine" class="btn btn-sm" onclick="setVuePlanning('semaine')" style="border-radius:0;border:none;background:transparent;color:var(--text2);font-weight:600;padding:6px 12px;"><i class="fas fa-calendar-week"></i> Semaine</button>
             </div>
             <button class="btn btn-success btn-sm" onclick="ouvrirModalIntervention()"><i class="fas fa-plus"></i> Planifier</button>
-            <button class="btn btn-sm" style="background:#f97316;color:#fff;font-weight:700;" onclick="ouvrirModalAirbnb()"><i class="fas fa-bolt"></i> Airbnb</button>
+            <button class="btn btn-sm" style="background:#f97316;color:#fff;font-weight:700;" onclick="ouvrirModalAirbnb()"><i class="fas fa-bolt"></i> Urgence</button>
             <button class="btn btn-sm" style="background:#1d4ed8;color:#fff;font-weight:700;box-shadow:0 2px 8px rgba(29,78,216,.35);" onclick="exportPlanningMoisPDF()"><i class="fas fa-file-pdf"></i> Exporter PDF</button>
             <div id="filtresSalaries" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;"></div>
           </div>
@@ -14626,18 +14626,33 @@ function ouvrirModalAirbnb(){
   const selInt = document.getElementById('airbnbIntervenant');
   const dateEl = document.getElementById('airbnbDate');
   const recapEl = document.getElementById('airbnbRecap');
-  const clients = clientsData.filter(c=>c.typeClient==='airbnb_particulier'||c.typeClient==='airbnb_agence');
-  if(sel) sel.innerHTML = '<option value="">— Sélectionner —</option>' +
-    clients.map(c=>`<option value="${c.id}">${c.nom}${c.commune?' · '+c.commune:''} (${c.typeClient==='airbnb_agence'?'Agence':'Particulier'})</option>`).join('');
-  if(selInt) selInt.innerHTML = '<option value="">— Gérant —</option>' +
-    salariesData.map(s=>`<option value="${s.nom}">${s.nom}</option>`).join('');
+  // Tous les clients : Airbnb en premier, puis les autres
+  const airbnbClients = clientsData.filter(c=>c.typeClient==='airbnb_particulier'||c.typeClient==='airbnb_agence');
+  const autresClients = clientsData.filter(c=>c.typeClient!=='airbnb_particulier'&&c.typeClient!=='airbnb_agence').sort((a,b)=>a.nom.localeCompare(b.nom));
+  if(sel){
+    let html = '<option value="">— Sélectionner un client —</option>';
+    if(airbnbClients.length) html += '<optgroup label="🏠 Airbnb">'+airbnbClients.map(c=>`<option value="${c.id}">${c.nom}${c.commune?' · '+c.commune:''}</option>`).join('')+'</optgroup>';
+    if(autresClients.length) html += '<optgroup label="Tous les clients">'+autresClients.map(c=>`<option value="${c.id}">${c.nom}${c.commune?' · '+c.commune:''}</option>`).join('')+'</optgroup>';
+    sel.innerHTML = html;
+  }
+  if(selInt) selInt.innerHTML = '<option value="">— Gérant —</option>'+salariesData.map(s=>`<option value="${s.nom}">${s.nom}</option>`).join('');
   if(dateEl) dateEl.value = new Date().toISOString().split('T')[0];
   if(recapEl) recapEl.style.display = 'none';
+  const modeEl = document.getElementById('urgenceMode');
+  if(modeEl) modeEl.value = 'acte';
+  mettreAJourModeUrgence();
   modal.style.display = 'flex';
 }
 
 function fermerModalAirbnb(){
   document.getElementById('modalAirbnb').style.display = 'none';
+}
+
+function mettreAJourModeUrgence(){
+  const mode = document.getElementById('urgenceMode')?.value || 'acte';
+  const wrap = document.getElementById('urgenceHeuresWrap');
+  if(wrap) wrap.style.display = mode === 'heure' ? '' : 'none';
+  remplirAirbnbInfos();
 }
 
 function remplirAirbnbInfos(){
@@ -14646,50 +14661,55 @@ function remplirAirbnbInfos(){
   const recap = document.getElementById('airbnbRecap');
   if(!recap) return;
   if(!c){ recap.style.display='none'; return; }
+  const mode = document.getElementById('urgenceMode')?.value || 'acte';
   const tarif = c.tarif||0;
-  const duree = c.heures||2;
-  const isActe = c.type === 'Acte';
+  const heuresSaisies = parseFloat(document.getElementById('urgenceHeures')?.value)||c.heures||2;
+  const isActe = mode === 'acte';
+  const duree = isActe ? (c.heures||1) : heuresSaisies;
   const ht = isActe ? tarif : tarif * duree;
   const tvaP = getTVAClient(c)||0;
   const tva = ht * tvaP / 100;
-  const tarifLabel = isActe ? `${tarif}€/acte` : `${tarif}€/h`;
   const estimLabel = isActe
     ? `1 intervention × ${tarif}€ = ${ht.toFixed(2)}€ HT`
-    : `${duree}h × ${tarif}€ = ${ht.toFixed(2)}€ HT`;
+    : `${duree}h × ${tarif}€/h = ${ht.toFixed(2)}€ HT`;
   recap.style.display = 'block';
-  recap.innerHTML = `<strong>${c.nom}</strong> · ${c.commune||'—'} · Tarif : ${tarifLabel}<br>
-    Estimé : <strong>${estimLabel}</strong> · TVA ${tvaP}% : ${tva.toFixed(2)}€ · TTC : ${(ht+tva).toFixed(2)}€`;
+  recap.innerHTML = `<strong>${c.nom}</strong> · ${c.commune||'—'} · ${isActe?`Forfait ${tarif}€/acte`:`${tarif}€/h`}<br>
+    Estimé : <strong>${estimLabel}</strong> · TVA ${tvaP}% : ${tva.toFixed(2)}€ · <strong>TTC : ${(ht+tva).toFixed(2)}€</strong>`;
 }
 
 function sauvegarderAirbnb(){
   const clientId = document.getElementById('airbnbClient').value;
   const date = document.getElementById('airbnbDate').value;
   const heure = document.getElementById('airbnbHeure').value;
-  if(!clientId){ toast('Sélectionnez un client Airbnb','warning'); return; }
+  const mode = document.getElementById('urgenceMode')?.value || 'acte';
+  const heuresSaisies = parseFloat(document.getElementById('urgenceHeures')?.value)||2;
+  if(!clientId){ toast('Sélectionnez un client','warning'); return; }
   if(!date){ toast('Sélectionnez une date','warning'); return; }
   const c = clientsData.find(x=>x.id===clientId);
   if(!c){ toast('Client introuvable','error'); return; }
-  const duree = c.heures||2;
+  const isAirbnb = c.typeClient==='airbnb_particulier'||c.typeClient==='airbnb_agence';
+  const duree = mode==='heure' ? heuresSaisies : (c.heures||1);
   const note = document.getElementById('airbnbNote').value.trim();
   const intervenant = document.getElementById('airbnbIntervenant').value;
-  // Sécurité : vider les jours récurrents du client Airbnb pour éviter la duplication
-  if(c.jours && c.jours.length){ c.jours = []; }
+  // Sécurité : vider les jours récurrents des clients Airbnb pour éviter la duplication
+  if(isAirbnb && c.jours && c.jours.length){ c.jours = []; }
   deplacementsData.push({
-    id: 'airbnb_'+Date.now(),
+    id: (isAirbnb?'airbnb_':'urgence_')+Date.now(),
     clientId, dateOrigine: null, heureOrigine: null,
     dateNouvelle: date, heureNouvelle: heure,
     dureeEstimee: duree, dureeReelle: null,
-    intervenant, note, airbnb: true,
-    motif: 'Intervention Airbnb'+(note?' — '+note:'')
+    modeFacturation: mode,
+    intervenant, note, airbnb: isAirbnb,
+    motif: (isAirbnb?'Airbnb':'Urgence')+(note?' — '+note:'')
   });
   sauvegarderTout(true);
-  // Forcer la sauvegarde Supabase immédiate (bypass debounce 2s) pour éviter perte si rechargement rapide
   if(typeof window.supabaseForceSync === 'function') window.supabaseForceSync();
   fermerModalAirbnb();
   if(typeof chargerTournees === 'function') chargerTournees();
   else renderPlanningMois('planningMoisCalendar', planningMoisOffset);
   if(typeof chargerPlanningPrevisionnel === 'function') chargerPlanningPrevisionnel();
-  toast(`Airbnb planifié : ${c.nom} le ${new Date(date+'T12:00').toLocaleDateString('fr-FR')} à ${heure} ✓`, 'success');
+  const dateF = new Date(date+'T12:00').toLocaleDateString('fr-FR');
+  toast(`Urgence planifiée : ${c.nom} le ${dateF}${heure?' à '+heure:''} ✓`, 'success');
 }
 
 function _cgGetLignes(intervenant, activiteFiltre){
@@ -14976,20 +14996,31 @@ function assignerActivite(clientId, jour, activite){
 </script>
 <!-- ═══ MODAL AIRBNB URGENCE ═══ -->
 <div id="modalAirbnb" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);align-items:center;justify-content:center;">
-  <div style="background:var(--bg);border-radius:16px;padding:24px;width:min(480px,95vw);box-shadow:var(--shadow);">
+  <div style="background:var(--bg);border-radius:16px;padding:24px;width:min(500px,95vw);box-shadow:var(--shadow);">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
       <div>
-        <div style="font-size:16px;font-weight:700;color:var(--text);"><i class="fas fa-bolt" style="color:#f97316;margin-right:6px;"></i>Intervention Airbnb</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px;">Planification urgente à l'acte</div>
+        <div style="font-size:16px;font-weight:700;color:var(--text);"><i class="fas fa-bolt" style="color:#f97316;margin-right:6px;"></i>Intervention urgente</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px;">Hors planning — tous clients · à l'acte ou à l'heure</div>
       </div>
       <button onclick="fermerModalAirbnb()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:20px;">&#x2715;</button>
     </div>
     <div style="display:flex;flex-direction:column;gap:12px;">
       <div class="form-group">
-        <label>Client Airbnb</label>
-        <select id="airbnbClient" onchange="remplirAirbnbInfos()" style="width:100%;">
-          <option value="">— Sélectionner —</option>
-        </select>
+        <label>Client</label>
+        <select id="airbnbClient" onchange="remplirAirbnbInfos()" style="width:100%;"></select>
+      </div>
+      <div class="rg-2">
+        <div class="form-group">
+          <label>Mode de facturation</label>
+          <select id="urgenceMode" onchange="mettreAJourModeUrgence()">
+            <option value="acte">📦 À l'acte (forfait)</option>
+            <option value="heure">⏱ À l'heure (tarif × heures)</option>
+          </select>
+        </div>
+        <div class="form-group" id="urgenceHeuresWrap" style="display:none;">
+          <label>Nombre d'heures</label>
+          <input type="number" id="urgenceHeures" value="2" min="0.5" step="0.5" oninput="remplirAirbnbInfos()">
+        </div>
       </div>
       <div class="rg-2">
         <div class="form-group">
@@ -15003,15 +15034,13 @@ function assignerActivite(clientId, jour, activite){
       </div>
       <div class="form-group">
         <label>Intervenant</label>
-        <select id="airbnbIntervenant" style="width:100%;">
-          <option value="">— Gérant —</option>
-        </select>
+        <select id="airbnbIntervenant" style="width:100%;"></select>
       </div>
       <div class="form-group">
         <label>Note / Description</label>
-        <input type="text" id="airbnbNote" placeholder="Ex: Départ locataire, ménage complet...">
+        <input type="text" id="airbnbNote" placeholder="Ex: Ménage complet, vitre urgence, repassage...">
       </div>
-      <div id="airbnbRecap" style="display:none;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:10px;padding:10px 12px;font-size:11px;color:#c2410c;"></div>
+      <div id="airbnbRecap" style="display:none;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:10px;padding:10px 12px;font-size:11px;color:#c2410c;line-height:1.6;"></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end;">
       <button onclick="fermerModalAirbnb()" class="btn btn-ghost btn-sm">Annuler</button>
