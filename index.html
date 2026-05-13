@@ -7211,7 +7211,9 @@ function _regenererContratPDFb64(contrat){
     var emailLines=c.email?doc.splitTextToSize(c.email,maxTxt):[];
     var telStr=c.tel?doc.splitTextToSize('Tél : '+c.tel,maxTxt):[];
     var lh=5; // line height mm
-    var leftH=8+(nomSocLines.length*lh)+(p.siret?lh:0)+(adresseSocLines.length*lh)+2;
+    var telSocStr=p.tel?doc.splitTextToSize('Tél : '+p.tel,maxTxt):[];
+    var emailSocLines=p.email?doc.splitTextToSize(p.email,maxTxt):[];
+    var leftH=8+(nomSocLines.length*lh)+(p.siret?lh:0)+(adresseSocLines.length*lh)+(telSocStr.length*lh)+(emailSocLines.length*lh)+2;
     var rightH=8+(clientNomLines.length*lh)+(adresseClientLines.length*lh)+(communeClientLines.length*lh)+(emailLines.length*lh)+(telStr.length*lh)+2;
     var boxH=Math.max(leftH,rightH,30);
     doc.setDrawColor(0,0,0); doc.setLineWidth(0.3);
@@ -7226,6 +7228,8 @@ function _regenererContratPDFb64(contrat){
     doc.setFontSize(8); doc.setFont('helvetica','normal');
     if(p.siret){doc.text('SIRET : '+p.siret,M+3,yL);yL+=lh;}
     adresseSocLines.forEach(function(l){doc.text(l,M+3,yL);yL+=lh;});
+    telSocStr.forEach(function(l){doc.text(l,M+3,yL);yL+=lh;});
+    emailSocLines.forEach(function(l){doc.text(l,M+3,yL);yL+=lh;});
     // Colonne droite : client
     var yR=y+10;
     doc.setFontSize(9); doc.setFont('helvetica','bold');
@@ -10718,8 +10722,9 @@ function genererDevisPDF(){
   doc.setFontSize(7.5); doc.setFont('helvetica','normal');
   if(adresse) doc.text(adresse,tx,y+15);
   if(siret) doc.text('SIRET : '+siret,tx,y+20);
-  doc.setFontSize(6.5);
-  if(p.numSAP||p.assurance) doc.text([p.numSAP?'Agrément SAP : '+p.numSAP:'',p.assurance?'Ass. RCP : n° '+p.assurance:''].filter(Boolean).join(' · '),tx,y+25);
+  doc.setFontSize(7); doc.setFont('helvetica','normal');
+  const _devisTelEmail=[p.tel,p.email].filter(Boolean).join(' · ');
+  if(_devisTelEmail) doc.text(_devisTelEmail,tx,y+25);
   doc.setFontSize(14); doc.setFont('helvetica','bold');
   doc.text('DEVIS N° '+numDev,W-M,y+9,{align:'right'});
   doc.setFontSize(7.5); doc.setFont('helvetica','normal');
