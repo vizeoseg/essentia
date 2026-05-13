@@ -6226,7 +6226,7 @@ document.addEventListener('change',e=>{if(e.target.id==='facTauxTVA')calculerTot
 function _blocSignaturePDF(doc, y, W, M, nomPartie, labelPartie, sigData){
   const BH=sigData?60:46; // plus de hauteur si signature électronique
   const pageH=doc.internal.pageSize.getHeight();
-  if(y>pageH-BH-15){doc.addPage();y=M;}
+  if(y>pageH-BH-35){doc.addPage();y=M;}
   const mid=M+(W-2*M)/2;
   const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
   const nomSoc=(p.nomSociete||'Essentia Services SAS').toUpperCase();
@@ -6791,30 +6791,7 @@ function genererFacturePDF(){
     'Tout règlement doit intervenir à la date d\'échéance indiquée. Tout retard de paiement entraîne des pénalités égales à 3 fois le taux d\'intérêt légal, ainsi qu\'une indemnité forfaitaire pour frais de recouvrement de 40 €.',
     `En cas de litige, le tribunal compétent est le Tribunal de Commerce de Troyes (10000).${p.tvaIntra?' N° TVA : '+p.tvaIntra:''}`,
   ];
-  // maxWidth limité pour laisser la colonne QR (25mm) sur la droite
-  doc.text(footerLines,M,pageH-25,{lineHeightFactor:1.4,maxWidth:W-2*M-27});
-
-  // ── QR Code Factur-X — coin bas-droit ─────────────────────
-  try{
-    const qrData=`FACTUR-X|${numFac}|${dateFac}|${clientNom}|${fmt2(sousTotal)}|${fmt2(montantTVA)}|${fmt2(totalTTC)}|${tauxTVA}%|${nomSoc}`;
-    const qrCanvas=document.createElement('canvas');
-    qrCanvas.width=60;qrCanvas.height=60;
-    const qrCtx=qrCanvas.getContext('2d');
-    qrCtx.fillStyle='#fff';qrCtx.fillRect(0,0,60,60);
-    qrCtx.fillStyle='#0e2040';qrCtx.fillRect(2,2,56,56);
-    qrCtx.fillStyle='#fff';qrCtx.fillRect(4,4,52,52);
-    qrCtx.fillStyle='#0e2040';
-    const bits=qrData.split('').map(c=>c.charCodeAt(0));
-    for(let r=0;r<6;r++)for(let cc=0;cc<6;cc++){if(bits[(r*6+cc)%bits.length]%2===0)qrCtx.fillRect(5+cc*8,5+r*8,7,7);}
-    const pageH2=doc.internal.pageSize.getHeight();
-    // QR positionné en bas-droit, au-dessus du footer
-    const qrX=W-M-22; const qrY=pageH2-50;
-    doc.addImage(qrCanvas.toDataURL(),'PNG',qrX,qrY,20,20);
-    doc.setTextColor(29,78,216);doc.setFontSize(5.5);doc.setFont('helvetica','bold');
-    doc.text('FACTUR-X',qrX+10,pageH2-29,{align:'center'});
-    doc.setTextColor(120,140,170);doc.setFontSize(5);doc.setFont('helvetica','normal');
-    doc.text('EN 16931',qrX+10,pageH2-26.5,{align:'center'});
-  }catch(qrErr){/* QR optionnel */}
+  doc.text(footerLines,M,pageH-25,{lineHeightFactor:1.4,maxWidth:W-2*M});
 
   // ── Sauvegarde ────────────────────────────────────────────
   const fileName=`${numFac}_${clientNom.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_-]/g,'')}.pdf`;
