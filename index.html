@@ -6652,9 +6652,14 @@ function genererFacturePDF(){
   // ── Détail des interventions réalisées ───────────────────
   const _periodeStart=dateFacRaw?new Date(dateFacRaw):new Date();
   const _clientPrev=(planningPrevData&&clientId)?(planningPrevData[clientId]||{}):{};
+  const _today=new Date().toISOString().split('T')[0];
   const _interventions=Object.entries(_clientPrev)
-    .filter(([,entry])=>entry&&(entry.statut==='confirme'||entry.statut==='partiel'||entry.statut==='prevu'))
-    .filter(([dateKey])=>{if(!dateFacRaw)return true;const d=new Date(dateKey);return d.getFullYear()===_periodeStart.getFullYear()&&d.getMonth()===_periodeStart.getMonth();})
+    .filter(([,entry])=>entry&&(entry.statut==='confirme'||entry.statut==='partiel'||entry.statut==='prevu'||entry.statut==='absent'))
+    .filter(([dateKey])=>{
+      if(!dateFacRaw) return dateKey<=_today;
+      const d=new Date(dateKey);
+      return d.getFullYear()===_periodeStart.getFullYear()&&d.getMonth()===_periodeStart.getMonth()&&dateKey<=_today;
+    })
     .sort(([a],[b])=>a.localeCompare(b));
 
   if(_interventions.length>0){
