@@ -6657,43 +6657,61 @@ function genererFacturePDF(){
     .sort(([a],[b])=>a.localeCompare(b));
 
   if(_interventions.length>0){
+    // ── En-tête section : planning récurrent + heure à droite ──
     doc.setFillColor(230,235,250);
     doc.rect(M,y,W-2*M,5.5,'F');
     doc.setTextColor(40,60,120);doc.setFontSize(7);doc.setFont('helvetica','bold');
     doc.text('DÉTAIL DES INTERVENTIONS',M+2,y+4);
     const _joursRec=(c.jours&&c.jours.length>0)?c.jours.map(j=>joursLabels[j]||j).join(', '):'';
-    const _rec=[_joursRec,heureStr,c.frequence?`${c.frequence}×/sem`:''].filter(Boolean).join(' · ');
+    const _rec=[heureStr,_joursRec,c.frequence?`${c.frequence}×/sem`:''].filter(Boolean).join(' · ');
     if(_rec){doc.setFont('helvetica','normal');doc.setTextColor(80,100,140);doc.text(_rec,W-M-2,y+4,{align:'right'});}
+    // Colonnes : | Statut+Date(40mm) | Heures(14mm) | Note(~80mm) | Montant(30mm) |
+    doc.setTextColor(100,100,130);doc.setFontSize(6.5);
+    doc.text('Date',M+3,y+4);
+    doc.text('H réel',M+48,y+4,{align:'right'});
+    doc.text('Note',M+52,y+4);
     y+=5.5;
     const _joursFr=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+    const _dd=d=>`${_joursFr[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
     _interventions.forEach(([dateKey,entry],idx)=>{
       if(y>262){doc.addPage();y=M;}
       const _d=new Date(dateKey+'T12:00:00');
       const _hReal=entry.statut==='absent'?0:(parseFloat(entry.heuresReelles)||c.heures||0);
-      const _statut=entry.statut==='confirme'?'✓':entry.statut==='partiel'?'½':'·';
+      const _absent=entry.statut==='absent';
+      const _ic=_absent?'–':entry.statut==='confirme'?'✓':'½';
       if(idx%2===0){doc.setFillColor(252,253,255);}else{doc.setFillColor(246,248,252);}
       doc.rect(M,y,W-2*M,5.5,'F');
-      doc.setTextColor(20,37,64);doc.setFontSize(7.5);doc.setFont('helvetica','normal');
-      doc.text(`${_statut}  ${_joursFr[_d.getDay()]} ${_d.toLocaleDateString('fr-FR')}`,M+3,y+4);
-      if(heureStr) doc.text(heureStr,M+58,y+4);
-      doc.text(`${_hReal}h`,M+80,y+4);
-      if(entry.note){doc.setTextColor(100,100,130);doc.text(entry.note,M+95,y+4,{maxWidth:65});}
-      doc.setTextColor(20,37,64);doc.setFont('helvetica','bold');
-      doc.text(`${(_hReal*(c.tarif||0)).toFixed(2)} €`,W-M-2,y+4,{align:'right'});
+      // Statut
+      doc.setFontSize(7);doc.setFont('helvetica','bold');
+      doc.setTextColor(_absent?180:entry.statut==='confirme'?16:200, _absent?180:entry.statut==='confirme'?120:120, _absent?180:entry.statut==='confirme'?80:0);
+      doc.text(_ic,M+3,y+4);
+      // Date courte
+      doc.setFont('helvetica','normal');doc.setTextColor(20,37,64);
+      doc.text(_dd(_d),M+8,y+4);
+      // Heures réelles — alignées
+      doc.setFont('helvetica','bold');
+      doc.setTextColor(_absent?160:20,_absent?160:37,_absent?160:64);
+      doc.text(`${_hReal}h`,M+50,y+4,{align:'right'});
+      // Note
+      if(entry.note){doc.setFont('helvetica','italic');doc.setFontSize(6.5);doc.setTextColor(100,100,130);doc.text(entry.note,M+53,y+4,{maxWidth:82});}
+      // Montant
+      doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(20,37,64);
+      doc.text(`${fmt2(_hReal*(c.tarif||0))} €`,W-M-2,y+4,{align:'right'});
       y+=5.5;
     });
+    // ── Ligne total ──
     const _totalH=_interventions.reduce((s,[,e])=>s+(e.statut==='absent'?0:(parseFloat(e.heuresReelles)||c.heures||0)),0);
-    doc.setFillColor(220,228,248);
-    doc.rect(M,y,W-2*M,5.5,'F');
+    const _totalMt=_totalH*(c.tarif||0);
+    doc.setFillColor(220,228,248);doc.rect(M,y,W-2*M,5.5,'F');
     doc.setTextColor(40,60,120);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
-    doc.text(`${_interventions.length} intervention(s)  —  ${Math.round(_totalH*10)/10}h réalisées`,M+3,y+4);
+    doc.text(`${_interventions.length} intervention${_interventions.length>1?'s':''} · ${Math.round(_totalH*10)/10}h`,M+3,y+4);
+    doc.text(`${fmt2(_totalMt)} €`,W-M-2,y+4,{align:'right'});
     y+=7;
   } else if(interventionLine){
-    doc.setFillColor(235,240,255);
-    doc.rect(M,y,W-2*M,6,'F');
+    doc.setFillColor(235,240,255);doc.rect(M,y,W-2*M,5.5,'F');
     doc.setTextColor(40,60,120);doc.setFontSize(7.5);doc.setFont('helvetica','italic');
-    doc.text(interventionLine,M+2,y+4.5,{maxWidth:W-2*M-4});
-    y+=8;
+    doc.text(interventionLine,M+2,y+4,{maxWidth:W-2*M-4});
+    y+=7;
   }
 
   // ── Lignes de facturation ─────────────────────────────────
