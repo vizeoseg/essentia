@@ -4476,6 +4476,14 @@ function mettreAJourTVAClient(){
   if(type==='entreprise'||type==='airbnb_agence') tvaEl.value='20';
   else tvaEl.value='10';
 }
+function mettreAJourTVAEditClient(){
+  const type = document.getElementById('editTypeClient')?.value||'particulier';
+  const tvaEl = document.getElementById('editTVA');
+  if(!tvaEl) return;
+  if(type==='exonere_0') tvaEl.value='0';
+  else if(type==='entreprise'||type==='airbnb_agence') tvaEl.value='20';
+  else tvaEl.value='10';
+}
 
 function getTVAClient(client){
   if(client.typeClient==='exonere_0') return 0;
@@ -4715,7 +4723,7 @@ function modifierClient(id){
     <div class="form-group"><label>Email</label><input type="email" id="editEmail" value="${c.email||''}"></div>
     <div class="form-group"><label>Adresse</label><input type="text" id="editAdresse" value="${c.adresse||''}"></div>
     <div class="form-group"><label>Entreprise</label><input type="text" id="editEntreprise" value="${c.entreprise||''}"></div>
-    <div class="form-group"><label>Type client</label><select id="editTypeClient"><option value="particulier" ${c.typeClient==='particulier'?'selected':''}>Particulier (10%)</option><option value="entreprise" ${c.typeClient==='entreprise'?'selected':''}>Entreprise (20%)</option><option value="airbnb_particulier" ${c.typeClient==='airbnb_particulier'?'selected':''}>Airbnb Particulier</option><option value="airbnb_agence" ${c.typeClient==='airbnb_agence'?'selected':''}>Airbnb Agence</option><option value="exonere_0" ${c.typeClient==='exonere_0'?'selected':''}>Exonéré TVA 0% ⚡</option></select></div>
+    <div class="form-group"><label>Type client</label><select id="editTypeClient" onchange="mettreAJourTVAEditClient()"><option value="particulier" ${c.typeClient==='particulier'?'selected':''}>Particulier (10%)</option><option value="entreprise" ${c.typeClient==='entreprise'?'selected':''}>Entreprise (20%)</option><option value="airbnb_particulier" ${c.typeClient==='airbnb_particulier'?'selected':''}>Airbnb Particulier</option><option value="airbnb_agence" ${c.typeClient==='airbnb_agence'?'selected':''}>Airbnb Agence</option><option value="exonere_0" ${c.typeClient==='exonere_0'?'selected':''}>Exonéré TVA 0% ⚡</option></select></div>
     <div class="form-group"><label>TVA applicable</label><select id="editTVA"><option value="10" ${(getTVAClient(c)==10)?'selected':''}>10%</option><option value="20" ${(getTVAClient(c)==20)?'selected':''}>20%</option><option value="0" ${(getTVAClient(c)==0)?'selected':''}>0% — Exonéré ⚡</option></select></div>
     <div class="form-group"><label>Tarif (€/h)</label><input type="number" id="editTarif" value="${c.tarif}"></div>
     <div class="form-group"><label>Type prestation</label><select id="editType"><option value="Heure" ${c.type==='Heure'?'selected':''}>Heure</option><option value="Acte" ${c.type==='Acte'?'selected':''}>Acte</option></select></div>
@@ -4794,7 +4802,7 @@ function sauvegarderModificationClient(){
   c.adresse=document.getElementById('editAdresse')?.value||c.adresse||'';
   c.entreprise=document.getElementById('editEntreprise').value;
   c.typeClient=document.getElementById('editTypeClient').value;
-  c.tva=(()=>{if(c.typeClient==='exonere_0')return 0;const v=parseFloat(document.getElementById('editTVA')?.value);return isNaN(v)?(c.typeClient==='entreprise'||c.typeClient==='airbnb_agence'?20:10):v;})();
+  c.tva=(()=>{if(c.typeClient==='exonere_0')return 0;const v=parseFloat(document.getElementById('editTVA')?.value);if(isNaN(v)||v===0)return(c.typeClient==='entreprise'||c.typeClient==='airbnb_agence')?20:10;return v;})();
   c.tarif=parseFloat(document.getElementById('editTarif').value)||0;
   c.type=document.getElementById('editType').value;
   c.heures=parseFloat(document.getElementById('editHeures').value)||0;
