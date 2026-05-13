@@ -7318,7 +7318,7 @@ function _regenererContratPDFb64(contrat){
       p.mentionLegale||'Tout règlement doit intervenir à la date d\'échéance indiquée. Tout retard de paiement entraîne des pénalités égales à 3 fois le taux d\'intérêt légal, ainsi qu\'une indemnité forfaitaire pour frais de recouvrement de 40 €.',
       `En cas de litige, le tribunal compétent est le Tribunal de Commerce de Troyes (10000). — Réf. ${ref}`
     ];
-    doc.text(footerC,W/2,pH-22,{align:'center',lineHeightFactor:1.6});
+    doc.text(footerC,W/2,pH-19,{align:'center',lineHeightFactor:1.4,maxWidth:W-2*M});
 
     const b64=_pdfB64(doc);
     _savePDFCache(ref,b64,ref+'_contrat_prestation.pdf');
@@ -10778,6 +10778,7 @@ function genererDevisPDF(){
   doc.setTextColor(0,0,0); doc.setFontSize(8); doc.setFont('helvetica','bold');
   let cx=M+2; cols.forEach((col,i)=>{doc.text(col,i>1?cx+colW[i]-3:cx,y+5,{align:i>1?'right':'left',maxWidth:colW[i]-2});cx+=colW[i];}); y+=7;
   lignesDevisData.forEach((l,idx)=>{
+    if(y>248){doc.addPage();y=M;}
     const tot=(l.qte||0)*(l.prixUnit||0);
     if(idx%2===0){doc.setFillColor(252,253,255);}else{doc.setFillColor(245,248,255);}
     doc.rect(M,y,W-2*M,7,'F'); doc.setTextColor(20,37,64); doc.setFontSize(8); doc.setFont('helvetica','normal');
@@ -10809,10 +10810,10 @@ function genererDevisPDF(){
   doc.text([
     `${nomSoc}${siret?' · SIRET : '+siret:''}${p.numSAP?' · Agrément SAP : '+p.numSAP:''}${p.assurance?' · Assurance RCP : n° '+p.assurance:''}`,
     `Devis valable ${validite} jours — Bon pour accord avec signature et mention manuscrite "Bon pour accord"`,
-    `Crédit d'impôt de 50% des sommes versées (art. 199 sexdecies du CGI) — Attestation fiscale annuelle remise avant le 31/03 de chaque année`,
+    `Crédit d\'impôt de 50% des sommes versées (art. 199 sexdecies du CGI) — Attestation fiscale annuelle remise avant le 31/03 de chaque année`,
     `Droit de rétractation : 14 jours à compter de la signature du contrat (art. L.221-18 du Code de la consommation)`,
-    `Tout retard de paiement entraîne des pénalités égales à 3 fois le taux d'intérêt légal, ainsi qu'une indemnité forfaitaire pour frais de recouvrement de 40 €. En cas de litige, le tribunal compétent est le Tribunal de Commerce de Troyes (10000).`
-  ],M,pH-28,{lineHeightFactor:1.5});
+    `Tout retard de paiement entraîne des pénalités égales à 3 fois le taux d\'intérêt légal, ainsi qu\'une indemnité forfaitaire pour frais de recouvrement de 40 €. En cas de litige, le tribunal compétent est le Tribunal de Commerce de Troyes (10000).`
+  ],M,pH-28,{lineHeightFactor:1.4,maxWidth:W-2*M});
   doc.save(`${numDev}_${(c.nom||'client').replace(/\s+/g,'_')}.pdf`);
   // Enregistrer
   devisData.push({id:'DEV'+Date.now(),numero:numDev,client:c.nom||'—',clientId,date:dateDev,objet:gv('devisObjet'),totalHT:st,totalTTC:ttc,tva:tauxTVA,statut:'en_attente',validite,lignes:JSON.parse(JSON.stringify(lignesDevisData))});
