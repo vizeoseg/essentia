@@ -6665,11 +6665,6 @@ function genererFacturePDF(){
     const _joursRec=(c.jours&&c.jours.length>0)?c.jours.map(j=>joursLabels[j]||j).join(', '):'';
     const _rec=[heureStr,_joursRec,c.frequence?`${c.frequence}×/sem`:''].filter(Boolean).join(' · ');
     if(_rec){doc.setFont('helvetica','normal');doc.setTextColor(80,100,140);doc.text(_rec,W-M-2,y+4,{align:'right'});}
-    // Colonnes : | Statut+Date(40mm) | Heures(14mm) | Note(~80mm) | Montant(30mm) |
-    doc.setTextColor(100,100,130);doc.setFontSize(6.5);
-    doc.text('Date',M+3,y+4);
-    doc.text('H réel',M+48,y+4,{align:'right'});
-    doc.text('Note',M+52,y+4);
     y+=5.5;
     const _joursFr=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
     const _dd=d=>`${_joursFr[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
@@ -6678,16 +6673,12 @@ function genererFacturePDF(){
       const _d=new Date(dateKey+'T12:00:00');
       const _hReal=entry.statut==='absent'?0:(parseFloat(entry.heuresReelles)||c.heures||0);
       const _absent=entry.statut==='absent';
-      const _ic=_absent?'–':entry.statut==='confirme'?'✓':'½';
       if(idx%2===0){doc.setFillColor(252,253,255);}else{doc.setFillColor(246,248,252);}
       doc.rect(M,y,W-2*M,5.5,'F');
-      // Statut
-      doc.setFontSize(7);doc.setFont('helvetica','bold');
-      doc.setTextColor(_absent?180:entry.statut==='confirme'?16:200, _absent?180:entry.statut==='confirme'?120:120, _absent?180:entry.statut==='confirme'?80:0);
-      doc.text(_ic,M+3,y+4);
       // Date courte
-      doc.setFont('helvetica','normal');doc.setTextColor(20,37,64);
-      doc.text(_dd(_d),M+8,y+4);
+      doc.setFontSize(7.5);doc.setFont('helvetica','normal');
+      doc.setTextColor(_absent?160:20,_absent?160:37,_absent?160:64);
+      doc.text(_dd(_d),M+3,y+4);
       // Heures réelles — alignées
       doc.setFont('helvetica','bold');
       doc.setTextColor(_absent?160:20,_absent?160:37,_absent?160:64);
