@@ -4491,6 +4491,14 @@ function getTVAClient(client){
   if(!isNaN(v)) return v;
   return (client.typeClient==='entreprise'||client.typeClient==='airbnb_agence')?20:10;
 }
+function _typeBadge(c){
+  const t=c.typeClient;
+  if(t==='entreprise') return '<span class="badge badge-blue">Entreprise</span>';
+  if(t==='airbnb_particulier') return '<span class="badge badge-orange">🏠 Airbnb</span>';
+  if(t==='airbnb_agence') return '<span class="badge badge-orange">🏠 Airbnb Agence</span>';
+  if(t==='exonere_0') return '<span class="badge" style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;">Exonéré</span>';
+  return '<span class="badge badge-green">Particulier</span>';
+}
 
 // ══════════════════════════════════════════════════════════
 // CLIENTS
@@ -4642,7 +4650,7 @@ function afficherClients(clients){
   tbody.innerHTML=clients.map(c=>{
     const tva=getTVAClient(c);
     const tvaBadge=tva===0?'<span class="badge badge-orange">0% ⚡</span>':tva===20?'<span class="tva-badge-20">20%</span>':'<span class="tva-badge-10">10%</span>';
-    const typeBadge=c.typeClient==='entreprise'?`<span class="badge badge-blue">Entreprise</span>`:`<span class="badge badge-green">Particulier</span>`;
+    const typeBadge=_typeBadge(c);
     const caMoisHT=c.totalMoisHT||0;const caMoisTTC=c.totalMoisTTC||0;const caAnHT=c.caAnneeHT||0;
     totalHT+=caMoisHT;totalTTC+=caMoisTTC;totalAn+=caAnHT;
     const _today=new Date();_today.setHours(0,0,0,0);
@@ -5889,7 +5897,7 @@ function chargerTVA(){
   tbody.innerHTML=clientsData.map(c=>{
     const taux=getTVAClient(c);const tvaM=Math.round((c.totalMoisHT||0)*taux/100*100)/100;const tvaA=Math.round((c.caAnneeHT||0)*taux/100*100)/100;
     const badge=taux===20?`<span class="tva-badge-20">20%</span>`:taux===0?`<span class="tva-badge-0">0% ⚡</span>`:`<span class="tva-badge-10">10%</span>`;
-    const typeBadge=c.typeClient==='entreprise'?`<span class="badge badge-blue">Entreprise</span>`:c.typeClient==='exonere_0'?`<span class="badge" style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;">Exonéré</span>`:`<span class="badge badge-green">Particulier</span>`;
+    const typeBadge=_typeBadge(c);
     return `<tr><td><strong>${c.nom}</strong></td><td>${typeBadge}</td><td>${badge}</td><td style="font-family:'DM Mono',monospace;">${(c.totalMoisHT||0).toFixed(2)} €</td><td style="font-family:'DM Mono',monospace;color:var(--amber);">${tvaM.toFixed(2)} €</td><td style="font-family:'DM Mono',monospace;">${(c.caAnneeHT||0).toFixed(2)} €</td><td style="font-family:'DM Mono',monospace;color:var(--amber);">${tvaA.toFixed(2)} €</td></tr>`;
   }).join('')||'<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:12px;">Aucun client</td></tr>';
 }
@@ -5902,7 +5910,7 @@ function exporterTVAPDF(){
   doc.setTextColor(180,200,240);doc.setFontSize(8);doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`,W/2,21,{align:'center'});
   const tva10=clientsData.filter(c=>getTVAClient(c)===10).reduce((s,c)=>s+(c.caAnneeHT||0)*0.1,0);
   const tva20=clientsData.filter(c=>getTVAClient(c)===20).reduce((s,c)=>s+(c.caAnneeHT||0)*0.2,0);
-  const typeLabel=c=>{if(c.typeClient==='entreprise'||c.typeClient==='airbnb_agence')return'Entreprise';if(c.typeClient==='exonere_0')return'Exonéré 0%';return'Particulier';};
+  const typeLabel=c=>{if(c.typeClient==='entreprise')return'Entreprise';if(c.typeClient==='airbnb_agence')return'Airbnb Agence';if(c.typeClient==='airbnb_particulier')return'Airbnb';if(c.typeClient==='exonere_0')return'Exonéré 0%';return'Particulier';};
   doc.autoTable({startY:30,
     head:[['Client','Type','TVA','CA mensuel HT','TVA mensuelle','CA annuel HT','TVA annuelle']],
     body:clientsData.map(c=>{const t=getTVAClient(c);return[c.nom,typeLabel(c),t+'%',(c.totalMoisHT||0).toFixed(2)+' €',((c.totalMoisHT||0)*t/100).toFixed(2)+' €',(c.caAnneeHT||0).toFixed(2)+' €',((c.caAnneeHT||0)*t/100).toFixed(2)+' €']}),
@@ -6065,7 +6073,7 @@ function chargerTarifsHoraires(){
     if(isEmp){
       return `<tr><td><strong>${c.nom}</strong></td><td style="font-size:11px;">${c.commune||'—'}</td><td style="text-align:center;">${c.heures||0}h</td><td style="text-align:center;">${c.frequence||1}×/sem</td><td style="text-align:center;font-weight:600;">${hMois}h</td><td style="text-align:center;">${hAn}h</td></tr>`;
     }
-    return `<tr><td><strong>${c.nom}</strong></td><td style="font-size:11px;">${c.typeClient==='entreprise'?'Entreprise':'Particulier'}</td><td>${badge}</td><td style="font-family:'DM Mono',monospace;color:var(--accent);">${c.tarif||0} €</td><td style="text-align:center;">${c.heures||0}h</td><td style="text-align:center;">${c.frequence||1}×</td><td style="text-align:center;font-weight:600;">${hMois}h</td><td style="font-family:'DM Mono',monospace;color:var(--green);">${moisHT.toFixed(2)} €</td><td style="font-family:'DM Mono',monospace;color:var(--amber);">${moisTVA.toFixed(2)} €</td><td style="font-family:'DM Mono',monospace;font-weight:700;color:var(--teal);">${moisTTC.toFixed(2)} €</td><td style="text-align:center;">${hAn}h</td><td style="font-family:'DM Mono',monospace;color:var(--green);">${anHT.toFixed(2)} €</td><td style="font-family:'DM Mono',monospace;font-weight:700;color:var(--teal);">${anTTC.toFixed(2)} €</td></tr>`;
+    return `<tr><td><strong>${c.nom}</strong></td><td style="font-size:11px;">${c.typeClient==='entreprise'||c.typeClient==='airbnb_agence'?'Entreprise':c.typeClient==='airbnb_particulier'?'Airbnb':c.typeClient==='exonere_0'?'Exonéré':'Particulier'}</td><td>${badge}</td><td style="font-family:'DM Mono',monospace;color:var(--accent);">${c.tarif||0} €</td><td style="text-align:center;">${c.heures||0}h</td><td style="text-align:center;">${c.frequence||1}×</td><td style="text-align:center;font-weight:600;">${hMois}h</td><td style="font-family:'DM Mono',monospace;color:var(--green);">${moisHT.toFixed(2)} €</td><td style="font-family:'DM Mono',monospace;color:var(--amber);">${moisTVA.toFixed(2)} €</td><td style="font-family:'DM Mono',monospace;font-weight:700;color:var(--teal);">${moisTTC.toFixed(2)} €</td><td style="text-align:center;">${hAn}h</td><td style="font-family:'DM Mono',monospace;color:var(--green);">${anHT.toFixed(2)} €</td><td style="font-family:'DM Mono',monospace;font-weight:700;color:var(--teal);">${anTTC.toFixed(2)} €</td></tr>`;
   }).join('')||`<tr><td colspan="${isEmp?6:13}" style="text-align:center;color:var(--text3);padding:12px;">Aucun client</td></tr>`;
   // En-têtes du tableau selon le mode
   const thead=tableEl.closest('table')?.querySelector('thead tr');
@@ -7803,7 +7811,7 @@ function importAfficherApercu(rawRows, fileName){
       : r._duplicate
         ? `<span class="badge badge-orange" title="Doublon existant"><i class="fas fa-exclamation-triangle"></i> Doublon</span>`
         : `<span class="badge badge-green"><i class="fas fa-check"></i> OK</span>`;
-    const typeBadge=r.typeClient==='entreprise'?`<span class="badge badge-blue">Entreprise</span>`:`<span class="badge badge-green">Particulier</span>`;
+    const typeBadge=_typeBadge(r);
     return `<tr style="${bg}">
       <td style="${tdStyle}">${statut}</td>
       <td style="${tdStyle}font-weight:600;">${r.nom||'—'}</td>
