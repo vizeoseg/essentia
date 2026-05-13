@@ -6599,7 +6599,7 @@ function genererFacturePDF(){
   if(tvaSoc) doc.text(`N° TVA : ${tvaSoc}`,W-M-5,y+27,{align:'right'});
   y+=36;
 
-  // ── Barre info fine : Ref client + Période ────────────────
+  // ── Barre info fine : Ref client + Période ───────────────
   const joursLabels={lundi:'Lun',mardi:'Mar',mercredi:'Mer',jeudi:'Jeu',vendredi:'Ven',samedi:'Sam',dimanche:'Dim'};
   const joursStr=(c.jours&&c.jours.length>0)?c.jours.map(j=>joursLabels[j]||j).join(', '):'';
   const heureStr=c.heureDebut||'';
@@ -6608,171 +6608,135 @@ function genererFacturePDF(){
   const _infoBarItems=[c.refClient,periode?`Période : ${periode}`:''].filter(Boolean);
   if(_infoBarItems.length){
     doc.setFillColor(235,241,255);
-    doc.rect(M,y,W-2*M,7,'F');
+    doc.rect(M,y,W-2*M,6,'F');
     doc.setTextColor(60,90,160);doc.setFontSize(7.5);doc.setFont('helvetica','normal');
-    doc.text(_infoBarItems.join('   ·   '),M+3,y+5);
-    y+=9;
+    doc.text(_infoBarItems.join('   ·   '),M+3,y+4.5);
+    y+=8;
   }
 
-  // ── Bloc client pleine largeur, compact ──────────────────
+  // ── Bloc client pleine largeur ────────────────────────────
   const _norm=s=>s.toLowerCase().replace(/[^a-z0-9]/g,'');
   const _showEnt=c.entreprise&&!_norm(c.nom).includes(_norm(c.entreprise).substring(0,5))&&!_norm(c.entreprise).includes(_norm(c.nom).substring(0,5));
-  let clientBlockH=16;
+  let clientBlockH=13;
   if(_showEnt) clientBlockH+=5;
   if(c.adresse) clientBlockH+=5;
   if(c.commune) clientBlockH+=5;
   doc.setFillColor(240,245,255);
   doc.roundedRect(M,y,W-2*M,clientBlockH,2,2,'F');
   doc.setTextColor(80,100,140);doc.setFontSize(7);doc.setFont('helvetica','bold');
-  doc.text('FACTURÉ À',M+3,y+5);
+  doc.text('FACTURÉ À',M+3,y+4.5);
   doc.setTextColor(20,37,64);doc.setFontSize(11);doc.setFont('helvetica','bold');
-  doc.text(clientNom,M+32,y+12);
+  doc.text(clientNom,M+30,y+10.5);
   doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(80,100,140);
-  let yC=y+18;
-  if(_showEnt){doc.text(c.entreprise,M+32,yC);yC+=5;}
-  if(c.adresse){doc.text(c.adresse,M+32,yC,{maxWidth:W-2*M-35});yC+=5;}
-  if(c.commune){doc.text(c.commune,M+32,yC);}
-  y+=clientBlockH+4;
+  let yC=y+16;
+  if(_showEnt){doc.text(c.entreprise,M+30,yC);yC+=5;}
+  if(c.adresse){doc.text(c.adresse,M+30,yC,{maxWidth:W-2*M-33});yC+=5;}
+  if(c.commune){doc.text(c.commune,M+30,yC);}
+  y+=clientBlockH+3;
 
-  // ── Tableau des lignes ────────────────────────────────────
-  const cols=['Description','Qté','Unité','Prix unit. HT','Total HT'];
-  const colW=[82,18,22,30,28];
-  const colX=[M+2,M+84,M+102,M+124,M+154];
+  // ── En-tête tableau ───────────────────────────────────────
+  const cols=['Désignation','Qté','Unité','P.U. HT','Total HT'];
+  const colW=[95,14,13,28,30];
   doc.setFillColor(14,32,64);
-  doc.rect(M,y,W-2*M,7,'F');
-  doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
+  doc.rect(M,y,W-2*M,6,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
+  let _cx=M+2;
   cols.forEach(function(col,i){
-    if(i===0) doc.text(col,colX[i],y+5,{maxWidth:colW[i]-2});
-    else doc.text(col,colX[i]+colW[i]-4,y+5,{align:'right',maxWidth:colW[i]-2});
+    if(i===0) doc.text(col,_cx,y+4.5,{maxWidth:colW[i]-2});
+    else doc.text(col,_cx+colW[i]-3,y+4.5,{align:'right',maxWidth:colW[i]-2});
+    _cx+=colW[i];
   });
-  y+=7;
+  y+=6;
 
-  // ── Bloc détail interventions réalisées ──────────────────
-  const _periodeStart = dateFacRaw ? new Date(dateFacRaw) : new Date();
-  // Reconstruire la plage de la période depuis le champ "periode" (ex: "Janvier 2026")
-  // On cherche les entrées planningPrev du client confirmées ou partielles dans le mois de la facture
-  const _clientPrev = (planningPrevData && clientId) ? (planningPrevData[clientId] || {}) : {};
-  const _interventions = Object.entries(_clientPrev)
-    .filter(([dateKey, entry]) => entry && (entry.statut === 'confirme' || entry.statut === 'partiel' || entry.statut === 'prevu'))
-    .filter(([dateKey]) => {
-      if(!dateFacRaw) return true;
-      const d = new Date(dateKey);
-      return d.getFullYear() === _periodeStart.getFullYear() && d.getMonth() === _periodeStart.getMonth();
-    })
-    .sort(([a],[b]) => a.localeCompare(b));
+  // ── Détail des interventions réalisées ───────────────────
+  const _periodeStart=dateFacRaw?new Date(dateFacRaw):new Date();
+  const _clientPrev=(planningPrevData&&clientId)?(planningPrevData[clientId]||{}):{};
+  const _interventions=Object.entries(_clientPrev)
+    .filter(([,entry])=>entry&&(entry.statut==='confirme'||entry.statut==='partiel'||entry.statut==='prevu'))
+    .filter(([dateKey])=>{if(!dateFacRaw)return true;const d=new Date(dateKey);return d.getFullYear()===_periodeStart.getFullYear()&&d.getMonth()===_periodeStart.getMonth();})
+    .sort(([a],[b])=>a.localeCompare(b));
 
-  if(_interventions.length > 0){
-    // En-tête section détail
+  if(_interventions.length>0){
     doc.setFillColor(230,235,250);
-    doc.rect(M,y,W-2*M,6,'F');
+    doc.rect(M,y,W-2*M,5.5,'F');
     doc.setTextColor(40,60,120);doc.setFontSize(7);doc.setFont('helvetica','bold');
-    doc.text('DÉTAIL DES INTERVENTIONS RÉALISÉES',M+2,y+4);
-    const joursLabels2={lundi:'Lun',mardi:'Mar',mercredi:'Mer',jeudi:'Jeu',vendredi:'Ven',samedi:'Sam',dimanche:'Dim'};
-    const _joursRec=(c.jours&&c.jours.length>0)?c.jours.map(j=>joursLabels2[j]||j).join(', '):'';
-    const _freqRec=c.frequence?`${c.frequence}×/sem`:'';
-    const _recurrence=[_joursRec,heureStr,_freqRec].filter(Boolean).join(' · ');
-    if(_recurrence){doc.setFont('helvetica','normal');doc.setTextColor(80,100,140);doc.text(_recurrence,W-M-2,y+4,{align:'right'});}
-    y+=6;
+    doc.text('DÉTAIL DES INTERVENTIONS',M+2,y+4);
+    const _joursRec=(c.jours&&c.jours.length>0)?c.jours.map(j=>joursLabels[j]||j).join(', '):'';
+    const _rec=[_joursRec,heureStr,c.frequence?`${c.frequence}×/sem`:''].filter(Boolean).join(' · ');
+    if(_rec){doc.setFont('helvetica','normal');doc.setTextColor(80,100,140);doc.text(_rec,W-M-2,y+4,{align:'right'});}
+    y+=5.5;
     const _joursFr=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
-    _interventions.forEach(([dateKey, entry], idx) => {
-      const _d = new Date(dateKey+'T12:00:00');
-      const _jourLabel = _joursFr[_d.getDay()]+' '+_d.toLocaleDateString('fr-FR');
-      const _hReal = entry.statut==='absent'?0:(parseFloat(entry.heuresReelles)||c.heures||0);
-      const _statut = entry.statut==='confirme'?'✓':entry.statut==='partiel'?'½':'·';
-      const _note = entry.note||'';
+    _interventions.forEach(([dateKey,entry],idx)=>{
+      if(y>262){doc.addPage();y=M;}
+      const _d=new Date(dateKey+'T12:00:00');
+      const _hReal=entry.statut==='absent'?0:(parseFloat(entry.heuresReelles)||c.heures||0);
+      const _statut=entry.statut==='confirme'?'✓':entry.statut==='partiel'?'½':'·';
       if(idx%2===0){doc.setFillColor(252,253,255);}else{doc.setFillColor(246,248,252);}
-      doc.rect(M,y,W-2*M,6,'F');
+      doc.rect(M,y,W-2*M,5.5,'F');
       doc.setTextColor(20,37,64);doc.setFontSize(7.5);doc.setFont('helvetica','normal');
-      doc.text(`${_statut}  ${_jourLabel}`,M+3,y+4.5);
-      doc.text(`${heureStr||'—'}`,M+55,y+4.5);
-      doc.text(`${_hReal}h`,M+80,y+4.5);
-      if(_note){doc.setTextColor(100,100,130);doc.text(_note,M+100,y+4.5,{maxWidth:70});}
+      doc.text(`${_statut}  ${_joursFr[_d.getDay()]} ${_d.toLocaleDateString('fr-FR')}`,M+3,y+4);
+      if(heureStr) doc.text(heureStr,M+58,y+4);
+      doc.text(`${_hReal}h`,M+80,y+4);
+      if(entry.note){doc.setTextColor(100,100,130);doc.text(entry.note,M+95,y+4,{maxWidth:65});}
       doc.setTextColor(20,37,64);doc.setFont('helvetica','bold');
-      doc.text(`${(_hReal*(c.tarif||0)).toFixed(2)} €`,W-M-2,y+4.5,{align:'right'});
-      y+=6;
-      if(y>260){doc.addPage();y=M;}
+      doc.text(`${(_hReal*(c.tarif||0)).toFixed(2)} €`,W-M-2,y+4,{align:'right'});
+      y+=5.5;
     });
-    // Total interventions
-    const _totalH = _interventions.reduce((s,[,e])=>s+(e.statut==='absent'?0:(parseFloat(e.heuresReelles)||c.heures||0)),0);
+    const _totalH=_interventions.reduce((s,[,e])=>s+(e.statut==='absent'?0:(parseFloat(e.heuresReelles)||c.heures||0)),0);
     doc.setFillColor(220,228,248);
-    doc.rect(M,y,W-2*M,6,'F');
+    doc.rect(M,y,W-2*M,5.5,'F');
     doc.setTextColor(40,60,120);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
-    doc.text(`Total : ${_interventions.length} intervention(s) — ${Math.round(_totalH*10)/10}h réalisées`,M+3,y+4.5);
-    if(periode) doc.text(`Période : ${periode}`,W-M-2,y+4.5,{align:'right'});
-    y+=8;
-  } else if(interventionLine||periode) {
-    // Fallback si pas de données planning : afficher juste le planning récurrent
+    doc.text(`${_interventions.length} intervention(s)  —  ${Math.round(_totalH*10)/10}h réalisées`,M+3,y+4);
+    y+=7;
+  } else if(interventionLine){
     doc.setFillColor(235,240,255);
-    doc.rect(M,y,W-2*M,7,'F');
+    doc.rect(M,y,W-2*M,6,'F');
     doc.setTextColor(40,60,120);doc.setFontSize(7.5);doc.setFont('helvetica','italic');
-    const _fallback=[interventionLine,periode?`Période : ${periode}`:''].filter(Boolean).join('   ·   ');
-    doc.text(_fallback,M+2,y+5,{maxWidth:W-2*M-4});
-    y+=9;
+    doc.text(interventionLine,M+2,y+4.5,{maxWidth:W-2*M-4});
+    y+=8;
   }
 
+  // ── Lignes de facturation ─────────────────────────────────
   lignesFactureData.forEach((l,idx)=>{
+    if(y>262){doc.addPage();y=M;}
     const tot=(l.qte||0)*(l.prixUnit||0);
-    if(idx%2===0){doc.setFillColor(255,255,255);}else{doc.setFillColor(248,248,248);}
-    doc.rect(M,y,W-2*M,7,'F');
+    if(idx%2===0){doc.setFillColor(255,255,255);}else{doc.setFillColor(248,249,252);}
+    doc.rect(M,y,W-2*M,6,'F');
     doc.setTextColor(20,37,64);doc.setFontSize(8);doc.setFont('helvetica','normal');
-    cx=M+2;
-    const vals=[
-      [l.desc||'—',false],
-      [String(l.qte||0),true],
-      [l.unite||'',true],
-      [`${fmt2(l.prixUnit||0)} €`,true],
-      [`${fmt2(tot)} €`,true]
-    ];
-    vals.forEach(([v,rightAlign],i)=>{
-      doc.text(String(v),rightAlign?cx+colW[i]-3:cx,y+5,{align:rightAlign?'right':'left',maxWidth:colW[i]-2});
-      cx+=colW[i];
-    });
-    y+=7;
-
-    // Si description longue, gérer débordement de page
-    if(y>260){doc.addPage();y=M;}
+    let cx2=M+2;
+    [[l.desc||'—',false],[String(l.qte||0),true],[l.unite||'',true],[`${fmt2(l.prixUnit||0)} €`,true],[`${fmt2(tot)} €`,true]]
+      .forEach(([v,r],i)=>{doc.text(String(v),r?cx2+colW[i]-3:cx2,y+4.5,{align:r?'right':'left',maxWidth:colW[i]-2});cx2+=colW[i];});
+    y+=6;
   });
-  y+=5;
+  y+=3;
 
   // ── Totaux ────────────────────────────────────────────────
-  const totW=80, totX=W-M-totW;
-  const totLines=[
-    [`Sous-total HT`,`${fmt2(sousTotal)} €`,false],
-    [`TVA ${tauxTVA}%`,`${fmt2(montantTVA)} €`,false],
-  ];
-  totLines.forEach(([label,val])=>{
-    doc.setFillColor(245,248,255);
-    doc.rect(totX,y,totW,7,'F');
+  const totW=78, totX=W-M-totW;
+  [[`Sous-total HT`,`${fmt2(sousTotal)} €`],[`TVA ${tauxTVA}%`,`${fmt2(montantTVA)} €`]].forEach(([label,val])=>{
+    doc.setFillColor(245,248,255);doc.rect(totX,y,totW,6,'F');
     doc.setTextColor(80,100,140);doc.setFontSize(8);doc.setFont('helvetica','normal');
-    doc.text(label,totX+3,y+5);
+    doc.text(label,totX+3,y+4.5);
     doc.setTextColor(20,37,64);doc.setFont('helvetica','bold');
-    doc.text(val,W-M-2,y+5,{align:'right'});
-    y+=8;
+    doc.text(val,W-M-2,y+4.5,{align:'right'});
+    y+=7;
   });
-  doc.setFillColor(14,32,64);
-  doc.roundedRect(totX,y,totW,10,2,2,'F');
+  doc.setFillColor(14,32,64);doc.roundedRect(totX,y,totW,9,2,2,'F');
   doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');
-  doc.text('TOTAL TTC',totX+3,y+7);
-  doc.setTextColor(100,220,160);
-  doc.text(`${fmt2(totalTTC)} €`,W-M-2,y+7,{align:'right'});
-  y+=16;
+  doc.text('TOTAL TTC',totX+3,y+6.5);
+  doc.setTextColor(100,220,160);doc.text(`${fmt2(totalTTC)} €`,W-M-2,y+6.5,{align:'right'});
+  y+=13;
 
-  // ── Coordonnées bancaires légales ───────────────────────────
+  // ── Coordonnées bancaires ─────────────────────────────────
   if(ibanSoc||bicSoc){
-    const bankLines=[];
-    if(ibanSoc) bankLines.push('IBAN : '+ibanSoc);
-    if(bicSoc)  bankLines.push('BIC / SWIFT : '+bicSoc);
-    bankLines.push('Référence virement : '+numFac);
-    const bkH=7+bankLines.length*5;
-    doc.setFillColor(240,253,244);
-    doc.roundedRect(M,y,W-2*M,bkH,2,2,'F');
-    doc.setDrawColor(16,120,80);doc.setLineWidth(0.3);
-    doc.roundedRect(M,y,W-2*M,bkH,2,2,'S');
+    doc.setFillColor(240,253,244);doc.roundedRect(M,y,W-2*M,16,2,2,'F');
+    doc.setDrawColor(16,120,80);doc.setLineWidth(0.3);doc.roundedRect(M,y,W-2*M,16,2,2,'S');
     doc.setTextColor(16,120,80);doc.setFontSize(7);doc.setFont('helvetica','bold');
-    doc.text('COORDONNÉES BANCAIRES — RÈGLEMENT PAR VIREMENT',M+4,y+5);
+    doc.text('RÈGLEMENT PAR VIREMENT',M+4,y+5);
     doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(10,80,50);
-    bankLines.forEach(function(line,i){doc.text(line,M+4,y+10+i*5);});
-    y+=bkH+4;
+    const _ibanBic=[ibanSoc?'IBAN : '+ibanSoc:'',bicSoc?'BIC : '+bicSoc:''].filter(Boolean).join('   ·   ');
+    if(_ibanBic) doc.text(_ibanBic,M+4,y+10.5);
+    doc.text('Réf. virement : '+numFac,W-M-2,y+10.5,{align:'right'});
+    y+=19;
   }
 
   // ── Bloc signature ────────────────────────────────────────
