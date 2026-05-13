@@ -6674,18 +6674,28 @@ function genererFacturePDF(){
       const _d=new Date(dateKey+'T12:00:00');
       const _hReal=entry.statut==='absent'?0:(parseFloat(entry.heuresReelles)||c.heures||0);
       const _absent=entry.statut==='absent';
-      if(idx%2===0){doc.setFillColor(252,253,255);}else{doc.setFillColor(246,248,252);}
+      const _partiel=entry.statut==='partiel';
+      // Fond coloré selon statut
+      if(_absent){doc.setFillColor(245,245,245);}
+      else if(_partiel){doc.setFillColor(255,250,240);}
+      else{if(idx%2===0){doc.setFillColor(252,253,255);}else{doc.setFillColor(246,248,252);}}
       doc.rect(M,y,W-2*M,5.5,'F');
       // Date courte
       doc.setFontSize(7.5);doc.setFont('helvetica','normal');
-      doc.setTextColor(_absent?160:20,_absent?160:37,_absent?160:64);
+      doc.setTextColor(_absent?150:20,_absent?150:37,_absent?150:64);
       doc.text(_dd(_d),M+3,y+4);
-      // Heures réelles — alignées
+      // Heures réelles
       doc.setFont('helvetica','bold');
-      doc.setTextColor(_absent?160:20,_absent?160:37,_absent?160:64);
+      doc.setTextColor(_absent?150:20,_absent?150:37,_absent?150:64);
       doc.text(fmtH(_hReal),M+50,y+4,{align:'right'});
+      // Statut (entre heures et montant)
+      doc.setFontSize(6.5);doc.setFont('helvetica','italic');
+      if(_absent){doc.setTextColor(150,150,150);doc.text('Absent',M+54,y+4);}
+      else if(_partiel){doc.setTextColor(180,100,0);doc.text('Partiel',M+54,y+4);}
+      else{doc.setTextColor(16,120,80);doc.text('Confirme',M+54,y+4);}
       // Montant
-      doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(20,37,64);
+      doc.setFont('helvetica','bold');doc.setFontSize(7.5);
+      doc.setTextColor(_absent?150:20,_absent?150:37,_absent?150:64);
       doc.text(`${fmt2(_hReal*(c.tarif||0))} €`,W-M-2,y+4,{align:'right'});
       y+=5.5;
     });
