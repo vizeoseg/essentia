@@ -6692,7 +6692,7 @@ function genererFacturePDF(){
       doc.setFontSize(6.5);doc.setFont('helvetica','italic');
       if(_absent){doc.setTextColor(150,150,150);doc.text('Absent',M+54,y+4);}
       else if(_partiel){doc.setTextColor(180,100,0);doc.text('Partiel',M+54,y+4);}
-      else{doc.setTextColor(16,120,80);doc.text('Confirme',M+54,y+4);}
+      else{doc.setTextColor(16,120,80);doc.text('Confirm\xe9',M+54,y+4);}
       // Montant
       doc.setFont('helvetica','bold');doc.setFontSize(7.5);
       doc.setTextColor(_absent?150:20,_absent?150:37,_absent?150:64);
