@@ -8462,7 +8462,13 @@ function chargerDonnees(){
     chargerClients();chargerSalaries();mettreAJourFinances();chargerNotesFrais();calculerStats();chargerAccueil();chargerTournees();chargerStock();chargerFournisseurs();
     toast('Données chargées','info');
   }catch(e){console.error(e);}
-  // Charger paramètres
+  // Charger paramètres (avec valeurs par défaut si absentes)
+  const _defaultParams={nomSociete:'Essentia Services',adresse:'8 Rue Du Théau, 10800, Les Bordes-Aumont',iban:'FR7616958000010773929618269',bic:'QNTOFRP1XXX'};
+  try{
+    const _raw=JSON.parse(localStorage.getItem('progestParams')||'{}');
+    const _filled=Object.assign({},_defaultParams,Object.fromEntries(Object.entries(_raw).filter(([k,v])=>v)));
+    if(JSON.stringify(_filled)!==JSON.stringify(_raw)) localStorage.setItem('progestParams',JSON.stringify(_filled));
+  }catch(e){}
   const savedParams=localStorage.getItem('progestParams');
   if(savedParams){
     try{
@@ -14012,6 +14018,23 @@ function lingeAjouterLigne(pfx,nbLits){
         _sv('saisieIS',                  d.charges.tauxIS);
         _sv('soldeInitial',              d.charges.soldeInitial);
       }
+      // Sync paramètres entreprise depuis le cloud (IBAN, BIC, adresse, etc.)
+      if (d.params && Object.keys(d.params).length) {
+        try {
+          var _localP = {}; try { _localP = JSON.parse(localStorage.getItem('progestParams')||'{}'); } catch(e2) {}
+          // Le cloud gagne pour les champs remplis ; les valeurs locales comblent les trous
+          var _mergedP = Object.assign({}, _localP);
+          Object.keys(d.params).forEach(function(k){ if(d.params[k]) _mergedP[k] = d.params[k]; });
+          localStorage.setItem('progestParams', JSON.stringify(_mergedP));
+          var _svP = function(id, val) { var el = document.getElementById(id); if(el && val) el.value = val; };
+          _svP('paramNomSociete', _mergedP.nomSociete); _svP('paramSiret', _mergedP.siret);
+          _svP('paramTVAIntra', _mergedP.tvaIntra);     _svP('paramAdresse', _mergedP.adresse);
+          _svP('paramTel', _mergedP.tel);               _svP('paramEmail', _mergedP.email);
+          _svP('paramIBAN', _mergedP.iban);             _svP('paramBIC', _mergedP.bic);
+          _svP('paramNumSAP', _mergedP.numSAP);         _svP('paramAssurance', _mergedP.assurance);
+          if(_mergedP.nomSociete){var _sub=document.getElementById('sidebarSub');if(_sub)_sub.textContent=_mergedP.nomSociete;}
+        } catch(e) {}
+      }
       // Rafraîchir l'interface — complet selon le mode actif
       if (typeof chargerClients === 'function')             chargerClients();
       if (typeof chargerSalaries === 'function')            chargerSalaries();
@@ -14082,7 +14105,8 @@ function lingeAjouterLigne(pfx,nbLits){
       // BUG FIX: inclure les tombstones dans le snapshot cloud pour que TOUS les appareils
       // reçoivent la liste des notes supprimées — sans ça, les autres appareils continuent
       // de propager indéfiniment les notes supprimées car ils n'ont pas le tombstone local
-      deletedFraisIds:        (function(){ try{ return JSON.parse(localStorage.getItem('_deletedFraisIds')||'[]'); }catch(e){ return []; } })()
+      deletedFraisIds:        (function(){ try{ return JSON.parse(localStorage.getItem('_deletedFraisIds')||'[]'); }catch(e){ return []; } })(),
+      params:                 (function(){ try{ return JSON.parse(localStorage.getItem('progestParams')||'{}'); }catch(e){ return {}; } })()
     };
     supabaseSave(snapshot);
     // Considérer la requête terminée après 15s max
