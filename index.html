@@ -6590,49 +6590,48 @@ function genererFacturePDF(){
     if(infoLine) doc.text(infoLine,M+5,y+27);
   }
 
-  // SIRET / TVA intra côté droit du bandeau
+  // SIRET / Date / Échéance côté droit du bandeau
   doc.setTextColor(255,220,100);doc.setFontSize(12);doc.setFont('helvetica','bold');
   doc.text(`FACTURE N° ${numFac}`,W-M-5,y+10,{align:'right'});
   doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(180,200,240);
   if(siretSoc) doc.text(`SIRET : ${siretSoc}`,W-M-5,y+17,{align:'right'});
-  if(tvaSoc) doc.text(`TVA : ${tvaSoc}`,W-M-5,y+22,{align:'right'});
-  doc.text(`Date : ${dateFac}`,W-M-5,y+27,{align:'right'});
+  doc.text(`Date : ${dateFac}   ·   Échéance : ${dateEch.toLocaleDateString('fr-FR')}`,W-M-5,y+22,{align:'right'});
+  if(tvaSoc) doc.text(`N° TVA : ${tvaSoc}`,W-M-5,y+27,{align:'right'});
   y+=36;
 
-  // ── Bloc infos facture + client ───────────────────────────
-  // Infos facture (gauche)
-  doc.setFillColor(245,248,255);
-  doc.roundedRect(M,y,85,26,2,2,'F');
-  doc.setTextColor(80,100,140);doc.setFontSize(7);doc.setFont('helvetica','bold');
-  doc.text('INFORMATIONS FACTURE',M+3,y+5);
-  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(20,37,64);
-  doc.text(`N° : ${numFac}`,M+3,y+11);
-  doc.text(`Date : ${dateFac}`,M+3,y+16);
-  doc.text(`Échéance : ${dateEch.toLocaleDateString('fr-FR')}`,M+3,y+21);
-  if(periode) doc.text(`Période : ${periode}`,M+3,y+26);
-
-  // Infos client (droite) — hauteur dynamique, sans mention TVA
+  // ── Barre info fine : Ref client + Période ────────────────
   const joursLabels={lundi:'Lun',mardi:'Mar',mercredi:'Mer',jeudi:'Jeu',vendredi:'Ven',samedi:'Sam',dimanche:'Dim'};
   const joursStr=(c.jours&&c.jours.length>0)?c.jours.map(j=>joursLabels[j]||j).join(', '):'';
   const heureStr=c.heureDebut||'';
   const freqStr=c.frequence?`${c.frequence}×/sem`:'';
   const interventionLine=[joursStr,heureStr,freqStr].filter(Boolean).join(' · ');
-  let clientBlockH=20;
-  if(c.entreprise) clientBlockH+=5;
+  const _infoBarItems=[c.refClient,periode?`Période : ${periode}`:''].filter(Boolean);
+  if(_infoBarItems.length){
+    doc.setFillColor(235,241,255);
+    doc.rect(M,y,W-2*M,7,'F');
+    doc.setTextColor(60,90,160);doc.setFontSize(7.5);doc.setFont('helvetica','normal');
+    doc.text(_infoBarItems.join('   ·   '),M+3,y+5);
+    y+=9;
+  }
+
+  // ── Bloc client pleine largeur, compact ──────────────────
+  const _norm=s=>s.toLowerCase().replace(/[^a-z0-9]/g,'');
+  const _showEnt=c.entreprise&&!_norm(c.nom).includes(_norm(c.entreprise).substring(0,5))&&!_norm(c.entreprise).includes(_norm(c.nom).substring(0,5));
+  let clientBlockH=16;
+  if(_showEnt) clientBlockH+=5;
   if(c.adresse) clientBlockH+=5;
   if(c.commune) clientBlockH+=5;
   doc.setFillColor(240,245,255);
-  doc.roundedRect(W/2,y,W/2-M,clientBlockH,2,2,'F');
+  doc.roundedRect(M,y,W-2*M,clientBlockH,2,2,'F');
   doc.setTextColor(80,100,140);doc.setFontSize(7);doc.setFont('helvetica','bold');
-  doc.text('FACTURÉ À',W/2+3,y+5);
-  if(c.refClient){doc.setFont('helvetica','normal');doc.text(c.refClient,W-M-2,y+5,{align:'right'});}
-  doc.setTextColor(20,37,64);doc.setFontSize(10);doc.setFont('helvetica','bold');
-  doc.text(clientNom,W/2+3,y+12);
+  doc.text('FACTURÉ À',M+3,y+5);
+  doc.setTextColor(20,37,64);doc.setFontSize(11);doc.setFont('helvetica','bold');
+  doc.text(clientNom,M+32,y+12);
   doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(80,100,140);
   let yC=y+18;
-  if(c.entreprise){doc.text(c.entreprise,W/2+3,yC);yC+=5;}
-  if(c.adresse){doc.text(c.adresse,W/2+3,yC,{maxWidth:W/2-M-6});yC+=5;}
-  if(c.commune){doc.text(c.commune,W/2+3,yC);}
+  if(_showEnt){doc.text(c.entreprise,M+32,yC);yC+=5;}
+  if(c.adresse){doc.text(c.adresse,M+32,yC,{maxWidth:W-2*M-35});yC+=5;}
+  if(c.commune){doc.text(c.commune,M+32,yC);}
   y+=clientBlockH+4;
 
   // ── Tableau des lignes ────────────────────────────────────
