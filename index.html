@@ -4533,7 +4533,7 @@ function ajouterClient(){
   const tvaVal=parseFloat(document.getElementById('newTVAClient')?.value);
   const tva=isNaN(tvaVal)?(typeClient==='entreprise'||typeClient==='airbnb_agence'?20:10):tvaVal;
   // Si TVA = 0 et type particulier → stocker comme exonere_0 pour compatibilité
-  const typeClientFinal=(tva===0&&(typeClient==='particulier'||typeClient==='airbnb_particulier'))?'exonere_0':typeClient;
+  const typeClientFinal=(tva===0&&typeClient==='particulier')?'exonere_0':typeClient;
   const totalMoisHT=tarif*heures*4.33*freq;
   const totalMoisTTC=totalMoisHT*(1+tva/100);
   const refClient=_nextClientRef('CLI-');
@@ -6104,7 +6104,7 @@ function exporterTarifsPDF(){
   doc.setTextColor(180,200,240);doc.setFontSize(8);doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`,W/2,21,{align:'center'});
   doc.autoTable({startY:30,
     head:[['Client','Type','TVA','€/h','H/sem','Fréq.','H/mois','Mois HT','TVA/mois','Mois TTC','H/an','An HT','An TTC']],
-    body:clientsData.map(c=>{const t=getTVAClient(c);const hM=Math.round((c.heures||0)*(c.frequence||1)*4.33*10)/10;const hA=Math.round((c.heures||0)*(c.frequence||1)*52*10)/10;const mHT=(c.tarif||0)*hM;const mTVA=mHT*t/100;const aHT=(c.tarif||0)*hA;return[c.nom,c.typeClient==='entreprise'?'Entreprise':'Particulier',t+'%',c.tarif+'€',c.heures||0,c.frequence||1,hM+'h',mHT.toFixed(2)+' €',mTVA.toFixed(2)+' €',(mHT+mTVA).toFixed(2)+' €',hA+'h',aHT.toFixed(2)+' €',(aHT+aHT*t/100).toFixed(2)+' €']}),
+    body:clientsData.map(c=>{const t=getTVAClient(c);const hM=Math.round((c.heures||0)*(c.frequence||1)*4.33*10)/10;const hA=Math.round((c.heures||0)*(c.frequence||1)*52*10)/10;const mHT=(c.tarif||0)*hM;const mTVA=mHT*t/100;const aHT=(c.tarif||0)*hA;return[c.nom,c.typeClient==='entreprise'?'Entreprise':c.typeClient==='airbnb_agence'?'Airbnb Agence':c.typeClient==='airbnb_particulier'?'Airbnb':c.typeClient==='exonere_0'?'Exonéré':'Particulier',t+'%',c.tarif+'€',c.heures||0,c.frequence||1,hM+'h',mHT.toFixed(2)+' €',mTVA.toFixed(2)+' €',(mHT+mTVA).toFixed(2)+' €',hA+'h',aHT.toFixed(2)+' €',(aHT+aHT*t/100).toFixed(2)+' €']}),
     headStyles:{fillColor:[14,32,64],textColor:[255,255,255],fontSize:8},bodyStyles:{fontSize:7.5},
     alternateRowStyles:{fillColor:[245,248,255]},styles:{font:'helvetica',cellPadding:2},margin:{left:M,right:M}});
   doc.save(`tarifs_horaires_${annee}.pdf`);toast('Tarifs horaires PDF généré','success');
@@ -6136,7 +6136,7 @@ function remplirInfosFacture(){
   const tvaDispEl=document.getElementById('facTVADisplay');if(tvaDispEl)tvaDispEl.value=taux+'% ('+(c.typeClient==='entreprise'||c.typeClient==='airbnb_agence'?'Entreprise':c.typeClient==='exonere_0'?'Exonéré SAP/Franchise':'Particulier')+')';
   // Type d'opération selon le type client
   const typeOpEl=document.getElementById('facTypeOp');
-  if(typeOpEl) typeOpEl.value=c.typeClient==='entreprise'?'b2b':'b2c';
+  if(typeOpEl) typeOpEl.value=(c.typeClient==='entreprise'||c.typeClient==='airbnb_agence')?'b2b':'b2c';
   // SIREN client si disponible dans les données
   const sirenEl=document.getElementById('facSirenClient');
   if(sirenEl && c.siret) sirenEl.value=c.siret.replace(/\s/g,'').slice(0,9);
@@ -8455,7 +8455,8 @@ function chargerDonnees(){
     clientsData = clientsData.map(function(c){
       var tvaN = parseFloat(c.tva);
       if (c.typeClient === 'exonere_0' && tvaN !== 0) return Object.assign({}, c, {tva: 0});
-      if ((c.typeClient === 'particulier' || c.typeClient === 'airbnb_particulier') && tvaN === 0) return Object.assign({}, c, {typeClient: 'exonere_0', tva: 0});
+      if (c.typeClient === 'particulier' && tvaN === 0) return Object.assign({}, c, {typeClient: 'exonere_0', tva: 0});
+      if (c.typeClient === 'airbnb_particulier' && tvaN === 0) return Object.assign({}, c, {tva: 10});
       return c;
     }).map(normaliserClient);
     chargerClients();chargerSalaries();mettreAJourFinances();chargerNotesFrais();calculerStats();chargerAccueil();chargerTournees();chargerStock();chargerFournisseurs();
@@ -9538,7 +9539,7 @@ function remplirInfosContrat(){
   const tvaSel=document.getElementById('contratTVA');
   if(tvaSel){
     const tvaCli = parseFloat(c.tva);
-    tvaSel.value = (!isNaN(tvaCli) && tvaCli===0) ? '0' : (c.typeClient==='entreprise'?'20':'10');
+    tvaSel.value = (!isNaN(tvaCli) && tvaCli===0) ? '0' : (c.typeClient==='entreprise'||c.typeClient==='airbnb_agence'?'20':'10');
   }
   const tariEl=document.getElementById('contratTarif');
   if(tariEl&&c.tarif) tariEl.value=c.tarif;
@@ -13879,9 +13880,13 @@ function lingeAjouterLigne(pfx,nbLits){
             _needResync = true;
             return Object.assign({}, c, {tva: 0});
           }
-          if ((c.typeClient === 'particulier' || c.typeClient === 'airbnb_particulier') && tvaN === 0) {
+          if (c.typeClient === 'particulier' && tvaN === 0) {
             _needResync = true;
             return Object.assign({}, c, {typeClient: 'exonere_0', tva: 0});
+          }
+          if (c.typeClient === 'airbnb_particulier' && tvaN === 0) {
+            _needResync = true;
+            return Object.assign({}, c, {tva: 10});
           }
           return c;
         });
