@@ -9592,6 +9592,9 @@ function remplirInfosContrat(){
     _lignesContrat=[{type:'prestation',desc:`Nettoyage / entretien — ${c.commune||'domicile'}`,qte:c.heures,unite:'h/semaine',prix:c.tarif||20}];
     renderLignesContrat();
   }
+  // Auto-cocher crédit d'impôt pour les particuliers et exonérés
+  var ciCheck = document.getElementById('clauseCreditImpot');
+  if(ciCheck) ciCheck.checked = (c.typeClient!=='entreprise' && c.typeClient!=='airbnb_agence');
   calculerTotalContrat();
 }
 
@@ -9779,14 +9782,25 @@ function genererContratPrestation(){
   }
   section('ARTICLE 2 — DESCRIPTION DES PRESTATIONS', prestDesc);
 
-  // Article 3 — Tarification
-  let tarifDesc=`Tarif horaire HT : ${fmt2(tarif)} €\nMontant mensuel estimé HT : ${fmt2(montantHT)} €`;
-  if(tva===0){
-    tarifDesc+=`\nTVA : 0% — Exonération de TVA applicable (article 261 D du CGI — services à la personne)`;
-    tarifDesc+=`\nMontant mensuel TTC : ${fmt2(montantTTC)} € (= HT, TVA 0%)`;
+  // Article 3 — Tarification — adapté selon type client
+  const _isEnt3 = (c.typeClient==='entreprise'||c.typeClient==='airbnb_agence');
+  const _isExo3 = (tva===0);
+  let tarifDesc = `Tarif horaire HT : ${fmt2(tarif)} €/h\n`;
+  if(_isExo3){
+    tarifDesc += `TVA : Non applicable — Art. 293 B du CGI\n`;
+    tarifDesc += `Montant mensuel : ${fmt2(montantHT)} €\n`;
+    tarifDesc += `Avantage fiscal : Le Client peut bénéficier d'un crédit d'impôt de 50 % des sommes versées pour des services à domicile (plafonds légaux en vigueur — Art. 199 sexdecies du CGI).\n`;
+  } else if(_isEnt3){
+    tarifDesc += `TVA applicable : ${tva}% (régime général)\n`;
+    tarifDesc += `Montant mensuel HT : ${fmt2(montantHT)} €\nMontant mensuel TTC : ${fmt2(montantTTC)} €\n`;
   } else {
-    tarifDesc+=`\nTVA ${tva}% : ${fmt2(montantHT*tva/100)} €\nMontant mensuel TTC : ${fmt2(montantTTC)} €`;
+    tarifDesc += `TVA applicable : ${tva}% (services à domicile — Art. 279 du CGI)\n`;
+    tarifDesc += `Montant mensuel HT : ${fmt2(montantHT)} €\nMontant mensuel TTC : ${fmt2(montantTTC)} €\n`;
+    tarifDesc += `Avantage fiscal : Le Client peut bénéficier d'un crédit d'impôt de 50 % des sommes versées pour des services à domicile (plafonds légaux en vigueur — Art. 199 sexdecies du CGI).\n`;
   }
+  tarifDesc += _isEnt3
+    ? `Modalités de paiement : Virement bancaire sous 30 jours à réception de facture.`
+    : `Modalités de paiement : Prélèvement mensuel ou virement bancaire à réception de facture.`;
   if(_lignesContrat.filter(l=>l.type==='produit').length) tarifDesc+=`\n\nProduits fournis facturés séparément selon utilisation réelle.`;
   section('ARTICLE 3 — CONDITIONS FINANCIÈRES', tarifDesc);
 
