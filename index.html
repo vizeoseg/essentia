@@ -7177,7 +7177,7 @@ function _regenererContratPDFb64(contrat){
     // c.frequence est un nombre (passages/semaine) : 1=hebdo, 2=2x/semaine, etc.
     const freq=parseFloat(c.frequence)||1;
     const freqLabel=freq===1?'1 passage/semaine':freq===2?'2 passages/semaine':freq+' passages/semaine';
-    const tva=parseFloat(c.tva)||10;
+    const tva=isNaN(parseFloat(c.tva))?10:parseFloat(c.tva);
     // Priorité : montantMensuel stocké dans contratsData (calculé à la génération du contrat)
     const montantTTC=parseFloat(contrat.montantMensuel)||0;
     const montantHT=montantTTC/(1+tva/100)||tarif*heures*freq*4.33;
@@ -9705,7 +9705,7 @@ function genererContratPrestation(){
   const frequence=gv('contratFrequence');
   const tarif=parseFloat(gv('contratTarif'))||0;
   const heures=parseFloat(gv('contratHeures'))||0;
-  const tva=parseFloat(gv('contratTVA'))||10;
+  const tva=(v=>isNaN(v)?10:v)(parseFloat(gv('contratTVA')));
   const freqMult={'hebdomadaire':4.33,'bihebdomadaire':8.66,'mensuelle':1,'ponctuelle':1}[frequence]||4.33;
   const montantHT=(tarif*heures*freqMult+_lignesContrat.filter(l=>l.type==='produit').reduce((s,l)=>s+(l.qte||0)*(l.prix||0),0));
   const montantTTC=montantHT*(1+tva/100);
