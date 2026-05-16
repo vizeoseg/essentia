@@ -7272,12 +7272,30 @@ function _regenererContratPDFb64(contrat){
       +(c.jours&&c.jours.length?'Jours : '+c.jours.map(function(j){return j.charAt(0).toUpperCase()+j.slice(1);}).join(', ')+'\n':'')
       +(c.commune?'Lieu : '+c.commune:''));
 
+    // Article 3 — adapté selon le type de client
+    var _isEntreprise = (c.typeClient==='entreprise'||c.typeClient==='airbnb_agence');
+    var _isExonere    = (tva===0);
+    // Recalcul depuis la fiche si montantMensuel absent
+    var _mHT = montantHT || (tarif*heures*freq*4.33);
+    var _mTTC = _isExonere ? _mHT : _mHT*(1+tva/100);
+    var _tvaLigne = _isExonere
+      ? 'TVA : Non applicable — Art. 293 B du CGI'
+      : 'TVA applicable : '+tva+'% ('+(_isEntreprise?'régime général':'services à domicile — Art. 279 du CGI')+')';
+    var _montantsLignes = _isExonere
+      ? 'Montant mensuel : '+fmt2(_mHT)+' €'
+      : 'Montant mensuel HT : '+fmt2(_mHT)+' €\nMontant mensuel TTC : '+fmt2(_mTTC)+' €';
+    var _creditImpot = (!_isEntreprise)
+      ? 'Avantage fiscal : Le Client peut bénéficier d\'un crédit d\'impôt de 50 % des sommes versées pour des services à domicile (plafonds légaux en vigueur — Art. 199 sexdecies du CGI).'
+      : '';
+    var _paiement = _isEntreprise
+      ? 'Modalités de paiement : Virement bancaire sous 30 jours à réception de facture.'
+      : 'Modalités de paiement : Prélèvement mensuel ou virement bancaire à réception de facture.';
     section('ARTICLE 3 — CONDITIONS FINANCIÈRES',
       'Tarif horaire HT : '+fmt2(tarif)+' €/h\n'
-      +'TVA applicable : '+tva+'%\n'
-      +'Montant mensuel HT : '+fmt2(montantHT)+' €\n'
-      +'Montant mensuel TTC : '+fmt2(montantTTC)+' €\n'
-      +'Modalités de paiement : Prélèvement mensuel ou virement bancaire à réception de facture.\n'
+      +_tvaLigne+'\n'
+      +_montantsLignes+'\n'
+      +(_creditImpot?_creditImpot+'\n':'')
+      +_paiement+'\n'
       +'Les prix sont révisables chaque année au 1er janvier selon l\'indice INSEE des prix à la consommation.');
 
     section('ARTICLE 4 — DURÉE ET RÉSILIATION',
