@@ -4348,10 +4348,9 @@ function setEl(id,val,color=null){const el=document.getElementById(id);if(!el)re
 function toggleTVA0(){
   const btn = document.getElementById('tva0Btn');
   const sel = document.getElementById('newTVAClient');
-  const typeClient = document.getElementById('newTypeClient');
   const on = btn.classList.toggle('tva0-on');
   sel.value = on ? '0' : '10';
-  if(on && typeClient) typeClient.value = 'exonere_0';
+  // typeClient reste 'particulier' — TVA 0% est juste un taux, pas un type distinct
 }
 
 function toggleJourBtn(btn){
@@ -4504,7 +4503,6 @@ function mettreAJourTVAClient(){
 }
 
 function getTVAClient(client){
-  if(client.typeClient==='exonere_0') return 0;
   const v=parseFloat(client.tva);
   if(!isNaN(v)) return v;
   return (client.typeClient==='entreprise'||client.typeClient==='airbnb_agence')?20:10;
@@ -4542,14 +4540,12 @@ function ajouterClient(){
   const typeClient=document.getElementById('newTypeClient').value;
   const tvaVal=parseFloat(document.getElementById('newTVAClient')?.value);
   const tva=isNaN(tvaVal)?(typeClient==='entreprise'||typeClient==='airbnb_agence'?20:10):tvaVal;
-  // Si TVA = 0 et type particulier → stocker comme exonere_0 pour compatibilité
-  const typeClientFinal=(tva===0&&(typeClient==='particulier'||typeClient==='airbnb_particulier'))?'exonere_0':typeClient;
   const totalMoisHT=tarif*heures*4.33*freq;
   const totalMoisTTC=totalMoisHT*(1+tva/100);
   const refClient=_nextClientRef('CLI-');
   clientsData.push(normaliserClient({
     id:'c'+Date.now(),nom,refClient,entreprise:document.getElementById('newEntreprise').value||'',
-    typeClient:typeClientFinal,tva,
+    typeClient:typeClient,tva,
     dateArrivee:document.getElementById('newDateArrivee').value,
     dateSortie:document.getElementById('newDateSortie').value,
     tarif,type:document.getElementById('newType').value,heures,frequence:freq,
@@ -4742,7 +4738,7 @@ function modifierClient(id){
     <div class="form-group"><label>Email</label><input type="email" id="editEmail" value="${c.email||''}"></div>
     <div class="form-group"><label>Adresse</label><input type="text" id="editAdresse" value="${c.adresse||''}"></div>
     <div class="form-group"><label>Entreprise</label><input type="text" id="editEntreprise" value="${c.entreprise||''}"></div>
-    <div class="form-group"><label>Type client</label><select id="editTypeClient"><option value="particulier" ${c.typeClient==='particulier'?'selected':''}>Particulier (10%)</option><option value="entreprise" ${c.typeClient==='entreprise'?'selected':''}>Entreprise (20%)</option><option value="airbnb_particulier" ${c.typeClient==='airbnb_particulier'?'selected':''}>Airbnb Particulier</option><option value="airbnb_agence" ${c.typeClient==='airbnb_agence'?'selected':''}>Airbnb Agence</option><option value="exonere_0" ${c.typeClient==='exonere_0'?'selected':''}>Exonéré TVA 0% ⚡</option></select></div>
+    <div class="form-group"><label>Type client</label><select id="editTypeClient"><option value="particulier" ${(c.typeClient==='particulier'||c.typeClient==='exonere_0')?'selected':''}>Particulier</option><option value="entreprise" ${c.typeClient==='entreprise'?'selected':''}>Entreprise (20%)</option><option value="airbnb_particulier" ${c.typeClient==='airbnb_particulier'?'selected':''}>Airbnb Particulier</option><option value="airbnb_agence" ${c.typeClient==='airbnb_agence'?'selected':''}>Airbnb Agence</option></select></div>
     <div class="form-group"><label>TVA applicable</label><select id="editTVA"><option value="10" ${(getTVAClient(c)==10)?'selected':''}>10%</option><option value="20" ${(getTVAClient(c)==20)?'selected':''}>20%</option><option value="0" ${(getTVAClient(c)==0)?'selected':''}>0% — Exonéré ⚡</option></select></div>
     <div class="form-group"><label>Tarif (€/h)</label><input type="number" id="editTarif" value="${c.tarif}"></div>
     <div class="form-group"><label>Type prestation</label><select id="editType"><option value="Heure" ${c.type==='Heure'?'selected':''}>Heure</option><option value="Acte" ${c.type==='Acte'?'selected':''}>Acte</option></select></div>
@@ -4821,7 +4817,7 @@ function sauvegarderModificationClient(){
   c.adresse=document.getElementById('editAdresse')?.value||c.adresse||'';
   c.entreprise=document.getElementById('editEntreprise').value;
   c.typeClient=document.getElementById('editTypeClient').value;
-  c.tva=(()=>{if(c.typeClient==='exonere_0')return 0;const v=parseFloat(document.getElementById('editTVA')?.value);return isNaN(v)?(c.typeClient==='entreprise'||c.typeClient==='airbnb_agence'?20:10):v;})();
+  c.tva=(()=>{const v=parseFloat(document.getElementById('editTVA')?.value);return isNaN(v)?(c.typeClient==='entreprise'||c.typeClient==='airbnb_agence'?20:10):v;})();
   c.tarif=parseFloat(document.getElementById('editTarif').value)||0;
   c.type=document.getElementById('editType').value;
   c.heures=parseFloat(document.getElementById('editHeures').value)||0;
@@ -4889,7 +4885,7 @@ function chargerSelectClients(){
     if(val)sel.value=val;
   }
   const ac=document.getElementById('attestationClient');
-  if(ac){ac.innerHTML='<option value="">Tous les clients particuliers</option>'+clientsData.filter(c=>c.typeClient==='particulier').map(c=>`<option value="${c.id}">${c.nom}</option>`).join('');}
+  if(ac){ac.innerHTML='<option value="">Tous les clients particuliers</option>'+clientsData.filter(c=>c.typeClient==='particulier'||c.typeClient==='exonere_0').map(c=>`<option value="${c.id}">${c.nom}</option>`).join('');}
   // Rétractation select
   const retractSel=document.getElementById('retractClient');
   if(retractSel){const rv=retractSel.value;retractSel.innerHTML='<option value="">— Sélectionner —</option>'+clientsData.map(c=>`<option value="${c.id}">${c.nom}</option>`).join('');if(rv)retractSel.value=rv;}
@@ -5926,7 +5922,7 @@ function exporterResultatPDF(){
 // DÉCLARATION TVA
 // ══════════════════════════════════════════════════════════
 function chargerTVA(){
-  const particuliers=clientsData.filter(c=>c.typeClient==='particulier'||c.typeClient==='airbnb_particulier');
+  const particuliers=clientsData.filter(c=>c.typeClient==='particulier'||c.typeClient==='airbnb_particulier'||c.typeClient==='exonere_0');
   const entreprises=clientsData.filter(c=>c.typeClient==='entreprise'||c.typeClient==='airbnb_agence');
   const exoneres=clientsData.filter(c=>c.typeClient==='exonere_0'||(getTVAClient(c)===0));
   const caHT_10=particuliers.filter(c=>getTVAClient(c)===10).reduce((s,c)=>s+(c.caAnneeHT||0),0);
@@ -5958,7 +5954,7 @@ function exporterTVAPDF(){
   doc.setTextColor(180,200,240);doc.setFontSize(8);doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`,W/2,21,{align:'center'});
   const tva10=clientsData.filter(c=>getTVAClient(c)===10).reduce((s,c)=>s+(c.caAnneeHT||0)*0.1,0);
   const tva20=clientsData.filter(c=>getTVAClient(c)===20).reduce((s,c)=>s+(c.caAnneeHT||0)*0.2,0);
-  const typeLabel=c=>{if(c.typeClient==='entreprise'||c.typeClient==='airbnb_agence')return'Entreprise';if(c.typeClient==='exonere_0')return'Exonéré 0%';return'Particulier';};
+  const typeLabel=c=>{if(c.typeClient==='entreprise'||c.typeClient==='airbnb_agence')return'Entreprise';return'Particulier'+(getTVAClient(c)===0?' (0%)':getTVAClient(c)===10?' (10%)':' (20%)');};
   doc.autoTable({startY:30,
     head:[['Client','Type','TVA','CA mensuel HT','TVA mensuelle','CA annuel HT','TVA annuelle']],
     body:clientsData.map(c=>{const t=getTVAClient(c);return[c.nom,typeLabel(c),t+'%',(c.totalMoisHT||0).toFixed(2)+' €',((c.totalMoisHT||0)*t/100).toFixed(2)+' €',(c.caAnneeHT||0).toFixed(2)+' €',((c.caAnneeHT||0)*t/100).toFixed(2)+' €']}),
@@ -5986,7 +5982,7 @@ function chargerAttestations(){
 function chargerAttestationsTable(){
   const tbody=document.getElementById('attestationTable');if(!tbody)return;
   const annee=parseInt(document.getElementById('attestationAnnee')?.value)||new Date().getFullYear();
-  const particuliers=clientsData.filter(c=>c.typeClient==='particulier');
+  const particuliers=clientsData.filter(c=>c.typeClient==='particulier'||c.typeClient==='exonere_0');
   tbody.innerHTML=particuliers.map(c=>{
     // #2 — Calcul basé sur les factures réelles de l'année si disponibles
     const facturesClient = facturesData.filter(f=>f.clientId===c.id && f.date && f.date.startsWith(String(annee)));
@@ -6091,7 +6087,7 @@ function genererAttestationPourClient(clientId,annee){
 
 function genererToutesAttestations(){
   const annee=parseInt(document.getElementById('attestationAnnee')?.value)||new Date().getFullYear();
-  const particuliers=clientsData.filter(c=>c.typeClient==='particulier');
+  const particuliers=clientsData.filter(c=>c.typeClient==='particulier'||c.typeClient==='exonere_0');
   if(!particuliers.length){toast('Aucun client particulier','warning');return;}
   particuliers.forEach(c=>genererAttestationPourClient(c.id,annee));
   toast(`${particuliers.length} attestation(s) générée(s)`,'success');
@@ -8524,11 +8520,9 @@ function chargerDonnees(){
     // #0b — Migration refClient + contrats (localStorage)
     _migrerRefClients();
     _migrerContrats();
-    // #1 — Recalcul des champs dérivés + migration TVA corrompue (exonere_0 avec tva!=0, ou particulier avec tva:0)
+    // #1 — Migration : exonere_0 → particulier avec tva:0 (Option B)
     clientsData = clientsData.map(function(c){
-      var tvaN = parseFloat(c.tva);
-      if (c.typeClient === 'exonere_0' && tvaN !== 0) return Object.assign({}, c, {tva: 0});
-      if ((c.typeClient === 'particulier' || c.typeClient === 'airbnb_particulier') && tvaN === 0) return Object.assign({}, c, {typeClient: 'exonere_0', tva: 0});
+      if (c.typeClient === 'exonere_0') return Object.assign({}, c, {typeClient:'particulier', tva:0});
       return c;
     }).map(normaliserClient);
     chargerClients();chargerSalaries();mettreAJourFinances();chargerNotesFrais();calculerStats();chargerAccueil();chargerTournees();chargerStock();chargerFournisseurs();
@@ -13886,18 +13880,11 @@ function lingeAjouterLigne(pfx,nbLits){
         var _clientsFiltres = (_delClients.length > 0)
           ? d.clients.filter(function(c){ return _delClients.indexOf(c.id) === -1; })
           : d.clients;
-        // Corriger tva corrompu dans Supabase
-        // Cas 1 : exonere_0 avec tva!=0 → forcer 0
-        // Cas 2 : particulier/airbnb avec tva:0 stocké → migrer vers exonere_0 pour fiabilité
+        // Migration Option B : exonere_0 → particulier avec tva:0
         _clientsFiltres = _clientsFiltres.map(function(c) {
-          var tvaN = parseFloat(c.tva);
-          if (c.typeClient === 'exonere_0' && tvaN !== 0) {
+          if (c.typeClient === 'exonere_0') {
             _needResync = true;
-            return Object.assign({}, c, {tva: 0});
-          }
-          if ((c.typeClient === 'particulier' || c.typeClient === 'airbnb_particulier') && tvaN === 0) {
-            _needResync = true;
-            return Object.assign({}, c, {typeClient: 'exonere_0', tva: 0});
+            return Object.assign({}, c, {typeClient:'particulier', tva:0});
           }
           return c;
         });
