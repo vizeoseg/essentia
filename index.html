@@ -2149,6 +2149,7 @@ tr{transition:background .12s;}
             <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;"><input type="checkbox" id="clauseResiliation" checked> Résiliation avec préavis</label>
             <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;"><input type="checkbox" id="clauseSignatureElec" checked> Zone de signature</label>
             <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;"><input type="checkbox" id="clauseCreditImpot"> Crédit d'impôt 50%</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;"><input type="checkbox" id="clauseSupplementHeures"> Heures supplémentaires</label>
           </div>
           <div class="form-group" style="margin-top:10px;"><label>Conditions particulières</label><textarea id="contratConditions" rows="2" placeholder="Ex: Accès par badge. Intervention hors heures de bureau." style="resize:vertical;width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:11px;background:var(--bg2);color:var(--text);"></textarea></div>
         </div>
@@ -9838,6 +9839,16 @@ function genererContratPrestation(){
     section('ARTICLE 8 — CRÉDIT D\'IMPÔT SERVICES À LA PERSONNE',
       'Conformément à l\'article 199 sexdecies du CGI, les particuliers employant des services à domicile bénéficient d\'un crédit d\'impôt de 50% des sommes versées dans la limite des plafonds légaux. Une attestation fiscale annuelle sera remise au Client avant le 31 mars de chaque année.',
       [14,80,80]
+    );
+  }
+
+  if(document.getElementById('clauseSupplementHeures')?.checked){
+    section('PRESTATIONS SUPPLÉMENTAIRES',
+      'À la demande expresse du Client, des prestations supplémentaires pourront être réalisées ponctuellement en dehors du forfait mensuel défini à l\'article 2.\n'
+      +'Ces interventions seront facturées au même tarif horaire HT de '+fmt2(tarif)+' €/h, sur la base du temps réellement effectué.\n'
+      +'Toute demande devra être formulée au minimum 48 heures à l\'avance, sous réserve des disponibilités du Prestataire.\n'
+      +'Ces prestations ponctuelles ne modifient pas les termes du présent contrat. En cas de besoins réguliers et durables, un avenant sera établi pour actualiser le forfait mensuel.',
+      [240,120,0]
     );
   }
 
