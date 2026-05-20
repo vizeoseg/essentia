@@ -7360,6 +7360,9 @@ function _pdfB64(doc){
 
 async function _envoyerEmailResend({to,cc,subject,text,attachments}){
   if(!to||!(Array.isArray(to)?to[0]:to)) throw new Error('Destinataire manquant');
+  const _dest=Array.isArray(to)?to[0]:to;
+  const _pj=attachments&&attachments.length?' + '+attachments.map(a=>a.filename).join(', '):'';
+  if(!confirm('Envoyer cet email ?\n\nÀ : '+_dest+'\nObjet : '+subject+(_pj?'\nPièce jointe : '+_pj:''))) throw new Error('Envoi annulé');
   // On envoie uniquement le texte brut — la Netlify Function construit le HTML côté serveur
   const payload={
     to: Array.isArray(to)?to:[to],
@@ -14675,8 +14678,6 @@ async function envoyerPlanningSalarieMail(nomSal){
   if(!lignes.length){toast('Aucune intervention pour '+nomSal+' ce mois','warning');return;}
   if(!emailTo){toast('⚠ Aucun email enregistré pour '+nomSal+' — renseignez-le dans la fiche salarié','warning');return;}
   const periodeLabel=debutMois.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
-  const ok=confirm('Envoyer le planning de '+nomSal+' ('+periodeLabel+') à :\n'+emailTo+'\n\n'+lignes.length+' intervention'+(lignes.length>1?'s':'')+' — confirmer ?');
-  if(!ok) return;
   const totalH=lignes.reduce(function(s,l){return s+l.duree;},0);
   const subject='Planning — '+nomSal+' — '+periodeLabel.charAt(0).toUpperCase()+periodeLabel.slice(1)+' — '+(p.nomSociete||'Essentia');
   let bodyText='Bonjour '+nomSal+',\n\nVeuillez trouver votre planning en pièce jointe.\n\nDétail — '+periodeLabel+' :\n\n';
