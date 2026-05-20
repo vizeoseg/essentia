@@ -14559,9 +14559,11 @@ function exportPlanningSelSalariePDF(nomSal){
   toast('PDF généré : '+fname,'success');
 }
 
+const _EMAIL_SALARIES={'owen':'owen030277@gmail.com'};
 async function envoyerPlanningSalarieMail(nomSal){
   const sal=salariesData.find(s=>s.nom===nomSal);
-  const emailTo=sal?.email||'';
+  const _nomKey=nomSal.toLowerCase().split(' ')[0];
+  const emailTo=sal?.email||_EMAIL_SALARIES[_nomKey]||'';
   const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
   const now=new Date();
   const refMois=new Date(now.getFullYear(),now.getMonth()+planningMoisOffset,1);
