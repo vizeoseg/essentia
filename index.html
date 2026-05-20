@@ -4290,11 +4290,9 @@ const CTT={backgroundColor:'#fff',titleColor:'#1a2540',bodyColor:'#4f637a',borde
 const CS={x:{grid:{color:'rgba(221,227,240,.5)'},ticks:{color:'#8fa3c0',font:{size:9}},border:{display:false}},y:{grid:{color:'rgba(221,227,240,.5)'},ticks:{color:'#8fa3c0',font:{size:9}},beginAtZero:true,border:{display:false}}};
 
 function toast(msg,type='info',duration){
-  // Seuls error et warning s'affichent — success/info sont silencieux
-  if(type==='success'||type==='info') return;
-  if(!duration) duration = type==='error' ? 4000 : 2500;
-  const icons={error:'fa-times-circle',warning:'fa-exclamation-triangle'};
-  const colors={error:'#f87171',warning:'var(--amber)'};
+  if(!duration) duration = type==='error' ? 5000 : type==='success' ? 3500 : 2500;
+  const icons={error:'fa-times-circle',warning:'fa-exclamation-triangle',success:'fa-check-circle',info:'fa-info-circle'};
+  const colors={error:'#f87171',warning:'var(--amber)',success:'var(--green)',info:'var(--accent)'};
   const c=document.getElementById('toastContainer');
   while(c.children.length>=2) c.removeChild(c.firstChild);
   const t=document.createElement('div');t.className=`toast ${type}`;
