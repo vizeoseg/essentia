@@ -6294,7 +6294,7 @@ function _blocSignaturePDF(doc, y, W, M, nomPartie, labelPartie, sigData){
   if(sigData){
     try{doc.addImage(sigData,_logoFmt(sigData),M+4,y+37,52,18);}catch(e){}
     doc.setFontSize(6); doc.setFont('helvetica','italic'); doc.setTextColor(5,150,105);
-    doc.text('✓ Signé électroniquement',M+4,y+57);
+    doc.text('Signe electroniquement',M+4,y+57);
   } else {
     doc.setDrawColor(26,58,143); doc.setLineWidth(0.5);
     doc.line(M+4,y+42,mid-6,y+42);
@@ -14585,7 +14585,7 @@ function exportPlanningSelSalariePDF(nomSal){
         lignes.push({
           date:new Date(cur),
           dateKey,
-          client:(c?c.nom:'Airbnb')+' 🏠',
+          client:(c?c.nom:'Airbnb')+' [Airbnb]',
           commune:c?c.commune||'—':'—',
           heure:d.heureNouvelle||'—',
           duree:(d.dureeEstimee||c&&c.heures||2)+'h',
@@ -14670,7 +14670,7 @@ async function envoyerPlanningSalarieMail(nomSal){
         return d.airbnb && d.dateNouvelle===dateKey && d.intervenant && d.intervenant.toLowerCase()===nomSal.toLowerCase();
       }).forEach(function(d){
         const c=clientsData.find(function(x){return x.id===d.clientId;});
-        lignes.push({date:new Date(cur),client:(c?c.nom:'Airbnb')+' 🏠',commune:c?c.commune||'—':'—',heure:d.heureNouvelle||'—',duree:parseFloat(d.dureeEstimee||(c&&c.heures)||2),activite:'Airbnb'});
+        lignes.push({date:new Date(cur),client:(c?c.nom:'Airbnb')+' [Airbnb]',commune:c?c.commune||'—':'—',heure:d.heureNouvelle||'—',duree:parseFloat(d.dureeEstimee||(c&&c.heures)||2),activite:'Airbnb'});
       });
     }
     cur.setDate(cur.getDate()+1);
