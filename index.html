@@ -470,7 +470,7 @@ tr{transition:background .12s;}
 
   /* Planning semaine — scroll horizontal */
   #empPlanningGrid{
-    grid-template-columns:repeat(5,minmax(130px,1fr)) !important;
+    grid-template-columns:repeat(7,minmax(110px,1fr)) !important;
     overflow-x:auto;
     padding-bottom:6px;
   }
@@ -2368,7 +2368,7 @@ tr{transition:background .12s;}
       <div class="card">
         <div class="card-header"><div class="card-icon" style="background:var(--accent-l);color:var(--accent);"><i class="fas fa-calendar-week"></i></div><h3>Planning de la semaine</h3></div>
         <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
-        <div id="empPlanningGrid" style="display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:10px;min-width:500px;"></div>
+        <div id="empPlanningGrid" style="display:grid;grid-template-columns:repeat(7,minmax(130px,1fr));gap:10px;min-width:700px;"></div>
         </div>
       </div>
     </div>
@@ -2410,8 +2410,8 @@ tr{transition:background .12s;}
       <div class="card" style="margin-top:14px;">
         <div class="card-header"><div class="card-icon" style="background:var(--accent-l);color:var(--accent);"><i class="fas fa-calendar-week"></i></div><h3>Vue semaine</h3></div>
         <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
-        <div id="empTourneeGrid" style="display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:11px;margin-top:4px;min-width:480px;"></div>
-        <div id="empCalendrierSemaine" style="display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:10px;margin-top:14px;min-width:480px;"></div>
+        <div id="empTourneeGrid" style="display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:11px;margin-top:4px;min-width:700px;"></div>
+        <div id="empCalendrierSemaine" style="display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:10px;margin-top:14px;min-width:700px;"></div>
         </div>
       </div>
     </div>
@@ -14559,7 +14559,7 @@ function exportPlanningSelSalariePDF(nomSal){
   while(cur<=finMois){
     const dow=cur.getDay();
     const jourNom=Object.keys(JOURS_IDX).find(j=>JOURS_IDX[j]===dow);
-    if(jourNom&&jourNom!=='dimanche'){
+    if(jourNom){
       const dateKey=cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0');
       clientsData.forEach(function(c){
         const jours=_getJoursClientDate?_getJoursClientDate(c,dateKey):(c.jours||[]);
