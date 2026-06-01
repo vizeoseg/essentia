@@ -6881,6 +6881,47 @@ function genererFacturePDF(){
     y+=7;
   }
 
+  // ── Détail Airbnb / Acte depuis deplacementsData ─────────
+  if(_isAirbnbPdf||c.type==='Acte'){
+    const _moisKeyPdf=`${_periodeStart.getFullYear()}-${String(_periodeStart.getMonth()+1).padStart(2,'0')}`;
+    const _depsDetail=(deplacementsData||[])
+      .filter(d=>d.clientId===clientId&&(d.dateNouvelle||'').startsWith(_moisKeyPdf))
+      .sort((a,b)=>(a.dateNouvelle||'').localeCompare(b.dateNouvelle||''));
+    if(_depsDetail.length>0){
+      doc.setFillColor(220,240,230);doc.rect(M,y,W-2*M,5.5,'F');
+      doc.setTextColor(16,100,60);doc.setFontSize(7);doc.setFont('helvetica','bold');
+      doc.text('DÉTAIL DES INTERVENTIONS',M+2,y+4);
+      y+=5.5;
+      const _jFr=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+      _depsDetail.forEach((dep,idx)=>{
+        if(y>262){doc.addPage();y=M;}
+        const _dD=new Date((dep.dateNouvelle||'')+'T12:00:00');
+        const _dateStr=`${_jFr[_dD.getDay()]} ${String(_dD.getDate()).padStart(2,'0')}/${String(_dD.getMonth()+1).padStart(2,'0')}`;
+        const _heure=dep.heureNouvelle||'';
+        const _modeH=dep.modeFacturation==='heure';
+        const _duree=parseFloat(dep.dureeEstimee||c.heures||1);
+        const _mont=_modeH?_duree*(c.tarif||0):(c.tarif||0);
+        if(idx%2===0){doc.setFillColor(245,255,250);}else{doc.setFillColor(237,251,244);}
+        doc.rect(M,y,W-2*M,5.5,'F');
+        doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(20,60,40);
+        doc.text(_dateStr,M+3,y+4);
+        if(_heure){doc.setTextColor(60,130,90);doc.text(_heure,M+38,y+4);}
+        if(_modeH){doc.setFont('helvetica','bold');doc.setTextColor(20,60,40);doc.text(fmtH(_duree),M+55,y+4,{align:'right'});}
+        doc.setFontSize(6.5);doc.setFont('helvetica','italic');doc.setTextColor(16,120,70);
+        doc.text('Confirmé',M+58,y+4);
+        doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(20,60,40);
+        doc.text(`${fmt2(_mont)} €`,W-M-2,y+4,{align:'right'});
+        y+=5.5;
+      });
+      const _totDeps=_depsDetail.reduce((s,dep)=>{const mH=dep.modeFacturation==='heure';return s+(mH?parseFloat(dep.dureeEstimee||c.heures||1)*(c.tarif||0):(c.tarif||0));},0);
+      doc.setFillColor(195,235,210);doc.rect(M,y,W-2*M,5.5,'F');
+      doc.setTextColor(16,100,60);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
+      doc.text(`${_depsDetail.length} intervention${_depsDetail.length>1?'s':''} facturée${_depsDetail.length>1?'s':''}`,M+3,y+4);
+      doc.text(`${fmt2(_totDeps)} €`,W-M-2,y+4,{align:'right'});
+      y+=7;
+    }
+  }
+
   // ── Lignes de facturation ─────────────────────────────────
   lignesFactureData.forEach((l,idx)=>{
     if(y>262){doc.addPage();y=M;}
