@@ -6174,6 +6174,17 @@ function exporterTarifsPDF(){
 // ══════════════════════════════════════════════════════════
 const _moisNoms=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 function _isoLocal(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function _parseH(v){
+  // Accepte h.mm (1.30→1h30, 1.45→1h45) ET décimal standard (1.5→1h30, 1.75→1h45)
+  // Règle : si la partie centièmes est entre 10 et 59 mais n'est pas une fraction standard
+  // (25=¼, 50=½, 75=¾), c'est du h.mm ; sinon c'est du décimal.
+  v=parseFloat(v);if(isNaN(v)||v<=0)return 0;
+  const entier=Math.floor(v);
+  const cents=Math.round((v-entier)*100);
+  if(cents>=10&&cents<=59&&cents!==25&&cents!==50&&cents!==75)
+    return entier+cents/60;
+  return v;
+}
 function _facDateDefaut(){
   // Au 1er–5e du mois : proposer le mois précédent (on facture le mois écoulé)
   const now=new Date();
@@ -6334,7 +6345,7 @@ function remplirLignesAuto(){
     .filter(([dk])=>{const d=new Date(dk+'T12:00:00');return d.getFullYear()===periodeRef.getFullYear()&&d.getMonth()===periodeRef.getMonth();});
 
   if(interventions.length>0){
-    const hReelles=interventions.reduce((s,[,e])=>{const h=parseFloat(e.heuresReelles);return s+((!isNaN(h)&&h>0)?h:(c.heures||0));},0);
+    const hReelles=interventions.reduce((s,[,e])=>{const h=_parseH(e.heuresReelles);return s+(h>0?h:(c.heures||0));},0);
     const hTotal=Math.round(hReelles*10)/10;
     const label=`Prestations nettoyage – ${periode} (${interventions.length} intervention${interventions.length>1?'s':''} confirmée${interventions.length>1?'s':''})`;
     if(c.type==='Heure'&&hTotal>0) lignesFactureData.push({desc:label,qte:hTotal,unite:'heures',prixUnit:c.tarif||0});
@@ -6832,7 +6843,7 @@ function genererFacturePDF(){
     _interventions.forEach(([dateKey,entry],idx)=>{
       if(y>262){doc.addPage();y=M;}
       const _d=new Date(dateKey+'T12:00:00');
-      const _hReal=entry.statut==='absent'?0:(parseFloat(entry.heuresReelles)||c.heures||0);
+      const _hReal=entry.statut==='absent'?0:(_parseH(entry.heuresReelles)||c.heures||0);
       const _st=entry.statut||'prevu';
       const _absent=_st==='absent';
       const _partiel=_st==='partiel';
@@ -6867,7 +6878,7 @@ function genererFacturePDF(){
     });
     // ── Ligne total (confirme + partiel uniquement, hors prévu et absent) ──
     const _billed=_interventions.filter(([,e])=>e.statut==='confirme'||e.statut==='partiel');
-    const _totalH=_billed.reduce((s,[,e])=>s+(parseFloat(e.heuresReelles)||c.heures||0),0);
+    const _totalH=_billed.reduce((s,[,e])=>s+(_parseH(e.heuresReelles)||c.heures||0),0);
     const _totalMt=_totalH*(c.tarif||0);
     doc.setFillColor(220,228,248);doc.rect(M,y,W-2*M,5.5,'F');
     doc.setTextColor(40,60,120);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
@@ -11572,7 +11583,7 @@ function _chargerPlanningPrevJour(cont, deltaRecap, jourKey, jourNomJ, mois, ann
     var hPrev = parseFloat(c.heures)||0;
     var entry = planningPrevData[c.id][jourKey];
     if(!entry){ entry={statut:'prevu',heuresReelles:hPrev,note:''}; planningPrevData[c.id][jourKey]=entry; }
-    var hReal = entry.statut==='absent'?0:(parseFloat(entry.heuresReelles)||hPrev);
+    var hReal = entry.statut==='absent'?0:(_parseH(entry.heuresReelles)||hPrev);
     totalPrev+=hPrev;
     if(entry.statut==='confirme'||entry.statut==='partiel') totalReal+=hReal;
     var delta=hReal-hPrev;
@@ -11613,8 +11624,8 @@ function _chargerPlanningPrevJour(cont, deltaRecap, jourKey, jourNomJ, mois, ann
     // FIX: mise à jour live du delta + sauvegarde intermédiaire heures
     newCont.addEventListener('input',function(e){
       if(e.target.classList.contains('pp-heures')){
-        var el=e.target; var hVal=parseFloat(el.value);
-        if(!isNaN(hVal)){
+        var el=e.target; var hVal=_parseH(el.value);
+        if(hVal>0){
           _ppEnsureEntry(el.dataset.cid,el.dataset.key);
           planningPrevData[el.dataset.cid][el.dataset.key].heuresReelles=hVal;
           var s=planningPrevData[el.dataset.cid][el.dataset.key].statut;
@@ -11794,7 +11805,7 @@ function chargerPlanningPrevisionnel(){
 
       clientPrev += hPrev;
       totalPrevuMois += hPrev;
-      var hReal = entry.statut === 'absent' ? 0 : (parseFloat(entry.heuresReelles) || hPrev);
+      var hReal = entry.statut === 'absent' ? 0 : (_parseH(entry.heuresReelles) || hPrev);
       if(entry.statut === 'confirme' || entry.statut === 'partiel'){
         clientReal += hReal;
         totalRealiseMois += hReal;
@@ -11964,8 +11975,8 @@ function chargerPlanningPrevisionnel(){
   cont.addEventListener('input', function(e){
     if(e.target.classList.contains('pp-heures')){
       var el = e.target;
-      var hVal = parseFloat(el.value);
-      if(!isNaN(hVal)){
+      var hVal = _parseH(el.value);
+      if(hVal>0){
         _ppEnsureEntry(el.dataset.cid, el.dataset.key);
         planningPrevData[el.dataset.cid][el.dataset.key].heuresReelles = hVal;
         var s = planningPrevData[el.dataset.cid][el.dataset.key].statut;
