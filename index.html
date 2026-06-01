@@ -7469,8 +7469,9 @@ async function envoyerFactureEmail(){
   if(!d.emailClient){toast('Email client manquant — renseignez-le dans la fiche client','warning');return;}
   const p=d.societe;
   const fmt2=v=>parseFloat(v||0).toFixed(2).replace('.',',');
+  const _fmtD=iso=>iso?new Date(iso+'T12:00:00').toLocaleDateString('fr-FR'):iso;
   const subject='Facture '+d.numero+' — '+(p.nomSociete||'Votre prestataire');
-  const text='Bonjour'+(d.client.nom?' '+d.client.nom:'')+',\n\nVeuillez trouver ci-jointe votre facture '+d.numero+' du '+d.date+'.\n\nRécapitulatif :\n- Montant HT : '+fmt2(d.sousTotal)+' €\n- TVA '+d.tauxTVA+'% : '+fmt2(d.montantTVA)+' €\n- Total TTC : '+fmt2(d.totalTTC)+' €'+(d.periode?'\n- Période : '+d.periode:'')+'\n\nRèglement avant le '+(d.dateEch||'date d\'échéance')+'.'+(p.iban?'\nIBAN : '+p.iban:'')+'\n\nCordialement,\n'+(p.nomSociete||'')+(p.tel?'\n'+p.tel:'');
+  const text='Bonjour'+(d.client.nom?' '+d.client.nom:'')+',\n\nVeuillez trouver ci-jointe votre facture '+d.numero+' du '+_fmtD(d.date)+'.\n\nRécapitulatif :\n- Montant HT : '+fmt2(d.sousTotal)+' €\n- TVA '+d.tauxTVA+'% : '+fmt2(d.montantTVA)+' €\n- Total TTC : '+fmt2(d.totalTTC)+' €'+(d.periode?'\n- Période : '+d.periode:'')+'\n\nRèglement avant le '+(_fmtD(d.dateEch)||'date d\'échéance')+'.'+(p.iban?'\nIBAN : '+p.iban:'')+'\n\nCordialement,\n'+(p.nomSociete||'')+(p.tel?'\n'+p.tel:'');
   // Générer PDF facture
   const {jsPDF}=window.jspdf||{};
   let attachments=[];
@@ -7480,7 +7481,7 @@ async function envoyerFactureEmail(){
     doc.setTextColor(255,255,255);doc.setFontSize(13);doc.setFont('helvetica','bold');
     doc.text(p.nomSociete||'Essentia Services',14,10);
     doc.setFontSize(9);doc.setFont('helvetica','normal');
-    doc.text('FACTURE N° '+d.numero+' — '+d.date,14,17);
+    doc.text('FACTURE N° '+d.numero+' — '+_fmtD(d.date),14,17);
     doc.setTextColor(40,40,40);doc.setFontSize(10);doc.setFont('helvetica','bold');
     doc.text('Facturé à : '+d.client.nom,14,32);
     doc.autoTable({
