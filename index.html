@@ -8653,7 +8653,7 @@ function sauvegarderTout(auto=false){
 // ══════════════════════════════════════════════════════════
 function normaliserClient(c){
   const tarif   = parseFloat(c.tarif)   || 0;
-  const heures  = parseFloat(c.heures)  || 0;
+  const heures  = _parseH(c.heures)     || 0;
   const freq    = parseFloat(c.frequence)|| 1;
   const tva     = (c.typeClient === 'exonere_0') ? 0
     : (c.typeClient === 'entreprise' || c.typeClient === 'airbnb_agence') ? 20
