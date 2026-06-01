@@ -6804,16 +6804,18 @@ function genererFacturePDF(){
   y+=6;
 
   // ── Détail des interventions réalisées ───────────────────
+  // Airbnb et Acte : pas de planning récurrent → détail inutile (leurs interventions viennent de deplacementsData)
+  const _isAirbnbPdf=c.typeClient==='airbnb_particulier'||c.typeClient==='airbnb_agence';
   const _periodeStart=dateFacRaw?new Date(dateFacRaw):new Date();
   const _clientPrev=(planningPrevData&&clientId)?(planningPrevData[clientId]||{}):{};
   const _today=new Date().toISOString().split('T')[0];
-  const _interventions=Object.entries(_clientPrev)
+  const _interventions=(!_isAirbnbPdf&&c.type!=='Acte')?Object.entries(_clientPrev)
     .filter(([,entry])=>entry&&(entry.statut==='confirme'||entry.statut==='partiel'||entry.statut==='prevu'||entry.statut==='absent'))
     .filter(([dateKey])=>{
       const d=new Date(dateKey);
       return d.getFullYear()===_periodeStart.getFullYear()&&d.getMonth()===_periodeStart.getMonth()&&dateKey<=_today;
     })
-    .sort(([a],[b])=>a.localeCompare(b));
+    .sort(([a],[b])=>a.localeCompare(b)):[];
 
   if(_interventions.length>0){
     // ── En-tête section : planning récurrent + heure à droite ──
