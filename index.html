@@ -4578,12 +4578,19 @@ function genererFactureDepuisClient(clientId){
     }
     // Pré-remplir une ligne de prestation
     const now=new Date();
+    const moisKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
     const moisLabel=now.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
     const periodeEl=document.getElementById('facPeriode');
     if(periodeEl) periodeEl.value=`Prestation ${moisLabel}`;
-    // Créer une ligne auto avec les données client
-    const heuresMois=Math.round((c.heures||0)*(c.frequence||1)*4.33*10)/10;
-    lignesFactureData=[{desc:`Prestation ${c.type==='Acte'?'acte':'horaire'} — ${moisLabel}`,qte:heuresMois,unite:c.type==='Acte'?'acte':'h',prixUnit:c.tarif||0}];
+    const isAirbnbC=c.typeClient==='airbnb_particulier'||c.typeClient==='airbnb_agence';
+    if(c.type==='Acte'||isAirbnbC){
+      const depsMois=(deplacementsData||[]).filter(d=>d.clientId===clientId&&(d.dateNouvelle||'').startsWith(moisKey));
+      const nb=depsMois.length||1;
+      lignesFactureData=[{desc:`Prestation acte — ${moisLabel}${nb>1?' ('+nb+' interventions)':''}`,qte:nb,unite:'acte',prixUnit:c.tarif||0}];
+    } else {
+      const heuresMois=Math.round((c.heures||0)*(c.frequence||1)*4.33*10)/10;
+      lignesFactureData=[{desc:`Prestation horaire — ${moisLabel}`,qte:heuresMois,unite:'h',prixUnit:c.tarif||0}];
+    }
     if(typeof renderLignesFacture==='function') renderLignesFacture();
     if(typeof calculerTotauxFacture==='function') calculerTotauxFacture();
     // Mettre à jour le statut workflow
@@ -6222,27 +6229,47 @@ function remplirLignesAuto(){
   const periode=document.getElementById('facPeriode').value||'ce mois';
   lignesFactureData=[];
 
-  // Lire les interventions confirmées du planning pour le mois de la facture
   const dateFacRaw=document.getElementById('facDate')?.value||'';
-  const periodeRef=dateFacRaw?new Date(dateFacRaw):new Date();
+  const periodeRef=dateFacRaw?new Date(dateFacRaw+'T12:00:00'):new Date();
+  const moisKey=`${periodeRef.getFullYear()}-${String(periodeRef.getMonth()+1).padStart(2,'0')}`;
+
+  // ── Clients Airbnb ou Acte : chercher dans deplacementsData ──────────
+  const isAirbnb=c.typeClient==='airbnb_particulier'||c.typeClient==='airbnb_agence';
+  const depsMois=(deplacementsData||[]).filter(d=>d.clientId===id&&(d.dateNouvelle||'').startsWith(moisKey));
+
+  if(isAirbnb||c.type==='Acte'){
+    if(depsMois.length>0){
+      const modeH=depsMois.some(d=>d.modeFacturation==='heure');
+      if(modeH){
+        const totalH=depsMois.reduce((s,d)=>s+(d.dureeEstimee||c.heures||1),0);
+        lignesFactureData.push({desc:`Interventions – ${periode} (${depsMois.length} intervention${depsMois.length>1?'s':''})`,qte:totalH,unite:'heures',prixUnit:c.tarif||0});
+      } else {
+        lignesFactureData.push({desc:`Interventions ${isAirbnb?'Airbnb':''} – ${periode} (${depsMois.length} intervention${depsMois.length>1?'s':''})`.trim(),qte:depsMois.length,unite:'acte',prixUnit:c.tarif||0});
+      }
+      toast(`${depsMois.length} intervention(s) trouvée(s) pour ${periode}`,'success');
+    } else {
+      // Aucune urgence planifiée ce mois : 1 acte au tarif
+      lignesFactureData.push({desc:`Intervention ${isAirbnb?'Airbnb':''} – ${periode}`.trim(),qte:1,unite:'acte',prixUnit:c.tarif||0});
+      toast('Aucune intervention planifiée ce mois — 1 acte au tarif client','info');
+    }
+    renderLignesFacture();calculerTotauxFacture();
+    return;
+  }
+
+  // ── Clients récurrents (Heure / Forfait) : planningPrevData ──────────
   const clientPrev=(planningPrevData&&id)?(planningPrevData[id]||{}):{};
   const interventions=Object.entries(clientPrev)
     .filter(([,e])=>e&&(e.statut==='confirme'||e.statut==='partiel'))
     .filter(([dk])=>{const d=new Date(dk+'T12:00:00');return d.getFullYear()===periodeRef.getFullYear()&&d.getMonth()===periodeRef.getMonth();});
 
   if(interventions.length>0){
-    // Heures réelles confirmées
-    const hReelles=interventions.reduce((s,[,e])=>{
-      const h=parseFloat(e.heuresReelles);
-      return s+((!isNaN(h)&&h>0)?h:(c.heures||0));
-    },0);
+    const hReelles=interventions.reduce((s,[,e])=>{const h=parseFloat(e.heuresReelles);return s+((!isNaN(h)&&h>0)?h:(c.heures||0));},0);
     const hTotal=Math.round(hReelles*10)/10;
     const label=`Prestations nettoyage – ${periode} (${interventions.length} intervention${interventions.length>1?'s':''} confirmée${interventions.length>1?'s':''})`;
     if(c.type==='Heure'&&hTotal>0) lignesFactureData.push({desc:label,qte:hTotal,unite:'heures',prixUnit:c.tarif||0});
-    else lignesFactureData.push({desc:`Prestation forfaitaire – ${periode}`,qte:1,unite:'forfait',prixUnit:c.totalMoisHT||0});
+    else lignesFactureData.push({desc:label,qte:interventions.length,unite:'acte',prixUnit:c.tarif||0});
     toast(`${interventions.length} intervention(s) confirmée(s) — ${hTotal}h réelles utilisées`,'success');
   } else {
-    // Fallback : formule moyenne 4,33 semaines/mois
     const hMois=Math.round((c.heures||0)*(c.frequence||1)*4.33*10)/10;
     if(c.type==='Heure'&&hMois>0) lignesFactureData.push({desc:`Prestations nettoyage – ${periode}`,qte:hMois,unite:'heures',prixUnit:c.tarif||0});
     else lignesFactureData.push({desc:`Prestation forfaitaire – ${periode}`,qte:1,unite:'forfait',prixUnit:c.totalMoisHT||0});
