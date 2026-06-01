@@ -5978,7 +5978,7 @@ function chargerAttestationsTable(){
   const particuliers=clientsData.filter(c=>c.typeClient==='particulier');
   tbody.innerHTML=particuliers.map(c=>{
     // #2 — Calcul basé sur les factures réelles de l'année si disponibles
-    const facturesClient = facturesData.filter(f=>f.clientId===c.id && f.date && f.date.startsWith(String(annee)));
+    const facturesClient = facturesData.filter(f=>f.clientId===c.id && (f.dateRaw||f.date||'').includes(String(annee)));
     const caAnHTReel = facturesClient.reduce((s,f)=>s+(f.totalHT||0),0);
     const useReel = facturesClient.length > 0;
     const caAnHT = useReel ? caAnHTReel : (c.caAnneeHT||0);
@@ -6048,7 +6048,7 @@ function genererAttestationPourClient(clientId,annee){
   doc.setFontSize(8);doc.setTextColor(80,100,140);doc.text(`Commune : ${c.commune||'—'}`,M+5,y+22);
   y+=40;
   // Tableau prestations
-  const facturesClient = facturesData.filter(f=>f.clientId===c.id && f.date && f.date.startsWith(String(annee)));
+  const facturesClient = facturesData.filter(f=>f.clientId===c.id && (f.dateRaw||f.date||'').includes(String(annee)));
   const useReel = facturesClient.length > 0;
   const heuresAn=Math.round((c.heures||0)*(c.frequence||1)*52*10)/10;
   const caAnHT = useReel ? facturesClient.reduce((s,f)=>s+(f.totalHT||0),0) : (c.caAnneeHT||0);
@@ -6540,7 +6540,7 @@ function _refDoc(type, c, annee){
     return `DEV-${y}-${n}-${String(cnt).padStart(2,'0')}`;
   }
   if(type==='facture'){
-    const cnt=(facturesData||[]).filter(function(f){return f.clientId===c?.id;}).length+1;
+    const cnt=(facturesData||[]).filter(function(f){return f.clientId===c?.id&&(f.dateRaw||f.date||'').includes(String(y));}).length+1;
     return `FAC-${y}-${n}-${String(cnt).padStart(2,'0')}`;
   }
   if(type==='planning'){
@@ -6746,12 +6746,13 @@ function genererFacturePDF(){
       doc.text(`${fmt2(_hReal*(c.tarif||0))} €`,W-M-2,y+4,{align:'right'});
       y+=5.5;
     });
-    // ── Ligne total ──
-    const _totalH=_interventions.reduce((s,[,e])=>s+(e.statut==='absent'?0:(parseFloat(e.heuresReelles)||c.heures||0)),0);
+    // ── Ligne total (confirme + partiel uniquement, hors prévu et absent) ──
+    const _billed=_interventions.filter(([,e])=>e.statut==='confirme'||e.statut==='partiel');
+    const _totalH=_billed.reduce((s,[,e])=>s+(parseFloat(e.heuresReelles)||c.heures||0),0);
     const _totalMt=_totalH*(c.tarif||0);
     doc.setFillColor(220,228,248);doc.rect(M,y,W-2*M,5.5,'F');
     doc.setTextColor(40,60,120);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
-    doc.text(`${_interventions.length} intervention${_interventions.length>1?'s':''} · ${fmtH(_totalH)}`,M+3,y+4);
+    doc.text(`${_billed.length} intervention${_billed.length>1?'s':''} facturée${_billed.length>1?'s':''} · ${fmtH(_totalH)}`,M+3,y+4);
     doc.text(`${fmt2(_totalMt)} €`,W-M-2,y+4,{align:'right'});
     y+=7;
   } else if(interventionLine){
@@ -6836,8 +6837,8 @@ function genererFacturePDF(){
   const sirenClientVal=document.getElementById('facSirenClient')?.value||'';
   facturesData.push({
     id:'FAC'+Date.now(), numero:numFac, client:clientNom, clientId:clientId,
-    date:dateFac, dateRaw:dateFacRaw, periode, totalHT:sousTotal, totalTTC,
-    tva:tauxTVA, statut:'envoyee', emailClient:emailClientVal,
+    date:dateFacRaw, dateDisplay:dateFac, dateRaw:dateFacRaw, periode, totalHT:sousTotal, totalTTC,
+    tva:tauxTVA, condPaie:condPaie, statut:'envoyee', emailClient:emailClientVal,
     typeOp:typeOpVal, sirenClient:sirenClientVal,
     lignes:JSON.parse(JSON.stringify(lignesFactureData))
   });
@@ -6867,7 +6868,7 @@ function renderHistoriqueFactures(){
         <div style="flex:1;">
           <div style="font-weight:600;font-size:12px;">${f.numero} — ${f.client}</div>
           <div style="font-size:10px;color:var(--text3);display:flex;gap:6px;flex-wrap:wrap;margin-top:2px;">
-            <span>${f.date}${f.periode?' · '+f.periode:''}</span>
+            <span>${(f.dateDisplay||(!f.date||f.date.includes('/')?f.date:new Date(f.date+'T12:00:00').toLocaleDateString('fr-FR')))||'—'}${f.periode?' · '+f.periode:''}</span>
             <span>TVA ${f.tva}%</span>
             <span style="background:rgba(29,78,216,.1);color:#1d4ed8;padding:1px 6px;border-radius:10px;font-weight:700;"><i class="fas fa-bolt" style="font-size:8px;"></i> Factur-X</span>
             <span style="background:rgba(${typeOp==='b2b'?'29,78,216':typeOp==='export'?'240,153,31':'124,58,237'},.1);color:${typeColor};padding:1px 6px;border-radius:10px;font-weight:700;">${typeLabel}</span>
@@ -7453,7 +7454,8 @@ async function envoyerFactureEmailId(id){
   const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
   const fmt2=v=>parseFloat(v||0).toFixed(2).replace('.',',');
   const subject='Facture '+f.numero+' — '+(p.nomSociete||'Votre prestataire');
-  const text='Bonjour '+f.client+',\n\nVeuillez trouver ci-jointe la facture '+f.numero+' du '+f.date+'.\n\nTotal TTC : '+fmt2(f.totalTTC)+' €\n\nCordialement,\n'+(p.nomSociete||'')+(p.tel?'\n'+p.tel:'');
+  const _dateFmt=f.dateDisplay||(!f.date||f.date.includes('/')?f.date:new Date(f.date+'T12:00:00').toLocaleDateString('fr-FR'))||f.date;
+  const text='Bonjour '+f.client+',\n\nVeuillez trouver ci-jointe la facture '+f.numero+' du '+_dateFmt+'.\n\nTotal TTC : '+fmt2(f.totalTTC)+' €\n\nCordialement,\n'+(p.nomSociete||'')+(p.tel?'\n'+p.tel:'');
   const {jsPDF}=window.jspdf||{};
   let attachments=[];
   if(jsPDF){try{
