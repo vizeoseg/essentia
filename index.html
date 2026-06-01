@@ -1469,7 +1469,7 @@ tr{transition:background .12s;}
             <div class="form-group"><label>Client <span style="color:var(--red);">*</span></label><select id="facClient" onchange="remplirInfosFacture()"><option value="">— Sélectionner —</option></select></div>
             <div class="form-group"><label>SIREN client</label><input type="text" id="facSirenClient" placeholder="123 456 789" maxlength="11" style="font-family:'DM Mono',monospace;"></div>
             <div class="form-group"><label>N° Facture <span style="color:var(--red);">*</span></label><input type="text" id="facNumero"></div>
-            <div class="form-group"><label>Date d'émission <span style="color:var(--red);">*</span></label><input type="date" id="facDate"></div>
+            <div class="form-group"><label>Date d'émission <span style="color:var(--red);">*</span></label><input type="date" id="facDate" onchange="onFacDateChange()"></div>
             <div class="form-group"><label>Période couverte</label><input type="text" id="facPeriode" placeholder="ex: Janvier 2026"></div>
             <div class="form-group"><label>Type opération</label>
               <select id="facTypeOp" onchange="mettreAJourTypeOp()">
@@ -6150,13 +6150,30 @@ function exporterTarifsPDF(){
 // ══════════════════════════════════════════════════════════
 // FACTURES
 // ══════════════════════════════════════════════════════════
+const _moisNoms=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+function _isoLocal(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function _facDateDefaut(){
+  // Au 1er–5e du mois : proposer le mois précédent (on facture le mois écoulé)
+  const now=new Date();
+  if(now.getDate()<=5) return new Date(now.getFullYear(),now.getMonth()-1,1);
+  return now;
+}
+function onFacDateChange(){
+  const raw=document.getElementById('facDate')?.value||'';
+  if(!raw) return;
+  const d=new Date(raw+'T12:00:00');
+  const periodeEl=document.getElementById('facPeriode');
+  if(periodeEl) periodeEl.value=`${_moisNoms[d.getMonth()]} ${d.getFullYear()}`;
+  const clientId=document.getElementById('facClient')?.value||'';
+  if(clientId) remplirLignesAuto();
+}
 function initFactures(){
   chargerSelectClients();
   const annee=new Date().getFullYear();
   document.getElementById('facNumero').placeholder=`FAC-${annee}-XXXX-01`;
-  document.getElementById('facDate').valueAsDate=new Date();
-  const moisNoms=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
-  const now=new Date();document.getElementById('facPeriode').value=`${moisNoms[now.getMonth()]} ${now.getFullYear()}`;
+  const defaut=_facDateDefaut();
+  document.getElementById('facDate').value=_isoLocal(defaut);
+  document.getElementById('facPeriode').value=`${_moisNoms[defaut.getMonth()]} ${defaut.getFullYear()}`;
   if(lignesFactureData.length===0)ajouterLigneFacture();
   renderLignesFacture();calculerTotauxFacture();renderHistoriqueFactures();
   // #10 — Ajout fiable des boutons produit stock (au lieu du fragile setTimeout global)
