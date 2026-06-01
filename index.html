@@ -6347,14 +6347,14 @@ function remplirLignesAuto(){
     .filter(([dk])=>{const d=new Date(dk+'T12:00:00');return d.getFullYear()===periodeRef.getFullYear()&&d.getMonth()===periodeRef.getMonth();});
 
   if(interventions.length>0){
-    const hReelles=interventions.reduce((s,[,e])=>{const h=_parseH(e.heuresReelles);return s+(h>0?h:(c.heures||0));},0);
+    const hReelles=interventions.reduce((s,[,e])=>{const h=_parseH(e.heuresReelles);return s+(h>0?h:(_parseH(c.heures)||0));},0);
     const hTotal=Math.round(hReelles*10)/10;
     const label=`Prestations nettoyage – ${periode} (${interventions.length} intervention${interventions.length>1?'s':''} confirmée${interventions.length>1?'s':''})`;
     if(c.type==='Heure'&&hTotal>0) lignesFactureData.push({desc:label,qte:hTotal,unite:'heures',prixUnit:c.tarif||0});
     else lignesFactureData.push({desc:label,qte:interventions.length,unite:'acte',prixUnit:c.tarif||0});
     toast(`${interventions.length} intervention(s) confirmée(s) — ${hTotal}h réelles utilisées`,'success');
   } else {
-    const hMois=Math.round((c.heures||0)*(c.frequence||1)*4.33*10)/10;
+    const hMois=Math.round((_parseH(c.heures)||0)*(c.frequence||1)*4.33*10)/10;
     if(c.type==='Heure'&&hMois>0) lignesFactureData.push({desc:`Prestations nettoyage – ${periode}`,qte:hMois,unite:'heures',prixUnit:c.tarif||0});
     else lignesFactureData.push({desc:`Prestation forfaitaire – ${periode}`,qte:1,unite:'forfait',prixUnit:c.totalMoisHT||0});
     toast('Aucune intervention confirmée pour ce mois — formule moyenne utilisée (×4,33)','info');
@@ -6846,7 +6846,7 @@ function genererFacturePDF(){
     _interventions.forEach(([dateKey,entry],idx)=>{
       if(y>262){doc.addPage();y=M;}
       const _d=new Date(dateKey+'T12:00:00');
-      const _hReal=entry.statut==='absent'?0:(_parseH(entry.heuresReelles)||c.heures||0);
+      const _hReal=entry.statut==='absent'?0:(_parseH(entry.heuresReelles)||_parseH(c.heures)||0);
       const _st=entry.statut||'prevu';
       const _absent=_st==='absent';
       const _partiel=_st==='partiel';
@@ -6881,7 +6881,7 @@ function genererFacturePDF(){
     });
     // ── Ligne total (confirme + partiel uniquement, hors prévu et absent) ──
     const _billed=_interventions.filter(([,e])=>e.statut==='confirme'||e.statut==='partiel');
-    const _totalH=_billed.reduce((s,[,e])=>s+(_parseH(e.heuresReelles)||c.heures||0),0);
+    const _totalH=_billed.reduce((s,[,e])=>s+(_parseH(e.heuresReelles)||_parseH(c.heures)||0),0);
     const _totalMt=_totalH*(c.tarif||0);
     doc.setFillColor(220,228,248);doc.rect(M,y,W-2*M,5.5,'F');
     doc.setTextColor(40,60,120);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
@@ -11583,7 +11583,7 @@ function _chargerPlanningPrevJour(cont, deltaRecap, jourKey, jourNomJ, mois, ann
 
   clientsJour.forEach(function(c){
     if(!planningPrevData[c.id]) planningPrevData[c.id]={};
-    var hPrev = parseFloat(c.heures)||0;
+    var hPrev = _parseH(c.heures)||0;
     var entry = planningPrevData[c.id][jourKey];
     if(!entry){ entry={statut:'prevu',heuresReelles:hPrev,note:''}; planningPrevData[c.id][jourKey]=entry; }
     var hReal = entry.statut==='absent'?0:(_parseH(entry.heuresReelles)||hPrev);
@@ -11628,7 +11628,7 @@ function _chargerPlanningPrevJour(cont, deltaRecap, jourKey, jourNomJ, mois, ann
     newCont.addEventListener('input',function(e){
       if(e.target.classList.contains('pp-heures')){
         var el=e.target; var hVal=_parseH(el.value);
-        if(hVal>0){
+        if(!isNaN(hVal)&&hVal>=0){
           _ppEnsureEntry(el.dataset.cid,el.dataset.key);
           planningPrevData[el.dataset.cid][el.dataset.key].heuresReelles=hVal;
           var s=planningPrevData[el.dataset.cid][el.dataset.key].statut;
@@ -11710,7 +11710,7 @@ function chargerPlanningPrevisionnel(){
   var html = '';
 
   clientsData.forEach(function(client){
-    var hPrev = parseFloat(client.heures) || 0;
+    var hPrev = _parseH(client.heures) || 0;
 
     // Vérifier si ce client a des déplacements VERS ce mois (même sans jours réguliers)
     var depVersMois = deplacementsData.filter(function(dep){
@@ -11979,7 +11979,7 @@ function chargerPlanningPrevisionnel(){
     if(e.target.classList.contains('pp-heures')){
       var el = e.target;
       var hVal = _parseH(el.value);
-      if(hVal>0){
+      if(!isNaN(hVal)&&hVal>=0){
         _ppEnsureEntry(el.dataset.cid, el.dataset.key);
         planningPrevData[el.dataset.cid][el.dataset.key].heuresReelles = hVal;
         var s = planningPrevData[el.dataset.cid][el.dataset.key].statut;
