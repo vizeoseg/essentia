@@ -6783,6 +6783,7 @@ function genererFacturePDF(){
   }
 
   // ── Bloc client pleine largeur ────────────────────────────
+  const _isAirbnbPdf=c.typeClient==='airbnb_particulier'||c.typeClient==='airbnb_agence';
   // Pour les clients Airbnb : adresseProprietaire (facturation) en priorité sur adresse (bien)
   const _adresseFac=_isAirbnbPdf?(c.adresseProprietaire||c.adresse):c.adresse;
   const _norm=s=>s.toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -6819,8 +6820,6 @@ function genererFacturePDF(){
   y+=6;
 
   // ── Détail des interventions réalisées ───────────────────
-  // Airbnb et Acte : pas de planning récurrent → détail inutile (leurs interventions viennent de deplacementsData)
-  const _isAirbnbPdf=c.typeClient==='airbnb_particulier'||c.typeClient==='airbnb_agence';
   const _periodeStart=dateFacRaw?new Date(dateFacRaw):new Date();
   const _clientPrev=(planningPrevData&&clientId)?(planningPrevData[clientId]||{}):{};
   const _today=new Date().toISOString().split('T')[0];
