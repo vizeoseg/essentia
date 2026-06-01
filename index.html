@@ -1482,7 +1482,7 @@ tr{transition:background .12s;}
             <div class="form-group"><label>SIREN client</label><input type="text" id="facSirenClient" placeholder="123 456 789" maxlength="11" style="font-family:'DM Mono',monospace;"></div>
             <div class="form-group"><label>N° Facture <span style="color:var(--red);">*</span></label><input type="text" id="facNumero"></div>
             <div class="form-group"><label>Date d'émission <span style="color:var(--red);">*</span></label><input type="date" id="facDate" onchange="onFacDateChange()"></div>
-            <div class="form-group"><label>Période couverte</label><input type="text" id="facPeriode" placeholder="ex: Janvier 2026"></div>
+            <div class="form-group"><label>Période couverte</label><select id="facPeriode" onchange="onFacPeriodeChange()" style="font-size:13px;"></select></div>
             <div class="form-group"><label>Type opération</label>
               <select id="facTypeOp" onchange="mettreAJourTypeOp()">
                 <option value="b2c">B2C — Particulier (e-reporting)</option>
@@ -4594,7 +4594,7 @@ function genererFactureDepuisClient(clientId){
     const moisKey=`${facDateRef.getFullYear()}-${String(facDateRef.getMonth()+1).padStart(2,'0')}`;
     const moisLabel=facDateRef.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
     const periodeEl=document.getElementById('facPeriode');
-    if(periodeEl) periodeEl.value=`Prestation ${moisLabel}`;
+    if(periodeEl&&[...periodeEl.options].some(o=>o.value===`${_moisNoms[facDateRef.getMonth()]} ${facDateRef.getFullYear()}`)) periodeEl.value=`${_moisNoms[facDateRef.getMonth()]} ${facDateRef.getFullYear()}`;
     const isAirbnbC=c.typeClient==='airbnb_particulier'||c.typeClient==='airbnb_agence';
     if(c.type==='Acte'||isAirbnbC){
       const depsMois=(deplacementsData||[]).filter(d=>d.clientId===clientId&&(d.dateNouvelle||'').startsWith(moisKey));
@@ -6181,20 +6181,19 @@ function _facDateDefaut(){
   return now;
 }
 function _alimenterFacMoisSelect(){
-  const sel=document.getElementById('facMoisSelect');if(!sel)return;
   const now=new Date();
-  const opts=[];
-  // 13 mois : mois précédent en premier, puis -1, -2… jusqu'à 13 mois en arrière
+  const optsKey=[],optsText=[];
   for(let i=1;i<=13;i++){
     const d=new Date(now.getFullYear(),now.getMonth()-i+1,1);
     const key=_isoLocal(d).slice(0,7);
     const label=`${_moisNoms[d.getMonth()]} ${d.getFullYear()}`;
-    opts.push(`<option value="${key}">${label}</option>`);
+    optsKey.push(`<option value="${key}">${label}</option>`);
+    optsText.push(`<option value="${label}">${label}</option>`);
   }
-  // Garder la sélection courante si elle existe encore
-  const actuel=sel.value;
-  sel.innerHTML=opts.join('');
-  if(actuel&&[...sel.options].some(o=>o.value===actuel)) sel.value=actuel;
+  const selMois=document.getElementById('facMoisSelect');
+  if(selMois){const a=selMois.value;selMois.innerHTML=optsKey.join('');if(a&&[...selMois.options].some(o=>o.value===a))selMois.value=a;}
+  const selPer=document.getElementById('facPeriode');
+  if(selPer){const a=selPer.value;selPer.innerHTML=optsText.join('');if(a&&[...selPer.options].some(o=>o.value===a))selPer.value=a;}
 }
 function onFacMoisSelectChange(){
   const key=document.getElementById('facMoisSelect')?.value||'';
@@ -6215,12 +6214,30 @@ function onFacDateChange(){
   const raw=document.getElementById('facDate')?.value||'';
   if(!raw) return;
   const d=new Date(raw+'T12:00:00');
+  const label=`${_moisNoms[d.getMonth()]} ${d.getFullYear()}`;
   const periodeEl=document.getElementById('facPeriode');
-  if(periodeEl) periodeEl.value=`${_moisNoms[d.getMonth()]} ${d.getFullYear()}`;
-  // Synchro sélecteur mois
+  if(periodeEl&&[...periodeEl.options].some(o=>o.value===label)) periodeEl.value=label;
   const moisKey=raw.slice(0,7);
   const sel=document.getElementById('facMoisSelect');
   if(sel&&[...sel.options].some(o=>o.value===moisKey)) sel.value=moisKey;
+  const clientId=document.getElementById('facClient')?.value||'';
+  if(clientId) remplirLignesAuto();
+}
+function onFacPeriodeChange(){
+  const label=document.getElementById('facPeriode')?.value||'';
+  if(!label)return;
+  const parts=label.split(' ');
+  if(parts.length>=2){
+    const m=_moisNoms.indexOf(parts[0]);
+    const y=parts[parts.length-1];
+    if(m!==-1&&y){
+      const moisKey=`${y}-${String(m+1).padStart(2,'0')}`;
+      const dateEl=document.getElementById('facDate');
+      if(dateEl) dateEl.value=`${moisKey}-01`;
+      const moisSel=document.getElementById('facMoisSelect');
+      if(moisSel&&[...moisSel.options].some(o=>o.value===moisKey)) moisSel.value=moisKey;
+    }
+  }
   const clientId=document.getElementById('facClient')?.value||'';
   if(clientId) remplirLignesAuto();
 }
@@ -6231,10 +6248,12 @@ function initFactures(){
   const defaut=_facDateDefaut();
   const defautIso=_isoLocal(defaut);
   document.getElementById('facDate').value=defautIso;
-  document.getElementById('facPeriode').value=`${_moisNoms[defaut.getMonth()]} ${defaut.getFullYear()}`;
   _alimenterFacMoisSelect();
   const sel=document.getElementById('facMoisSelect');
   if(sel) sel.value=defautIso.slice(0,7);
+  const defautLabel=`${_moisNoms[defaut.getMonth()]} ${defaut.getFullYear()}`;
+  const pSel=document.getElementById('facPeriode');
+  if(pSel) pSel.value=defautLabel;
   if(lignesFactureData.length===0)ajouterLigneFacture();
   renderLignesFacture();calculerTotauxFacture();renderHistoriqueFactures();
   // #10 — Ajout fiable des boutons produit stock (au lieu du fragile setTimeout global)
@@ -7643,7 +7662,12 @@ function reediterFacture(id){
     const c=clientsData.find(x=>x.id===f.clientId||x.nom===f.client)||{};
     document.getElementById('facNumero').value=f.numero;
     document.getElementById('facDate').value=f.dateRaw||'';
-    document.getElementById('facPeriode').value=f.periode||'';
+    const pSelRe=document.getElementById('facPeriode');
+    if(pSelRe){
+      const tryLabel=f.periode||'';
+      if(tryLabel&&[...pSelRe.options].some(o=>o.value===tryLabel)){pSelRe.value=tryLabel;}
+      else if(f.dateRaw){const dr=new Date(f.dateRaw+'T12:00:00');const lb=`${_moisNoms[dr.getMonth()]} ${dr.getFullYear()}`;if([...pSelRe.options].some(o=>o.value===lb))pSelRe.value=lb;}
+    }
     document.getElementById('facClient').value=f.clientId||'';
     document.getElementById('facTauxTVA').value=String(f.tva);
     const tvaDisp=document.getElementById('facTVADisplay');
