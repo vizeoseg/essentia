@@ -4576,10 +4576,11 @@ function genererFactureDepuisClient(clientId){
       cEl.value=clientId;
       if(typeof remplirInfosFacture==='function') remplirInfosFacture();
     }
-    // Pré-remplir une ligne de prestation
-    const now=new Date();
-    const moisKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-    const moisLabel=now.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+    // Pré-remplir une ligne de prestation — utilise facDate du formulaire (peut être mois précédent)
+    const facDateRaw=document.getElementById('facDate')?.value||_isoLocal(new Date());
+    const facDateRef=new Date(facDateRaw+'T12:00:00');
+    const moisKey=`${facDateRef.getFullYear()}-${String(facDateRef.getMonth()+1).padStart(2,'0')}`;
+    const moisLabel=facDateRef.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
     const periodeEl=document.getElementById('facPeriode');
     if(periodeEl) periodeEl.value=`Prestation ${moisLabel}`;
     const isAirbnbC=c.typeClient==='airbnb_particulier'||c.typeClient==='airbnb_agence';
@@ -7544,7 +7545,7 @@ async function envoyerFactureEmailId(id){
     doc.setTextColor(255,255,255);doc.setFontSize(13);doc.setFont('helvetica','bold');
     doc.text(p.nomSociete||'Essentia Services',14,10);
     doc.setFontSize(9);doc.setFont('helvetica','normal');
-    doc.text('FACTURE N° '+f.numero+' — '+f.date,14,17);
+    doc.text('FACTURE N° '+f.numero+' — '+(f.dateDisplay||(!f.date||f.date.includes('/')?f.date:new Date(f.date+'T12:00:00').toLocaleDateString('fr-FR'))||''),14,17);
     doc.setTextColor(40,40,40);doc.setFontSize(10);doc.setFont('helvetica','bold');
     doc.text('Facturé à : '+f.client,14,32);
     doc.autoTable({
@@ -8992,7 +8993,7 @@ function ouvrirModalPlateformeId(id){
   _pfXmlData=null;
   document.getElementById('pfFactureInfo').innerHTML=`
     <strong>${f.numero}</strong> · ${f.client} · 
-    <strong style="color:var(--green);">${f.totalTTC.toFixed(2).replace('.',',')} € TTC</strong> · ${f.date}`;
+    <strong style="color:var(--green);">${f.totalTTC.toFixed(2).replace('.',',')} € TTC</strong> · ${f.dateDisplay||(!f.date||f.date.includes('/')?f.date:new Date(f.date+'T12:00:00').toLocaleDateString('fr-FR'))||'—'}`;
   _ouvrirPFModal();
 }
 
