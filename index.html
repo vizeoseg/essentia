@@ -1462,6 +1462,18 @@ tr{transition:background .12s;}
           </div>
         </div>
 
+        <!-- Sélecteur mois facturé -->
+        <div style="background:linear-gradient(135deg,rgba(8,145,178,.08),rgba(29,78,216,.06));border:1.5px solid rgba(8,145,178,.25);border-radius:11px;padding:13px 16px;margin-bottom:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            <div style="width:34px;height:34px;border-radius:9px;background:rgba(8,145,178,.15);color:#0891b2;display:flex;align-items:center;justify-content:center;font-size:16px;"><i class="fas fa-calendar-alt"></i></div>
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--text);">Mois à facturer</div>
+              <div style="font-size:9px;color:var(--text3);">Sélectionnez le mois — les lignes se mettent à jour automatiquement</div>
+            </div>
+          </div>
+          <select id="facMoisSelect" onchange="onFacMoisSelectChange()" style="font-size:13px;font-weight:700;padding:8px 14px;border:1.5px solid rgba(8,145,178,.4);border-radius:8px;background:var(--bg2);color:var(--text);cursor:pointer;flex:1;min-width:180px;"></select>
+        </div>
+
         <!-- Mentions obligatoires selon DGFiP -->
         <div style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:12px 14px;margin-bottom:14px;">
           <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;"><i class="fas fa-list-check" style="color:var(--accent);"></i> Mentions obligatoires DGFiP</div>
@@ -6168,12 +6180,47 @@ function _facDateDefaut(){
   if(now.getDate()<=5) return new Date(now.getFullYear(),now.getMonth()-1,1);
   return now;
 }
+function _alimenterFacMoisSelect(){
+  const sel=document.getElementById('facMoisSelect');if(!sel)return;
+  const now=new Date();
+  const opts=[];
+  // 13 mois : mois précédent en premier, puis -1, -2… jusqu'à 13 mois en arrière
+  for(let i=1;i<=13;i++){
+    const d=new Date(now.getFullYear(),now.getMonth()-i+1,1);
+    const key=_isoLocal(d).slice(0,7);
+    const label=`${_moisNoms[d.getMonth()]} ${d.getFullYear()}`;
+    opts.push(`<option value="${key}">${label}</option>`);
+  }
+  // Garder la sélection courante si elle existe encore
+  const actuel=sel.value;
+  sel.innerHTML=opts.join('');
+  if(actuel&&[...sel.options].some(o=>o.value===actuel)) sel.value=actuel;
+}
+function onFacMoisSelectChange(){
+  const key=document.getElementById('facMoisSelect')?.value||'';
+  if(!key)return;
+  const [y,m]=key.split('-');
+  // Mettre à jour facDate au 1er du mois sélectionné
+  const iso=`${y}-${m}-01`;
+  const dateEl=document.getElementById('facDate');
+  if(dateEl) dateEl.value=iso;
+  // Sync période
+  const periodeEl=document.getElementById('facPeriode');
+  if(periodeEl) periodeEl.value=`${_moisNoms[parseInt(m)-1]} ${y}`;
+  // Recharger les lignes si client sélectionné
+  const clientId=document.getElementById('facClient')?.value||'';
+  if(clientId) remplirLignesAuto();
+}
 function onFacDateChange(){
   const raw=document.getElementById('facDate')?.value||'';
   if(!raw) return;
   const d=new Date(raw+'T12:00:00');
   const periodeEl=document.getElementById('facPeriode');
   if(periodeEl) periodeEl.value=`${_moisNoms[d.getMonth()]} ${d.getFullYear()}`;
+  // Synchro sélecteur mois
+  const moisKey=raw.slice(0,7);
+  const sel=document.getElementById('facMoisSelect');
+  if(sel&&[...sel.options].some(o=>o.value===moisKey)) sel.value=moisKey;
   const clientId=document.getElementById('facClient')?.value||'';
   if(clientId) remplirLignesAuto();
 }
@@ -6182,8 +6229,12 @@ function initFactures(){
   const annee=new Date().getFullYear();
   document.getElementById('facNumero').placeholder=`FAC-${annee}-XXXX-01`;
   const defaut=_facDateDefaut();
-  document.getElementById('facDate').value=_isoLocal(defaut);
+  const defautIso=_isoLocal(defaut);
+  document.getElementById('facDate').value=defautIso;
   document.getElementById('facPeriode').value=`${_moisNoms[defaut.getMonth()]} ${defaut.getFullYear()}`;
+  _alimenterFacMoisSelect();
+  const sel=document.getElementById('facMoisSelect');
+  if(sel) sel.value=defautIso.slice(0,7);
   if(lignesFactureData.length===0)ajouterLigneFacture();
   renderLignesFacture();calculerTotauxFacture();renderHistoriqueFactures();
   // #10 — Ajout fiable des boutons produit stock (au lieu du fragile setTimeout global)
