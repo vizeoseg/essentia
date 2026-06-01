@@ -4757,7 +4757,8 @@ function modifierClient(id){
     <div class="form-group"><label>Nom</label><input type="text" id="editNom" value="${c.nom}"></div>
     <div class="form-group"><label>Téléphone</label><input type="tel" id="editTel" value="${c.tel||''}"></div>
     <div class="form-group"><label>Email</label><input type="email" id="editEmail" value="${c.email||''}"></div>
-    <div class="form-group"><label>Adresse</label><input type="text" id="editAdresse" value="${c.adresse||''}"></div>
+    <div class="form-group"><label>${(c.typeClient==='airbnb_particulier'||c.typeClient==='airbnb_agence')?'Adresse du bien Airbnb':'Adresse'}</label><input type="text" id="editAdresse" value="${c.adresse||''}"></div>
+    <div class="form-group" ${(c.typeClient!=='airbnb_particulier'&&c.typeClient!=='airbnb_agence')?'style="display:none;"':''}><label>Adresse propriétaire <span style="font-size:9px;color:var(--text3);">(facturation)</span></label><input type="text" id="editAdresseProprietaire" value="${c.adresseProprietaire||''}"></div>
     <div class="form-group"><label>Entreprise</label><input type="text" id="editEntreprise" value="${c.entreprise||''}"></div>
     <div class="form-group"><label>Type client</label><select id="editTypeClient" onchange="mettreAJourTVAEditClient()"><option value="particulier" ${c.typeClient==='particulier'?'selected':''}>Particulier (10%)</option><option value="entreprise" ${c.typeClient==='entreprise'?'selected':''}>Entreprise (20%)</option><option value="airbnb_particulier" ${c.typeClient==='airbnb_particulier'?'selected':''}>Airbnb Particulier</option><option value="airbnb_agence" ${c.typeClient==='airbnb_agence'?'selected':''}>Airbnb Agence</option><option value="exonere_0" ${c.typeClient==='exonere_0'?'selected':''}>Exonéré TVA 0% ⚡</option></select></div>
     <div class="form-group"><label>TVA applicable</label><select id="editTVA"><option value="10" ${(getTVAClient(c)==10)?'selected':''}>10%</option><option value="20" ${(getTVAClient(c)==20)?'selected':''}>20%</option><option value="0" ${(getTVAClient(c)==0)?'selected':''}>0% — Exonéré ⚡</option></select></div>
@@ -4836,6 +4837,7 @@ function sauvegarderModificationClient(){
   c.tel=document.getElementById('editTel')?.value||c.tel||'';
   c.email=document.getElementById('editEmail')?.value||c.email||'';
   c.adresse=document.getElementById('editAdresse')?.value||c.adresse||'';
+  c.adresseProprietaire=document.getElementById('editAdresseProprietaire')?.value??c.adresseProprietaire??'';
   c.entreprise=document.getElementById('editEntreprise').value;
   c.typeClient=document.getElementById('editTypeClient').value;
   c.tva=(()=>{if(c.typeClient==='exonere_0')return 0;const v=parseFloat(document.getElementById('editTVA')?.value);if(isNaN(v)||v===0)return(c.typeClient==='entreprise'||c.typeClient==='airbnb_agence')?20:10;return v;})();
@@ -6781,11 +6783,13 @@ function genererFacturePDF(){
   }
 
   // ── Bloc client pleine largeur ────────────────────────────
+  // Pour les clients Airbnb : adresseProprietaire (facturation) en priorité sur adresse (bien)
+  const _adresseFac=_isAirbnbPdf?(c.adresseProprietaire||c.adresse):c.adresse;
   const _norm=s=>s.toLowerCase().replace(/[^a-z0-9]/g,'');
   const _showEnt=c.entreprise&&!_norm(c.nom).includes(_norm(c.entreprise).substring(0,5))&&!_norm(c.entreprise).includes(_norm(c.nom).substring(0,5));
   let clientBlockH=13;
   if(_showEnt) clientBlockH+=5;
-  if(c.adresse) clientBlockH+=5;
+  if(_adresseFac) clientBlockH+=5;
   if(c.commune) clientBlockH+=5;
   doc.setFillColor(240,245,255);
   doc.roundedRect(M,y,W-2*M,clientBlockH,2,2,'F');
@@ -6796,7 +6800,7 @@ function genererFacturePDF(){
   doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(80,100,140);
   let yC=y+16;
   if(_showEnt){doc.text(c.entreprise,M+30,yC);yC+=5;}
-  if(c.adresse){doc.text(c.adresse,M+30,yC,{maxWidth:W-2*M-33});yC+=5;}
+  if(_adresseFac){doc.text(_adresseFac,M+30,yC,{maxWidth:W-2*M-33});yC+=5;}
   if(c.commune){doc.text(c.commune,M+30,yC);}
   y+=clientBlockH+3;
 
