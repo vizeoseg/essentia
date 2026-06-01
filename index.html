@@ -7636,23 +7636,31 @@ function supprimerFacture(id){
 function reediterFacture(id){
   const f=facturesData.find(x=>x.id===id);if(!f)return;
   const {jsPDF}=window.jspdf;if(!jsPDF)return;
-  const c=clientsData.find(x=>x.id===f.clientId||x.nom===f.client)||{};
-  document.getElementById('facNumero').value=f.numero;
-  document.getElementById('facDate').value=f.dateRaw||'';
-  document.getElementById('facPeriode').value=f.periode||'';
-  document.getElementById('facClient').value=f.clientId||'';
-  document.getElementById('facTauxTVA').value=String(f.tva);
-  const tvaDisp=document.getElementById('facTVADisplay');
-  if(tvaDisp) tvaDisp.value=f.tva+'% ('+(c.typeClient==='entreprise'||c.typeClient==='airbnb_agence'?'Entreprise':c.typeClient==='exonere_0'?'Exonéré SAP':'Particulier')+')';
-  if(f.typeOp){const typeOpEl=document.getElementById('facTypeOp');if(typeOpEl)typeOpEl.value=f.typeOp;}
-  if(f.emailClient){const el=document.getElementById('facEmailClient');if(el)el.value=f.emailClient;}
-  if(f.sirenClient){const el=document.getElementById('facSirenClient');if(el)el.value=f.sirenClient;}
-  if(f.condPaie!=null){const el=document.getElementById('facCondPaiement');if(el)el.value=String(f.condPaie);}
-  mettreAJourTypeOp();
-  lignesFactureData=f.lignes||[{desc:'Prestation',qte:1,unite:'forfait',prixUnit:f.totalHT}];
-  renderLignesFacture();calculerTotauxFacture();
+  // changerTabNom en premier → initFactures() s'exécute et remet les défauts
+  // Puis setTimeout pour écraser avec les valeurs de la facture à réditer
   changerTabNom('factures');
-  toast('Données rechargées — vérifiez puis cliquez PDF','info');
+  setTimeout(()=>{
+    const c=clientsData.find(x=>x.id===f.clientId||x.nom===f.client)||{};
+    document.getElementById('facNumero').value=f.numero;
+    document.getElementById('facDate').value=f.dateRaw||'';
+    document.getElementById('facPeriode').value=f.periode||'';
+    document.getElementById('facClient').value=f.clientId||'';
+    document.getElementById('facTauxTVA').value=String(f.tva);
+    const tvaDisp=document.getElementById('facTVADisplay');
+    if(tvaDisp) tvaDisp.value=f.tva+'% ('+(c.typeClient==='entreprise'||c.typeClient==='airbnb_agence'?'Entreprise':c.typeClient==='exonere_0'?'Exonéré SAP':'Particulier')+')';
+    if(f.typeOp){const typeOpEl=document.getElementById('facTypeOp');if(typeOpEl)typeOpEl.value=f.typeOp;}
+    if(f.emailClient){const el=document.getElementById('facEmailClient');if(el)el.value=f.emailClient;}
+    if(f.sirenClient){const el=document.getElementById('facSirenClient');if(el)el.value=f.sirenClient;}
+    if(f.condPaie!=null){const el=document.getElementById('facCondPaiement');if(el)el.value=String(f.condPaie);}
+    mettreAJourTypeOp();
+    // Sync sélecteur mois avec la date de la facture
+    const moisKey=(f.dateRaw||'').slice(0,7);
+    const moisSel=document.getElementById('facMoisSelect');
+    if(moisSel&&[...moisSel.options].some(o=>o.value===moisKey)) moisSel.value=moisKey;
+    lignesFactureData=f.lignes||[{desc:'Prestation',qte:1,unite:'forfait',prixUnit:f.totalHT}];
+    renderLignesFacture();calculerTotauxFacture();
+    toast('Données rechargées — vérifiez puis cliquez PDF','info');
+  },300);
 }
 
 // ══════════════════════════════════════════════════════════
