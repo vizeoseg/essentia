@@ -1532,10 +1532,12 @@ tr{transition:background .12s;}
           <div class="card-icon" style="background:var(--purple-l);color:var(--purple);"><i class="fas fa-history"></i></div>
           <h3>Historique factures</h3>
           <span class="badge badge-blue" id="factureCount">0</span>
-          <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
-            <span style="font-size:10px;color:var(--text3);">Filtre :</span>
+          <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <select id="filtreMoisFac" style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text);" onchange="renderHistoriqueFactures()">
+              <option value="">Tous les mois</option>
+            </select>
             <select id="filtreStatutFac" style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text);" onchange="renderHistoriqueFactures()">
-              <option value="">Toutes</option>
+              <option value="">Tous statuts</option>
               <option value="envoyee">Envoyées</option>
               <option value="payee">Payées</option>
               <option value="attente">En attente</option>
@@ -6864,16 +6866,49 @@ function genererFacturePDF(){
   calculerStats();
   toast(`Facture ${numFac} générée ✓ — Téléchargez aussi le XML Factur-X`,'success');
 }
+function _facMoisKey(f){
+  // Retourne "2026-05" depuis dateRaw, date ISO ou date FR
+  const raw=f.dateRaw||f.date||'';
+  if(!raw) return '';
+  if(raw.includes('-')&&raw.length>=7) return raw.slice(0,7);
+  // Format "01/05/2026"
+  const p=raw.split('/');
+  if(p.length===3) return `${p[2]}-${p[1]}`;
+  return '';
+}
+function _alimenterFiltreMois(){
+  const sel=document.getElementById('filtreMoisFac');if(!sel)return;
+  const actuel=sel.value;
+  const keys=[...new Set(facturesData.map(_facMoisKey).filter(Boolean))].sort().reverse();
+  sel.innerHTML='<option value="">Tous les mois</option>'+keys.map(k=>{
+    const [y,m]=k.split('-');
+    const label=`${_moisNoms[parseInt(m)-1]} ${y}`;
+    return `<option value="${k}"${k===actuel?' selected':''}>${label}</option>`;
+  }).join('');
+}
 function renderHistoriqueFactures(){
   const cont=document.getElementById('facturesHistorique');if(!cont)return;
+  _alimenterFiltreMois();
   const filtre=document.getElementById('filtreStatutFac')?.value||'';
+  const filtreMois=document.getElementById('filtreMoisFac')?.value||'';
   let data=facturesData.slice().reverse();
+  if(filtreMois) data=data.filter(f=>_facMoisKey(f)===filtreMois);
   if(filtre==='envoyee') data=data.filter(f=>f.statut==='envoyee');
   else if(filtre==='payee') data=data.filter(f=>f.statut==='payee');
   else if(filtre==='attente') data=data.filter(f=>f.statut!=='payee'&&f.statut!=='envoyee');
+  // Totaux de la sélection
+  const totalTTC=data.reduce((s,f)=>s+(f.totalTTC||0),0);
+  const totalHT=data.reduce((s,f)=>s+(f.totalHT||0),0);
   setEl('factureCount',facturesData.length);
   if(!data.length){cont.innerHTML='<p style="color:var(--text3);font-size:12px;padding:10px;">Aucune facture correspondante.</p>';return;}
-  cont.innerHTML=data.map(f=>{
+  const resumeHtml=`<div style="display:flex;gap:12px;flex-wrap:wrap;padding:8px 10px;background:var(--bg3);border-radius:8px;margin-bottom:10px;font-size:11px;">
+    <span style="color:var(--text2);">${data.length} facture${data.length>1?'s':''}</span>
+    <span style="font-weight:700;color:var(--text);">HT : ${totalHT.toFixed(2).replace('.',',')} €</span>
+    <span style="font-weight:700;color:var(--green);">TTC : ${totalTTC.toFixed(2).replace('.',',')} €</span>
+    <span style="color:var(--green);">Payées : ${data.filter(f=>f.statut==='payee').reduce((s,f)=>s+(f.totalTTC||0),0).toFixed(2).replace('.',',')} €</span>
+    <span style="color:var(--accent);">À encaisser : ${data.filter(f=>f.statut!=='payee').reduce((s,f)=>s+(f.totalTTC||0),0).toFixed(2).replace('.',',')} €</span>
+  </div>`;
+  cont.innerHTML=resumeHtml+data.map(f=>{
     const statutColor=f.statut==='payee'?'var(--green)':f.statut==='envoyee'?'var(--accent)':'var(--amber)';
     const statutLabel=f.statut==='payee'?'Payée':f.statut==='envoyee'?'Envoyée':'En attente';
     const typeOp=f.typeOp||'b2c';
