@@ -7816,7 +7816,7 @@ function _regenererContratPDFb64(contrat){
     if(logo){try{doc.addImage(logo,_logoFmt(logo),M,y+1,16,16);}catch(e){}}
     const tx=logo?M+20:M;
     doc.setTextColor(0,0,0); doc.setFontSize(13); doc.setFont('helvetica','bold');
-    doc.text(nomSoc,tx,y+9);
+    doc.text(nomSoc+(p.forme?' — '+p.forme:''),tx,y+9);
     doc.setFontSize(8); doc.setFont('helvetica','normal');
     if(p.adresse) doc.text(p.adresse.replace(/\n/g,' '),tx,y+15);
     if(p.siret) doc.text('SIRET : '+p.siret+(p.tvaIntra?' · TVA : '+p.tvaIntra:''),tx,y+20);
@@ -7893,7 +7893,7 @@ function _regenererContratPDFb64(contrat){
     section('ARTICLE 2 — PRESTATIONS',
       'Nature : Entretien du domicile / nettoyage.\n'
       +'Fréquence : '+freqLabel+'\n'
-      +'Durée par intervention : '+fmtH(heures)+'\n'
+      +(heures?'Durée par intervention : '+fmtH(heures)+'\n':'')
       +(c.heureDebut?'Heure de début : '+c.heureDebut+'\n':'')
       +(c.jours&&c.jours.length?'Jours : '+c.jours.map(function(j){return j.charAt(0).toUpperCase()+j.slice(1);}).join(', ')+'\n':'')
       +(c.commune?'Lieu : '+c.commune:''));
@@ -7934,10 +7934,17 @@ function _regenererContratPDFb64(contrat){
       +_paiement+'\n'
       +'Les prix sont révisables chaque année au 1er janvier selon l\'indice INSEE des prix à la consommation.');
 
-    section('ARTICLE 4 — DURÉE ET RÉSILIATION',
-      'Le présent contrat est conclu pour une durée indéterminée à compter du '+debut+'.\n'
-      +'Chacune des parties pourra y mettre fin par lettre recommandée avec accusé de réception, moyennant un préavis d\'un (1) mois.\n'
-      +'En cas de manquement grave aux obligations contractuelles, la résiliation pourra intervenir sans préavis.');
+    var _dType=snap.dureeType||'indefini';
+    var _dPreavis=snap.preavis||'1';
+    var _dLabels={'1an':'1 an','6mois':'6 mois'};
+    var _dDesc='Le contrat prend effet le '+debut+'.';
+    if(_dType==='indefini') _dDesc+='\nIl est conclu pour une durée indéterminée.';
+    else if(_dType==='fixe'&&snap.contratFin) _dDesc+='\nIl est conclu jusqu\'au '+new Date(snap.contratFin).toLocaleDateString('fr-FR')+'.';
+    else if(_dType&&_dType!=='indefini'&&_dType!=='fixe') _dDesc+='\nIl est conclu pour une durée de '+(_dLabels[_dType]||_dType)+' renouvelable par tacite reconduction.';
+    else _dDesc+='\nIl est conclu pour une durée indéterminée.';
+    _dDesc+='\nPréavis de résiliation : '+_dPreavis+' mois, par lettre recommandée avec accusé de réception.';
+    _dDesc+='\nEn cas de manquement grave aux obligations contractuelles, la résiliation pourra intervenir sans préavis.';
+    section('ARTICLE 4 — DURÉE ET RÉSILIATION', _dDesc);
 
     section('ARTICLE 5 — OBLIGATIONS DU PRESTATAIRE',
       nomSoc+' s\'engage à :\n'
@@ -7959,6 +7966,26 @@ function _regenererContratPDFb64(contrat){
       'Conformément au Règlement (UE) 2016/679 (RGPD) et à la loi Informatique et Libertés, les données personnelles du Client collectées dans le cadre du présent contrat sont traitées par '+nomSoc+' en qualité de responsable de traitement, aux fins d\'exécution des prestations et de facturation.\n'
       +'Les données ne sont pas transmises à des tiers sans consentement, sauf obligation légale. Le Client dispose des droits d\'accès, rectification, effacement, portabilité et opposition sur ses données, exercés par email à : '+(p.email||'contact@essentia-services.fr')+'.\n'
       +'Les données sont conservées pendant la durée du contrat et 5 ans après sa résiliation (obligations comptables et légales).');
+
+    // ── Clauses optionnelles depuis snapshot ──
+    if(snap.clauseConfidentialite){
+      section('ARTICLE 9 — CONFIDENTIALITÉ',
+        'Le Prestataire s\'engage à garder confidentielles toutes les informations auxquelles il pourrait avoir accès lors de l\'exécution des prestations. Cette obligation de confidentialité se poursuit après la fin du contrat.');
+    }
+    if(snap.clauseFournitures){
+      section('ARTICLE '+(snap.clauseConfidentialite?10:9)+' — FOURNITURES ET PRODUITS',
+        'Les produits de nettoyage, consommables et fournitures sont FOURNIS PAR LE CLIENT. Le Client fournit l\'eau, l\'électricité, les produits d\'entretien et toutes installations nécessaires à l\'exécution des prestations.');
+    }
+    if(snap.clauseAssurance){
+      var _artNum=9+(snap.clauseConfidentialite?1:0)+(snap.clauseFournitures?1:0);
+      section('ARTICLE '+_artNum+' — RESPONSABILITÉ ET ASSURANCE',
+        'Le Prestataire est assuré pour sa responsabilité civile professionnelle'+(p.assurance?' (police n° '+p.assurance+')'  :'')+'. Tout dommage constaté doit être signalé dans les 48 heures. Le Client est responsable de la mise à disposition des accès et de la sécurisation de ses biens.');
+    }
+    if(snap.clauseCreditImpot){
+      var _artNumCI=9+(snap.clauseConfidentialite?1:0)+(snap.clauseFournitures?1:0)+(snap.clauseAssurance?1:0);
+      section('ARTICLE '+_artNumCI+' — CRÉDIT D\'IMPÔT SERVICES À LA PERSONNE',
+        'Conformément à l\'article 199 sexdecies du CGI, les particuliers employant des services à domicile bénéficient d\'un crédit d\'impôt de 50% des sommes versées dans la limite des plafonds légaux. Une attestation fiscale annuelle sera remise au Client avant le 31 mars de chaque année.');
+    }
 
     // ── Signatures ──
     y+=6;
@@ -10493,9 +10520,10 @@ function genererContratPrestation(){
 
   // Article 4 — Durée
   let dureeDesc=`Le contrat prend effet le ${debut}.`;
-  if(dureeType==='indefini') dureeDesc+='\nIl est conclu pour une durée indéterminée.';
+  const _dureeLabels={'1an':'1 an','6mois':'6 mois'};
+  if(dureeType==='indefini'||!dureeType) dureeDesc+='\nIl est conclu pour une durée indéterminée.';
   else if(dureeType==='fixe') dureeDesc+=`\nIl est conclu jusqu'au ${new Date(gv('contratFin')||'').toLocaleDateString('fr-FR')}.`;
-  else dureeDesc+=`\nIl est conclu pour une durée de ${dureeType} renouvelable par tacite reconduction.`;
+  else dureeDesc+=`\nIl est conclu pour une durée de ${_dureeLabels[dureeType]||dureeType} renouvelable par tacite reconduction.`;
   dureeDesc+=`\nPréavis de résiliation : ${preavis} mois, par lettre recommandée avec accusé de réception.`;
   section('ARTICLE 4 — DURÉE ET RÉSILIATION', dureeDesc, [26,78,115]);
 
@@ -10575,9 +10603,13 @@ function genererContratPrestation(){
     commune:c.commune||c.adresse||'',
     jours:['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'].filter(j=>document.getElementById('contratJourBtn_'+j)?.classList.contains('jour-on')),
     heureDebut:gv('contratHeureIntervention'),
-    dureeType, preavis,
+    dureeType, preavis, contratFin:gv('contratFin'),
     nom:c.nom||'', email:gv('contratEmailClient')||c.email||'',
-    tel:c.tel||'', adresse:c.adresse||'', refClient:c.refClient||''
+    tel:c.tel||'', adresse:c.adresse||'', refClient:c.refClient||'',
+    clauseConfidentialite:!!document.getElementById('clauseConfidentialite')?.checked,
+    clauseFournitures:!!document.getElementById('clauseFournitures')?.checked,
+    clauseAssurance:!!document.getElementById('clauseAssurance')?.checked,
+    clauseCreditImpot:!!document.getElementById('clauseCreditImpot')?.checked
   };
   contratsData.push({id:'CTR'+Date.now(),type:'prestation',ref,clientId:clientId,clientOuSalarie:c.nom,date:debut,montantMensuel:montantTTC,statut:'actif',emailClient:gv('contratEmailClient'),signatureIncluse:!!_signatureData,snapshot:_snapshot});
   // Passage automatique en Client actif
