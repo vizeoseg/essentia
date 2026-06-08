@@ -6593,6 +6593,7 @@ function _parseH(v){
     return entier+cents/60;
   return v;
 }
+function fmtH(h){const hrs=Math.floor(h);const mins=Math.round((h-hrs)*60);return mins>0?`${hrs}h${String(mins).padStart(2,'0')}`:`${hrs}h`;}
 function _facDateDefaut(){
   // Au 1er–5e du mois : proposer le mois précédent (on facture le mois écoulé)
   const now=new Date();
@@ -7130,7 +7131,6 @@ function genererFacturePDF(opts){
   const montantTVA=sousTotal*tauxTVA/100;
   const totalTTC=sousTotal+montantTVA;
   const fmt2=v=>v.toFixed(2).replace('.',',');
-  const fmtH=h=>{const hrs=Math.floor(h);const mins=Math.round((h-hrs)*60);return mins>0?`${hrs}h${String(mins).padStart(2,'0')}`:`${hrs}h`;};
   const dateEch=new Date(dateFacRaw||new Date());
   dateEch.setDate(dateEch.getDate()+(condPaie===0?0:condPaie));
 
