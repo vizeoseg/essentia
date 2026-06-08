@@ -764,8 +764,17 @@ tr{transition:background .12s;}
     <button class="nav-btn" data-tab="frais-emp" onclick="changerTabEmp(this)"><span class="ni"><i class="fas fa-receipt"></i></span>Notes de frais</button>
     <button class="nav-btn" data-tab="checklist-emp" onclick="changerTabEmp(this)"><span class="ni"><i class="fas fa-tasks"></i></span>Checklist tâches</button>
     <button class="nav-btn" data-tab="pointage-emp" onclick="changerTabEmp(this)"><span class="ni"><i class="fas fa-clock"></i></span>Pointage</button>
+    <!-- Section Supervision Gérant (cachée par défaut) -->
+    <div id="navGerantSurEmp" style="display:none;">
+      <div class="nav-section" style="color:rgba(251,191,36,.55);margin-top:8px;">Supervision</div>
+      <button class="nav-btn" data-tab="gestion-emp" onclick="changerTabEmp(this)"><span class="ni"><i class="fas fa-tools"></i></span>Gestion</button>
+      <div style="padding:4px 4px 0;">
+        <button class="lock-btn" style="border-color:rgba(251,191,36,.3);color:rgba(251,191,36,.65);margin-top:4px;" onclick="desactiverGerantSurEmp()"><span class="ni"><i class="fas fa-lock"></i></span>Quitter supervision</button>
+      </div>
+    </div>
     <div style="padding:8px 4px 0;">
-      <button class="lock-btn" style="border-color:rgba(18,184,122,.3);color:rgba(110,231,183,.6);" onclick="demanderPIN('switch')"><span class="ni"><i class="fas fa-user-shield"></i></span>Mode Gérant</button>
+      <button class="lock-btn" id="btnSupervisionGerant" style="border-color:rgba(251,191,36,.3);color:rgba(251,191,36,.7);" onclick="demanderPIN('gerantEmp')"><span class="ni"><i class="fas fa-user-shield"></i></span>Supervision Gérant</button>
+      <button class="lock-btn" style="margin-top:4px;border-color:rgba(18,184,122,.3);color:rgba(110,231,183,.6);" onclick="demanderPIN('switch')"><span class="ni"><i class="fas fa-user-tie"></i></span>Mode Gérant complet</button>
       <button class="lock-btn" style="margin-top:4px;border-color:rgba(255,255,255,.1);color:rgba(255,255,255,.3);" onclick="verrouillerEmploye()"><span class="ni"><i class="fas fa-sign-out-alt"></i></span>Se déconnecter</button>
     </div>
   </nav>
@@ -891,6 +900,7 @@ tr{transition:background .12s;}
               <label>Nature du client</label>
               <select id="newTypeClient" onchange="mettreAJourTVAClient()">
                 <option value="particulier">👤 Particulier</option>
+                <option value="exonere_0">⚡ Exonéré TVA 0% (SAP agréé)</option>
                 <option value="entreprise">🏢 Entreprise</option>
                 <option value="airbnb_particulier">🏠 Airbnb Particulier</option>
                 <option value="airbnb_agence">🏢 Airbnb Agence</option>
@@ -2549,6 +2559,75 @@ tr{transition:background .12s;}
       </div>
     </div>
 
+    <!-- TAB GESTION (Supervision Gérant) -->
+    <div id="tab-gestion-emp" class="tab-pane">
+      <!-- Bandeau supervision actif -->
+      <div style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);border-radius:11px;padding:11px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+        <i class="fas fa-tools" style="color:#fbbf24;font-size:16px;"></i>
+        <div>
+          <div style="font-weight:700;color:#fbbf24;font-size:13px;">Mode Supervision Gérant actif</div>
+          <div style="font-size:11px;color:rgba(251,191,36,.6);">Modifications sauvegardées automatiquement</div>
+        </div>
+        <button onclick="desactiverGerantSurEmp()" style="margin-left:auto;background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.3);color:#fbbf24;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:600;"><i class="fas fa-lock"></i> Quitter</button>
+      </div>
+      <!-- Sous-onglets -->
+      <div style="display:flex;gap:6px;margin-bottom:14px;" id="gestionSubTabs">
+        <button id="stab-planning" onclick="afficherSousTabGestion('planning')" style="flex:1;padding:8px 6px;border-radius:9px;border:1px solid rgba(251,191,36,.4);background:rgba(251,191,36,.15);color:#fbbf24;font-weight:700;font-size:12px;cursor:pointer;"><i class="fas fa-calendar-alt"></i> Planning</button>
+        <button id="stab-frais" onclick="afficherSousTabGestion('frais')" style="flex:1;padding:8px 6px;border-radius:9px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-weight:600;font-size:12px;cursor:pointer;"><i class="fas fa-receipt"></i> Frais</button>
+        <button id="stab-heures" onclick="afficherSousTabGestion('heures')" style="flex:1;padding:8px 6px;border-radius:9px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-weight:600;font-size:12px;cursor:pointer;"><i class="fas fa-clock"></i> Heures</button>
+      </div>
+
+      <!-- === SOUS-TAB PLANNING === -->
+      <div id="gestion-planning">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end;">
+          <div style="flex:1;min-width:120px;">
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Date</label>
+            <input type="date" id="gestPlanningDate" onchange="chargerGestPlanning()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg3);">
+          </div>
+          <div style="flex:1;min-width:120px;">
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Employé</label>
+            <select id="gestPlanningEmp" onchange="chargerGestPlanning()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg3);">
+              <option value="">— Tous —</option>
+            </select>
+          </div>
+          <button onclick="sauvegarderGestPlanning()" style="padding:7px 14px;background:rgba(251,191,36,.2);border:1px solid rgba(251,191,36,.4);color:#fbbf24;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap;"><i class="fas fa-save"></i> Sauvegarder</button>
+        </div>
+        <div id="gestPlanningList"><p style="color:var(--text3);font-size:12px;text-align:center;padding:20px;">Sélectionnez une date</p></div>
+      </div>
+
+      <!-- === SOUS-TAB FRAIS === -->
+      <div id="gestion-frais" style="display:none;">
+        <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">
+          <select id="gestFraisEmpFilter" onchange="chargerGestFrais()" style="flex:1;min-width:120px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg3);">
+            <option value="">— Tous les employés —</option>
+          </select>
+          <span id="gestFraisTotal" style="font-family:'DM Mono',monospace;font-weight:700;color:var(--amber);font-size:14px;white-space:nowrap;">0,00 €</span>
+        </div>
+        <div id="gestFraisList"><p style="color:var(--text3);font-size:12px;text-align:center;padding:20px;">Aucune note de frais</p></div>
+      </div>
+
+      <!-- === SOUS-TAB HEURES === -->
+      <div id="gestion-heures" style="display:none;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end;">
+          <div style="flex:1;min-width:110px;">
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Du</label>
+            <input type="date" id="gestHeuresDu" onchange="chargerGestHeures()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg3);">
+          </div>
+          <div style="flex:1;min-width:110px;">
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Au</label>
+            <input type="date" id="gestHeuresAu" onchange="chargerGestHeures()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg3);">
+          </div>
+          <div style="flex:1;min-width:110px;">
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Employé</label>
+            <select id="gestHeuresEmp" onchange="chargerGestHeures()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg3);">
+              <option value="">— Tous —</option>
+            </select>
+          </div>
+        </div>
+        <div id="gestHeuresList"><p style="color:var(--text3);font-size:12px;text-align:center;padding:20px;">Sélectionnez une période</p></div>
+      </div>
+    </div><!-- end tab-gestion-emp -->
+
   </div><!-- end emp page-content -->
 
   <!-- BOTTOM NAV MOBILE EMPLOYÉ -->
@@ -2957,6 +3036,10 @@ function demanderPIN(target){
       if(saved) sel.value = saved;
       wrap.style.display = salariesData.length ? 'block' : 'none';
     }
+  } else if(pinTarget === 'gerantEmp') {
+    if(title) title.innerHTML='<i class="fas fa-tools" style="color:#fbbf24;margin-right:6px;"></i>Supervision Gérant';
+    if(sub)   sub.textContent='Code gérant pour activer la supervision';
+    if(box)   box.style.background='linear-gradient(135deg,#78350f,#451a03)';
   } else {
     if(title) title.innerHTML='<i class="fas fa-lock" style="color:#7eb3ff;margin-right:6px;"></i>Accès Gérant';
     if(sub)   sub.textContent= (pinTarget==='switch') ? 'Code gérant pour basculer' : 'Code gérant (4 chiffres)';
@@ -3009,7 +3092,12 @@ function validerPIN(){
   } else {
     const saved = localStorage.getItem('progestPIN') || PIN_DEFAULT_GERANT;
     ok = (pinBuffer === saved);
-    if(ok){ _pinReset(); document.getElementById('pinModal').style.display='none'; activerModeGerant(); }
+    if(ok){
+      _pinReset();
+      document.getElementById('pinModal').style.display='none';
+      if(pinTarget === 'gerantEmp') activerGerantSurEmp();
+      else activerModeGerant();
+    }
   }
   if(!ok){
     for(let i=0;i<4;i++) document.getElementById('dot'+i).classList.add('error');
@@ -3102,12 +3190,282 @@ function modeBadgeClick(){ if(currentMode==='gerant') verrouillerGerant(); }
 
 function verrouillerEmploye(){
   sauvegarderTout(true);
+  // Réinitialiser la supervision gérant si active
+  if(gerantSurEmpActif){
+    gerantSurEmpActif = false;
+    clearTimeout(_gerantSurEmpTimer);
+    _showEl('navGerantSurEmp','none');
+    _showEl('btnSupervisionGerant','inline-flex');
+  }
   currentMode = null;
   document.getElementById('pinModal').style.display='none';
   _showEl('gerantMain','none');
   _showEl('empMain','none');
   document.getElementById('modeScreen').style.display='flex';
   toast('Déconnecté','info');
+}
+
+// ══════════════════════════════════════════════════════════
+// SUPERVISION GÉRANT SUR MODE EMPLOYÉ
+// ══════════════════════════════════════════════════════════
+let gerantSurEmpActif = false;
+let _gerantSurEmpTimer = null;
+
+function activerGerantSurEmp(){
+  gerantSurEmpActif = true;
+  _showEl('navGerantSurEmp','block');
+  _showEl('btnSupervisionGerant','none');
+  // Auto-lock supervision après 20 min d'inactivité
+  clearTimeout(_gerantSurEmpTimer);
+  _gerantSurEmpTimer = setTimeout(()=>{ desactiverGerantSurEmp(); toast('Supervision expirée (20 min)','warning'); }, 20*60*1000);
+  toast('Supervision Gérant activée ✓','success');
+  // Aller directement sur l'onglet Gestion
+  const btn = document.querySelector('#navEmploye [data-tab="gestion-emp"]');
+  if(btn) changerTabEmp(btn);
+}
+
+function desactiverGerantSurEmp(){
+  gerantSurEmpActif = false;
+  clearTimeout(_gerantSurEmpTimer);
+  sauvegarderTout(true);
+  _showEl('navGerantSurEmp','none');
+  _showEl('btnSupervisionGerant','inline-flex');
+  // Si on est sur l'onglet Gestion, retour à Accueil
+  const pane = document.getElementById('tab-gestion-emp');
+  if(pane && pane.classList.contains('active')){
+    const btn = document.querySelector('#navEmploye [data-tab="accueil-emp"]');
+    if(btn) changerTabEmp(btn);
+  }
+  toast('Supervision terminée','info');
+}
+
+function afficherSousTabGestion(tab){
+  ['planning','frais','heures'].forEach(t=>{
+    const el = document.getElementById('gestion-'+t);
+    if(el) el.style.display = t===tab ? 'block' : 'none';
+    const btn = document.getElementById('stab-'+t);
+    if(btn){
+      if(t===tab){
+        btn.style.background='rgba(251,191,36,.15)';
+        btn.style.borderColor='rgba(251,191,36,.4)';
+        btn.style.color='#fbbf24';
+        btn.style.fontWeight='700';
+      } else {
+        btn.style.background='var(--bg3)';
+        btn.style.borderColor='var(--border)';
+        btn.style.color='var(--text2)';
+        btn.style.fontWeight='600';
+      }
+    }
+  });
+  if(tab==='planning') chargerGestPlanning();
+  if(tab==='frais') chargerGestFrais();
+  if(tab==='heures') chargerGestHeures();
+}
+
+function chargerGestionEmp(){
+  if(!gerantSurEmpActif){ toast('Accès non autorisé','error'); return; }
+  // Pré-remplir les selects employés
+  const emps = salariesData.map(s=>s.nom);
+  ['gestPlanningEmp','gestFraisEmpFilter','gestHeuresEmp'].forEach(selId=>{
+    const sel = document.getElementById(selId); if(!sel) return;
+    const cur = sel.value;
+    sel.innerHTML='<option value="">— Tous —</option>'+emps.map(n=>`<option value="${n}">${n}</option>`).join('');
+    if(cur) sel.value=cur;
+  });
+  // Date par défaut = aujourd'hui
+  const today = new Date().toISOString().split('T')[0];
+  const dp = document.getElementById('gestPlanningDate'); if(dp&&!dp.value) dp.value=today;
+  // Période heures = semaine courante
+  const du = document.getElementById('gestHeuresDu');
+  const au = document.getElementById('gestHeuresAu');
+  if(du&&!du.value){
+    const lundi = new Date(); lundi.setDate(lundi.getDate()-lundi.getDay()+1);
+    du.value = lundi.toISOString().split('T')[0];
+  }
+  if(au&&!au.value) au.value = today;
+  // Afficher sous-tab planning par défaut
+  afficherSousTabGestion('planning');
+}
+
+function chargerGestPlanning(){
+  const list = document.getElementById('gestPlanningList'); if(!list) return;
+  const dateVal = document.getElementById('gestPlanningDate')?.value;
+  if(!dateVal){ list.innerHTML='<p style="color:var(--text3);font-size:12px;text-align:center;padding:20px;">Sélectionnez une date</p>'; return; }
+  const filtreEmp = document.getElementById('gestPlanningEmp')?.value||'';
+  const dateKey = dateVal; // YYYY-MM-DD
+  const jourIdx = new Date(dateVal+'T12:00:00').getDay();
+  const jourNom = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'][jourIdx];
+  const _parseH = h=>{ if(!h&&h!==0) return 0; const s=String(h); if(s.includes(':')){ const[hh,mm]=s.split(':'); return parseFloat(hh)+(parseFloat(mm||0)/60); } if(s.includes('h')){ const[hh,mm]=s.toLowerCase().split('h'); return parseFloat(hh)+(parseFloat(mm||0)/60); } return parseFloat(h)||0; };
+  const clients = clientsData.filter(c=>{
+    const jourMatch = c.jours && c.jours.includes(jourNom);
+    const empMatch = !filtreEmp || (c.interventions||[]).some(i=>i.jour===jourNom&&i.intervenant&&i.intervenant.toLowerCase()===filtreEmp.toLowerCase());
+    return jourMatch && (!filtreEmp || empMatch);
+  });
+  if(!clients.length){ list.innerHTML='<p style="color:var(--text3);font-size:12px;text-align:center;padding:20px;">Aucun client planifié ce jour</p>'; return; }
+  const _esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  list.innerHTML = clients.map(c=>{
+    if(!planningPrevData[c.id]) planningPrevData[c.id]={};
+    const entry = planningPrevData[c.id][dateKey]||{statut:'prevu',heuresReelles:_parseH(c.heures)||0,note:''};
+    const hPrev = _parseH(c.heures)||0;
+    const statOpts=['prevu','prevu_passe','confirme','partiel','absent'].map(s=>`<option value="${s}"${entry.statut===s?' selected':''}>${{prevu:'⧖ Prévu',prevu_passe:'? À confirmer',confirme:'✓ Confirmé',partiel:'~ Partiel',absent:'✗ Absent'}[s]}</option>`).join('');
+    const interv = (c.interventions||[]).find(i=>i.jour===jourNom);
+    const intervenant = interv?.intervenant||'—';
+    return `<div class="gest-plan-row" data-cid="${_esc(c.id)}" data-key="${_esc(dateKey)}" style="border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:8px;background:var(--bg2);">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+        <div style="font-weight:700;font-size:13px;flex:1;">${_esc(c.nom)}</div>
+        <div style="font-size:11px;color:var(--text3);">${_esc(c.commune||'—')}</div>
+        <div style="font-size:11px;color:var(--accent);font-weight:600;">${_esc(intervenant)}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 100px 80px 1fr;gap:8px;align-items:center;">
+        <select class="gp-statut" data-cid="${_esc(c.id)}" data-key="${_esc(dateKey)}" style="font-size:12px;padding:6px 8px;border:1px solid var(--border);border-radius:7px;background:var(--bg3);font-weight:600;">${statOpts}</select>
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:2px;">Réel (h)</div>
+          <input class="gp-heures" data-cid="${_esc(c.id)}" data-key="${_esc(dateKey)}" type="number" value="${(_parseH(entry.heuresReelles)||hPrev).toFixed(2)}" step="0.25" min="0" style="width:100%;font-size:13px;padding:5px 7px;border:1px solid var(--border);border-radius:7px;text-align:center;background:var(--bg3);font-family:'DM Mono',monospace;">
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:2px;">Prévu</div>
+          <div style="font-weight:700;font-family:'DM Mono',monospace;">${hPrev.toFixed(1)}h</div>
+        </div>
+        <input class="gp-note" data-cid="${_esc(c.id)}" data-key="${_esc(dateKey)}" type="text" value="${_esc(entry.note||'')}" placeholder="Note…" style="font-size:12px;padding:6px 8px;border:1px solid var(--border);border-radius:7px;background:var(--bg3);width:100%;">
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function sauvegarderGestPlanning(){
+  document.querySelectorAll('.gest-plan-row').forEach(row=>{
+    const cid = row.dataset.cid, key = row.dataset.key;
+    if(!cid||!key) return;
+    if(!planningPrevData[cid]) planningPrevData[cid]={};
+    const statEl = row.querySelector('.gp-statut');
+    const heuresEl = row.querySelector('.gp-heures');
+    const noteEl = row.querySelector('.gp-note');
+    const statut = statEl?.value||'prevu';
+    const heuresReelles = parseFloat(heuresEl?.value||0);
+    const note = noteEl?.value||'';
+    planningPrevData[cid][key] = { statut, heuresReelles, note };
+  });
+  sauvegarderTout(true);
+  toast('Planning sauvegardé ✓','success');
+}
+
+function chargerGestFrais(){
+  const list = document.getElementById('gestFraisList'); if(!list) return;
+  const filtreEmp = document.getElementById('gestFraisEmpFilter')?.value||'';
+  const _esc = s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const frais = notesFraisData.slice().reverse().filter(f=>!filtreEmp||f.employe===filtreEmp);
+  const total = frais.reduce((s,f)=>s+f.montant,0);
+  setEl('gestFraisTotal', total.toFixed(2)+' €');
+  if(!frais.length){ list.innerHTML='<p style="color:var(--text3);font-size:12px;text-align:center;padding:20px;">Aucune note de frais</p>'; return; }
+  list.innerHTML = frais.map(f=>`
+    <div style="border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:8px;background:var(--bg2);">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <div style="flex:1;">
+          <input class="gf-libelle" data-id="${_esc(f.id)}" value="${_esc(f.libelle)}" style="font-size:13px;font-weight:600;border:1px solid var(--border);border-radius:6px;padding:4px 8px;background:var(--bg3);width:100%;">
+        </div>
+        <input class="gf-montant" data-id="${_esc(f.id)}" type="number" value="${f.montant.toFixed(2)}" step="0.01" min="0" style="width:80px;font-size:13px;font-weight:700;font-family:'DM Mono',monospace;border:1px solid var(--border);border-radius:6px;padding:4px 7px;text-align:right;background:var(--bg3);color:var(--amber);">
+        <span style="color:var(--amber);font-size:13px;">€</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:11px;color:var(--text3);">${_esc(f.date)} · ${_esc(f.categorie)} · <strong>${_esc(f.employe)}</strong></span>
+        <button class="gf-save-btn" data-id="${_esc(f.id)}" style="margin-left:auto;padding:4px 10px;background:rgba(18,184,122,.15);border:1px solid rgba(18,184,122,.3);color:var(--green);border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;"><i class="fas fa-check"></i> Valider</button>
+        <button class="gf-del-btn" data-id="${_esc(f.id)}" style="padding:4px 10px;background:rgba(230,69,69,.1);border:1px solid rgba(230,69,69,.25);color:var(--red);border-radius:6px;font-size:11px;cursor:pointer;"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>`).join('');
+  list.onclick = function(e){
+    const saveBtn = e.target.closest('.gf-save-btn');
+    const delBtn  = e.target.closest('.gf-del-btn');
+    if(saveBtn){ sauvegarderFraisGest(saveBtn.dataset.id); }
+    if(delBtn){ supprimerFraisGest(delBtn.dataset.id); }
+  };
+}
+
+function sauvegarderFraisGest(id){
+  const f = notesFraisData.find(x=>x.id===id); if(!f) return;
+  const row = document.querySelector(`.gf-libelle[data-id="${id}"]`)?.closest('div[style*="border-radius:10px"]');
+  if(!row) return;
+  f.libelle = row.querySelector('.gf-libelle').value.trim()||f.libelle;
+  f.montant = parseFloat(row.querySelector('.gf-montant').value)||f.montant;
+  sauvegarderTout(true);
+  toast('Frais mis à jour ✓','success');
+  chargerGestFrais();
+}
+
+function supprimerFraisGest(id){
+  if(!confirm('Supprimer cette note de frais ?')) return;
+  notesFraisData = notesFraisData.filter(x=>x.id!==id);
+  sauvegarderTout(true);
+  chargerGestFrais();
+  chargerFraisEmp();
+  toast('Frais supprimé','info');
+}
+
+function chargerGestHeures(){
+  const list = document.getElementById('gestHeuresList'); if(!list) return;
+  const du = document.getElementById('gestHeuresDu')?.value;
+  const au = document.getElementById('gestHeuresAu')?.value;
+  const filtreEmp = document.getElementById('gestHeuresEmp')?.value||'';
+  if(!du||!au){ list.innerHTML='<p style="color:var(--text3);font-size:12px;text-align:center;padding:20px;">Sélectionnez une période</p>'; return; }
+  const _parseH = h=>{ if(!h&&h!==0) return 0; const s=String(h); if(s.includes(':')){ const[hh,mm]=s.split(':'); return parseFloat(hh)+(parseFloat(mm||0)/60); } if(s.includes('h')){ const[hh,mm]=s.toLowerCase().split('h'); return parseFloat(hh)+(parseFloat(mm||0)/60); } return parseFloat(h)||0; };
+  const _esc = s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  // Construire la liste de toutes les entrées planningPrevData dans la période
+  let rows = [];
+  const duDate = new Date(du+'T12:00:00'), auDate = new Date(au+'T12:00:00');
+  clientsData.forEach(c=>{
+    const entries = planningPrevData[c.id]||{};
+    Object.entries(entries).forEach(([dk,entry])=>{
+      const d = new Date(dk+'T12:00:00');
+      if(d<duDate||d>auDate) return;
+      if(filtreEmp){
+        const jourIdx=d.getDay(), jourNom=['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'][jourIdx];
+        const interv=(c.interventions||[]).find(i=>i.jour===jourNom);
+        if(!interv||!interv.intervenant||interv.intervenant.toLowerCase()!==filtreEmp.toLowerCase()) return;
+      }
+      rows.push({c, dk, entry, hPrev:_parseH(c.heures)||0});
+    });
+  });
+  rows.sort((a,b)=>a.dk.localeCompare(b.dk));
+  if(!rows.length){ list.innerHTML='<p style="color:var(--text3);font-size:12px;text-align:center;padding:20px;">Aucune entrée sur cette période</p>'; return; }
+  const totalPrev = rows.reduce((s,r)=>s+r.hPrev,0);
+  const totalReal = rows.reduce((s,r)=>s+(_parseH(r.entry.heuresReelles)||r.hPrev),0);
+  list.innerHTML = `<div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:10px 16px;flex:1;text-align:center;">
+      <div style="font-size:10px;color:var(--text3);margin-bottom:3px;">Total prévu</div>
+      <div style="font-weight:700;font-family:'DM Mono',monospace;font-size:16px;">${totalPrev.toFixed(1)}h</div>
+    </div>
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:10px 16px;flex:1;text-align:center;">
+      <div style="font-size:10px;color:var(--text3);margin-bottom:3px;">Total réel</div>
+      <div style="font-weight:700;font-family:'DM Mono',monospace;font-size:16px;color:var(--green);">${totalReal.toFixed(1)}h</div>
+    </div>
+  </div>`+rows.map(({c,dk,entry,hPrev})=>`
+    <div style="border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:7px;background:var(--bg2);display:grid;grid-template-columns:1fr 90px 90px;gap:8px;align-items:center;">
+      <div>
+        <div style="font-weight:700;font-size:12px;">${_esc(c.nom)}</div>
+        <div style="font-size:10px;color:var(--text3);">${new Date(dk+'T12:00:00').toLocaleDateString('fr-FR')} · ${({prevu:'Prévu',prevu_passe:'À confirmer',confirme:'Confirmé',partiel:'Partiel',absent:'Absent'})[entry.statut]||entry.statut}</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:2px;">Prévu</div>
+        <div style="font-weight:700;font-family:'DM Mono',monospace;">${hPrev.toFixed(1)}h</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:2px;">Réel</div>
+        <input class="gh-heures" data-cid="${_esc(c.id)}" data-key="${_esc(dk)}" type="number" value="${(_parseH(entry.heuresReelles)||hPrev).toFixed(2)}" step="0.25" min="0" onchange="sauvegarderHeureGest(this)" style="width:100%;font-size:13px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;text-align:center;background:var(--bg3);font-family:'DM Mono',monospace;">
+      </div>
+    </div>`).join('');
+}
+
+function sauvegarderHeureGest(input){
+  const cid=input.dataset.cid, key=input.dataset.key;
+  if(!cid||!key) return;
+  if(!planningPrevData[cid]) planningPrevData[cid]={};
+  if(!planningPrevData[cid][key]) planningPrevData[cid][key]={statut:'confirme',heuresReelles:0,note:''};
+  const val=parseFloat(input.value)||0;
+  planningPrevData[cid][key].heuresReelles=val;
+  if(planningPrevData[cid][key].statut==='prevu'||planningPrevData[cid][key].statut==='prevu_passe')
+    planningPrevData[cid][key].statut='confirme';
+  sauvegarderTout(true);
+  toast('Heure corrigée ✓','success');
 }
 
 // Auto-lock gérant
@@ -3201,7 +3559,7 @@ function changerTabEmp(btn){
   // Les IDs des tab-pane ont le préfixe 'tab-'
   const pane = document.getElementById('tab-'+tab);
   if(pane) pane.classList.add('active');
-  const labels = {'accueil-emp':'Accueil','tournees-emp':'Mes tournées','frais-emp':'Notes de frais','checklist-emp':'Checklist tâches','pointage-emp':'Pointage'};
+  const labels = {'accueil-emp':'Accueil','tournees-emp':'Mes tournées','frais-emp':'Notes de frais','checklist-emp':'Checklist tâches','pointage-emp':'Pointage','gestion-emp':'Gestion'};
   setEl('topbarTitleEmp', labels[tab]||tab);
   setEl('topbarTitleEmpMobile', labels[tab]||tab);
   if(tab==='accueil-emp') chargerAccueilEmp();
@@ -3209,6 +3567,7 @@ function changerTabEmp(btn){
   if(tab==='frais-emp') chargerFraisEmp();
   if(tab==='checklist-emp') chargerChecklistEmp();
   if(tab==='pointage-emp') initPointage();
+  if(tab==='gestion-emp') chargerGestionEmp();
   if(window.innerWidth<=900){
     document.getElementById('sidebar').classList.remove('open');
     const o=document.getElementById('sidebarOverlay');
@@ -4373,6 +4732,7 @@ function _resetFormClient(){
   const h=document.getElementById('newHeures'); if(h) h.value='0';
   const f=document.getElementById('newFrequence'); if(f) f.value='1';
   const tc=document.getElementById('newTypeClient'); if(tc) tc.value='particulier';
+  const tv=document.getElementById('newTVAClient'); if(tv) tv.value='10';
   // Reset boutons jours
   document.querySelectorAll('.jour-day-btn').forEach(b=>b.classList.remove('jour-on'));
   const sel=document.getElementById('newJours'); if(sel) Array.from(sel.options).forEach(o=>o.selected=false);
@@ -4493,6 +4853,7 @@ function mettreAJourTVAClient(){
   if(!tvaEl) return;
   // Auto-remplir TVA selon la nature — l'utilisateur peut ensuite modifier
   if(type==='entreprise'||type==='airbnb_agence') tvaEl.value='20';
+  else if(type==='exonere_0') tvaEl.value='0';
   else tvaEl.value='10';
 }
 function mettreAJourTVAEditClient(){
@@ -4905,7 +5266,15 @@ function chargerSelectClients(){
   const sel=document.getElementById('facClient');if(sel){
     const val=sel.value;
     sel.innerHTML='<option value="">— Sélectionner —</option>'+clientsData.map(c=>`<option value="${c.id}">${c.nom}${c.entreprise?' – '+c.entreprise:''}</option>`).join('');
-    if(val)sel.value=val;
+    if(val){
+      sel.value=val;
+      const _c=clientsData.find(x=>x.id===val);
+      if(_c&&typeof getTVAClient==='function'){
+        const _taux=getTVAClient(_c);
+        const _tEl=document.getElementById('facTauxTVA');if(_tEl)_tEl.value=String(_taux);
+        const _dEl=document.getElementById('facTVADisplay');if(_dEl)_dEl.value=_taux+'% ('+(_c.typeClient==='entreprise'||_c.typeClient==='airbnb_agence'?'Entreprise':_c.typeClient==='exonere_0'?'Exonéré SAP/Franchise':'Particulier')+')';
+      }
+    }
   }
   const ac=document.getElementById('attestationClient');
   if(ac){ac.innerHTML='<option value="">Tous les clients particuliers</option>'+clientsData.filter(c=>c.typeClient==='particulier').map(c=>`<option value="${c.id}">${c.nom}</option>`).join('');}
@@ -6680,7 +7049,7 @@ function _refDoc(type, c, annee){
   return '';
 }
 
-function genererFacturePDF(){
+function genererFacturePDF(opts){
   // ── Validation ────────────────────────────────────────────
   const clientId = document.getElementById('facClient')?.value||'';
   if(!clientId){toast('Veuillez sélectionner un client','warning');return;}
@@ -6998,6 +7367,9 @@ function genererFacturePDF(){
 
   // ── Sauvegarde ────────────────────────────────────────────
   const fileName=`${numFac}_${clientNom.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_-]/g,'')}.pdf`;
+  if(opts&&opts.returnB64){
+    try{ return {b64:_pdfB64(doc),fileName}; }catch(e){ console.warn('PDF b64:',e); return null; }
+  }
   try{
     doc.save(fileName);
   }catch(e){
@@ -7380,7 +7752,7 @@ function _regenererContratPDFb64(contrat){
     const ref=contrat.ref||'';
     const debut=contrat.date||new Date().toLocaleDateString('fr-FR');
     const tarif=parseFloat(c.tarif)||0;
-    const heures=parseFloat(c.heures)||0;
+    const heures=_parseH(c.heures)||0;
     // c.frequence est un nombre (passages/semaine) : 1=hebdo, 2=2x/semaine, etc.
     const freq=parseFloat(c.frequence)||1;
     const freqLabel=freq===1?'1 passage/semaine':freq===2?'2 passages/semaine':freq+' passages/semaine';
@@ -7474,7 +7846,7 @@ function _regenererContratPDFb64(contrat){
     section('ARTICLE 2 — PRESTATIONS',
       'Nature : Entretien du domicile / nettoyage.\n'
       +'Fréquence : '+freqLabel+'\n'
-      +'Durée par intervention : '+heures+' heure'+(heures>1?'s':'')+'\n'
+      +'Durée par intervention : '+fmtH(heures)+'\n'
       +(c.heureDebut?'Heure de début : '+c.heureDebut+'\n':'')
       +(c.jours&&c.jours.length?'Jours : '+c.jours.map(function(j){return j.charAt(0).toUpperCase()+j.slice(1);}).join(', ')+'\n':'')
       +(c.commune?'Lieu : '+c.commune:''));
@@ -7482,25 +7854,35 @@ function _regenererContratPDFb64(contrat){
     // Article 3 — adapté selon le type de client
     var _isEntreprise = (c.typeClient==='entreprise'||c.typeClient==='airbnb_agence');
     var _isExonere    = (tva===0);
-    // Recalcul depuis la fiche si montantMensuel absent
-    var _mHT = montantHT || (tarif*heures*freq*4.33);
-    var _mTTC = _isExonere ? _mHT : _mHT*(1+tva/100);
+    var _montantInterv  = tarif * heures;
+    var _montantIntervTTC = _isExonere ? _montantInterv : _montantInterv*(1+tva/100);
+    var _freqHebdo = (freq>=1); // passages/semaine
+    var _min4HT = _montantInterv*freq*4; var _max5HT = _montantInterv*freq*5;
+    var _min4TTC = _isExonere?_min4HT:_min4HT*(1+tva/100);
+    var _max5TTC = _isExonere?_max5HT:_max5HT*(1+tva/100);
     var _tvaLigne = _isExonere
       ? 'TVA : Non applicable — Art. 293 B du CGI'
       : 'TVA applicable : '+tva+'% ('+(_isEntreprise?'régime général':'services à domicile — Art. 279 du CGI')+')';
-    var _montantsLignes = _isExonere
-      ? 'Montant mensuel : '+fmt2(_mHT)+' €'
-      : 'Montant mensuel HT : '+fmt2(_mHT)+' €\nMontant mensuel TTC : '+fmt2(_mTTC)+' €';
+    var _ligneInterv = _isExonere
+      ? 'Montant par intervention : '+fmt2(_montantInterv)+' € ('+fmtH(heures)+' × '+fmt2(tarif)+' €/h)'
+      : 'Montant par intervention HT : '+fmt2(_montantInterv)+' € ('+fmtH(heures)+' × '+fmt2(tarif)+' €/h)\nMontant par intervention TTC : '+fmt2(_montantIntervTTC)+' €';
+    var _ligneCalendrier = _freqHebdo
+      ? 'Le montant mensuel varie selon le calendrier :\n'
+        +'  • Mois à '+(freq*4)+' intervention'+(freq*4>1?'s':'')+' : '+fmt2(_min4HT)+' €'+(_isExonere?'':' HT — '+fmt2(_min4TTC)+' € TTC')+'\n'
+        +'  • Mois à '+(freq*5)+' intervention'+(freq*5>1?'s':'')+' : '+fmt2(_max5HT)+' €'+(_isExonere?'':' HT — '+fmt2(_max5TTC)+' € TTC')+'\n'
+        +'Une majoration ou minoration peut s\'appliquer selon le calendrier, les jours fériés ou toute modification convenue entre les parties.'
+      : 'Facturation à l\'acte selon les interventions réalisées.';
     var _creditImpot = (!_isEntreprise)
-      ? 'Avantage fiscal : Le Client peut bénéficier d\'un crédit d\'impôt de 50 % des sommes versées pour des services à domicile (plafonds légaux en vigueur — Art. 199 sexdecies du CGI).'
+      ? 'Avantage fiscal : Le Client peut bénéficier d\'un crédit d\'impôt de 50 % des sommes versées pour des services à domicile (plafonds légaux en vigueur — Art. 199 sexdecies du CGI).'
       : '';
     var _paiement = _isEntreprise
       ? 'Modalités de paiement : Virement bancaire sous 30 jours à réception de facture.'
       : 'Modalités de paiement : Prélèvement mensuel ou virement bancaire à réception de facture.';
     section('ARTICLE 3 — CONDITIONS FINANCIÈRES',
       'Tarif horaire HT : '+fmt2(tarif)+' €/h\n'
+      +_ligneInterv+'\n'
       +_tvaLigne+'\n'
-      +_montantsLignes+'\n'
+      +_ligneCalendrier+'\n'
       +(_creditImpot?_creditImpot+'\n':'')
       +_paiement+'\n'
       +'Les prix sont révisables chaque année au 1er janvier selon l\'indice INSEE des prix à la consommation.');
@@ -7627,30 +8009,25 @@ async function envoyerFactureEmail(){
   const _fmtD=iso=>iso?new Date(iso+'T12:00:00').toLocaleDateString('fr-FR'):iso;
   const subject='Facture '+d.numero+' — '+(p.nomSociete||'Votre prestataire');
   const text='Bonjour'+(d.client.nom?' '+d.client.nom:'')+',\n\nVeuillez trouver ci-jointe votre facture '+d.numero+' du '+_fmtD(d.date)+'.\n\nRécapitulatif :\n- Montant HT : '+fmt2(d.sousTotal)+' €\n- TVA '+d.tauxTVA+'% : '+fmt2(d.montantTVA)+' €\n- Total TTC : '+fmt2(d.totalTTC)+' €'+(d.periode?'\n- Période : '+d.periode:'')+'\n\nRèglement avant le '+(_fmtD(d.dateEch)||'date d\'échéance')+'.'+(p.iban?'\nIBAN : '+p.iban:'')+'\n\nCordialement,\n'+(p.nomSociete||'')+(p.tel?'\n'+p.tel:'');
-  // Générer PDF facture
-  const {jsPDF}=window.jspdf||{};
+  // Générer le vrai PDF complet (même que le bouton PDF)
   let attachments=[];
-  if(jsPDF){try{
-    const doc=new jsPDF({unit:'mm',format:'a4'});
-    doc.setFillColor(26,46,74);doc.rect(0,0,210,22,'F');
-    doc.setTextColor(255,255,255);doc.setFontSize(13);doc.setFont('helvetica','bold');
-    doc.text(p.nomSociete||'Essentia Services',14,10);
-    doc.setFontSize(9);doc.setFont('helvetica','normal');
-    doc.text('FACTURE N° '+d.numero+' — '+_fmtD(d.date),14,17);
-    doc.setTextColor(40,40,40);doc.setFontSize(10);doc.setFont('helvetica','bold');
-    doc.text('Facturé à : '+d.client.nom,14,32);
-    doc.autoTable({
-      head:[['Description','Montant HT']],
-      body:[['Prestations — '+d.periode,fmt2(d.sousTotal)+' €'],['TVA '+d.tauxTVA+'%',fmt2(d.montantTVA)+' €'],['TOTAL TTC',fmt2(d.totalTTC)+' €']],
-      startY:38,styles:{fontSize:10},headStyles:{fillColor:[26,46,74],textColor:[255,255,255]},
-    });
-    doc.setFontSize(8);doc.setTextColor(100,100,100);
-    doc.text('Règlement avant le '+(d.dateEch||'—')+(p.iban?' · IBAN : '+p.iban:''),14,doc.lastAutoTable.finalY+10);
-    attachments=[{filename:'Facture_'+d.numero+'.pdf',content:_pdfB64(doc)}];
-  }catch(e){console.warn('PDF facture email:',e);}}
+  try{
+    const pdfResult=genererFacturePDF({returnB64:true});
+    if(pdfResult&&pdfResult.b64) attachments=[{filename:pdfResult.fileName,content:pdfResult.b64}];
+    else toast('Attention : PDF non généré — la facture sera envoyée sans pièce jointe','warning');
+  }catch(e){console.warn('PDF facture email:',e);toast('Attention : PDF non généré — la facture sera envoyée sans pièce jointe','warning');}
   toast('Envoi en cours…','info');
   try{
     await _envoyerEmailResend({to:d.emailClient,cc:p.email,subject,text,attachments});
+    // Sauvegarder dans l'historique (l'envoi direct par email ne passe pas par genererFacturePDF)
+    facturesData.push({
+      id:'FAC'+Date.now(), numero:d.numero, client:d.client.nom||'', clientId:d.client.id||'',
+      date:d.date, dateDisplay:_fmtD(d.date), dateRaw:d.date, periode:d.periode,
+      totalHT:d.sousTotal, totalTTC:d.totalTTC, tva:d.tauxTVA, condPaie:d.condPaie,
+      statut:'envoyee', emailClient:d.emailClient, typeOp:d.typeOp, sirenClient:d.sirenClient,
+      lignes:JSON.parse(JSON.stringify(lignesFactureData))
+    });
+    renderHistoriqueFactures(); sauvegarderTout(true); calculerStats();
     toast('✉ Facture '+d.numero+' envoyée à '+d.emailClient,'success');
   }catch(err){toast('Erreur envoi : '+err.message,'error');}
 }
@@ -7664,30 +8041,39 @@ async function envoyerFactureEmailId(id){
   const subject='Facture '+f.numero+' — '+(p.nomSociete||'Votre prestataire');
   const _dateFmt=f.dateDisplay||(!f.date||f.date.includes('/')?f.date:new Date(f.date+'T12:00:00').toLocaleDateString('fr-FR'))||f.date;
   const text='Bonjour '+f.client+',\n\nVeuillez trouver ci-jointe la facture '+f.numero+' du '+_dateFmt+'.\n\nTotal TTC : '+fmt2(f.totalTTC)+' €\n\nCordialement,\n'+(p.nomSociete||'')+(p.tel?'\n'+p.tel:'');
-  const {jsPDF}=window.jspdf||{};
+  // Sauvegarder l'état du formulaire avant de le modifier
+  const _gv=elId=>{const el=document.getElementById(elId);return el?el.value:'';};
+  const _formSave={num:_gv('facNumero'),date:_gv('facDate'),client:_gv('facClient'),tva:_gv('facTauxTVA'),cond:_gv('facCondPaiement'),periode:_gv('facPeriode'),email:_gv('facEmailClient'),typeOp:_gv('facTypeOp')};
+  const _lignesSave=JSON.parse(JSON.stringify(lignesFactureData));
+  // Pré-remplir le formulaire depuis les données stockées (sans changer d'onglet)
+  const _setV=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v!=null?String(v):'';};
+  _setV('facNumero',f.numero);
+  _setV('facDate',f.dateRaw||f.date||'');
+  _setV('facClient',f.clientId||'');
+  _setV('facTauxTVA',f.tva);
+  _setV('facCondPaiement',f.condPaie!=null?f.condPaie:30);
+  _setV('facPeriode',f.periode||'');
+  _setV('facEmailClient',f.emailClient||'');
+  _setV('facTypeOp',f.typeOp||'b2c');
+  lignesFactureData=f.lignes||[{desc:'Prestation',qte:1,unite:'forfait',prixUnit:f.totalHT}];
+  // Générer le vrai PDF complet (même que le bouton PDF)
   let attachments=[];
-  if(jsPDF){try{
-    const doc=new jsPDF({unit:'mm',format:'a4'});
-    doc.setFillColor(26,46,74);doc.rect(0,0,210,22,'F');
-    doc.setTextColor(255,255,255);doc.setFontSize(13);doc.setFont('helvetica','bold');
-    doc.text(p.nomSociete||'Essentia Services',14,10);
-    doc.setFontSize(9);doc.setFont('helvetica','normal');
-    doc.text('FACTURE N° '+f.numero+' — '+(f.dateDisplay||(!f.date||f.date.includes('/')?f.date:new Date(f.date+'T12:00:00').toLocaleDateString('fr-FR'))||''),14,17);
-    doc.setTextColor(40,40,40);doc.setFontSize(10);doc.setFont('helvetica','bold');
-    doc.text('Facturé à : '+f.client,14,32);
-    doc.autoTable({
-      head:[['Description','Montant']],
-      body:[['Prestations',fmt2(f.totalHT)+' € HT'],['TVA '+f.tva+'%',fmt2(f.totalHT*f.tva/100)+' €'],['TOTAL TTC',fmt2(f.totalTTC)+' €']],
-      startY:38,styles:{fontSize:10},headStyles:{fillColor:[26,46,74],textColor:[255,255,255]},
-    });
-    attachments=[{filename:'Facture_'+f.numero+'.pdf',content:_pdfB64(doc)}];
-  }catch(e){console.warn('PDF facture id email:',e);}}
+  try{
+    const pdfResult=genererFacturePDF({returnB64:true});
+    if(pdfResult&&pdfResult.b64) attachments=[{filename:pdfResult.fileName,content:pdfResult.b64}];
+    else toast('Attention : PDF non généré — la facture sera envoyée sans pièce jointe','warning');
+  }catch(e){console.warn('PDF facture id email:',e);toast('Attention : PDF non généré — la facture sera envoyée sans pièce jointe','warning');}
   toast('Envoi en cours…','info');
   try{
     await _envoyerEmailResend({to:dest,cc:p.email,subject,text,attachments});
     f.statut='envoyee';sauvegarderTout(true);renderHistoriqueFactures();
     toast('✉ Facture '+f.numero+' envoyée à '+dest,'success');
   }catch(err){toast('Erreur envoi : '+err.message,'error');}
+  // Restaurer l'état du formulaire
+  _setV('facNumero',_formSave.num);_setV('facDate',_formSave.date);_setV('facClient',_formSave.client);
+  _setV('facTauxTVA',_formSave.tva);_setV('facCondPaiement',_formSave.cond);_setV('facPeriode',_formSave.periode);
+  _setV('facEmailClient',_formSave.email);_setV('facTypeOp',_formSave.typeOp);
+  lignesFactureData=_lignesSave;renderLignesFacture();calculerTotauxFacture();
 }
 
 function marquerPayee(id){
@@ -9865,7 +10251,7 @@ function renderLignesContrat(){
 
 function calculerTotalContrat(){
   const tarif=parseFloat(document.getElementById('contratTarif')?.value)||0;
-  const heures=parseFloat(document.getElementById('contratHeures')?.value)||0;
+  const heures=_parseH(document.getElementById('contratHeures')?.value)||0;
   const tva=parseFloat(document.getElementById('contratTVA')?.value)||10;
   const freqSel=document.getElementById('contratFrequence')?.value||'hebdomadaire';
   const freqMult={'hebdomadaire':4.33,'bihebdomadaire':8.66,'mensuelle':1,'ponctuelle':1}[freqSel]||4.33;
@@ -9946,7 +10332,7 @@ function genererContratPrestation(){
   const preavis=gv('contratPreavis');
   const frequence=gv('contratFrequence');
   const tarif=parseFloat(gv('contratTarif'))||0;
-  const heures=parseFloat(gv('contratHeures'))||0;
+  const heures=_parseH(gv('contratHeures'))||0;
   const tva=(v=>isNaN(v)?10:v)(parseFloat(gv('contratTVA')));
   const freqMult={'hebdomadaire':4.33,'bihebdomadaire':8.66,'mensuelle':1,'ponctuelle':1}[frequence]||4.33;
   const montantHT=(tarif*heures*freqMult+_lignesContrat.filter(l=>l.type==='produit').reduce((s,l)=>s+(l.qte||0)*(l.prix||0),0));
@@ -10017,7 +10403,7 @@ function genererContratPrestation(){
   let prestDesc=`Fréquence : ${{'hebdomadaire':'hebdomadaire','bihebdomadaire':'2 fois par semaine','mensuelle':'mensuelle','ponctuelle':'ponctuelle'}[frequence]||frequence}`;
   if(jourInterv) prestDesc+=`\nJour d'intervention : ${jourInterv}`;
   if(heureInterv) prestDesc+=`\nHeure de début : ${heureInterv}`;
-  if(heures) prestDesc+=`\nDurée par intervention : ${heures} heure(s)`;
+  if(heures) prestDesc+=`\nDurée par intervention : ${fmtH(heures)}`;
   if(_lignesContrat.length){
     prestDesc+='\n\nPrestations prévues :';
     _lignesContrat.forEach(l=>{ prestDesc+=`\n  • ${l.desc} — ${l.qte} ${l.unite}`; });
@@ -10027,22 +10413,34 @@ function genererContratPrestation(){
   // Article 3 — Tarification — adapté selon type client
   const _isEnt3 = (c.typeClient==='entreprise'||c.typeClient==='airbnb_agence');
   const _isExo3 = (tva===0);
-  let tarifDesc = `Tarif horaire HT : ${fmt2(tarif)} €/h\n`;
+  const _freq3 = {'hebdomadaire':1,'bihebdomadaire':2}[frequence]||0;
+  const _montantInterv3 = tarif*heures;
+  const _montantInterv3TTC = _isExo3?_montantInterv3:_montantInterv3*(1+tva/100);
+  const _min4HT3=_montantInterv3*(_freq3||1)*4; const _max5HT3=_montantInterv3*(_freq3||1)*5;
+  const _min4TTC3=_isExo3?_min4HT3:_min4HT3*(1+tva/100);
+  const _max5TTC3=_isExo3?_max5HT3:_max5HT3*(1+tva/100);
+  let tarifDesc = `Tarif horaire${_isExo3?'':' HT'} : ${fmt2(tarif)} €/h\n`;
   if(_isExo3){
+    tarifDesc += `Montant par intervention : ${fmt2(_montantInterv3)} € (${fmtH(heures)} × ${fmt2(tarif)} €/h)\n`;
     tarifDesc += `TVA : Non applicable — Art. 293 B du CGI\n`;
-    tarifDesc += `Montant mensuel : ${fmt2(montantHT)} €\n`;
-    tarifDesc += `Avantage fiscal : Le Client peut bénéficier d'un crédit d'impôt de 50 % des sommes versées pour des services à domicile (plafonds légaux en vigueur — Art. 199 sexdecies du CGI).\n`;
-  } else if(_isEnt3){
-    tarifDesc += `TVA applicable : ${tva}% (régime général)\n`;
-    tarifDesc += `Montant mensuel HT : ${fmt2(montantHT)} €\nMontant mensuel TTC : ${fmt2(montantTTC)} €\n`;
   } else {
-    tarifDesc += `TVA applicable : ${tva}% (services à domicile — Art. 279 du CGI)\n`;
-    tarifDesc += `Montant mensuel HT : ${fmt2(montantHT)} €\nMontant mensuel TTC : ${fmt2(montantTTC)} €\n`;
-    tarifDesc += `Avantage fiscal : Le Client peut bénéficier d'un crédit d'impôt de 50 % des sommes versées pour des services à domicile (plafonds légaux en vigueur — Art. 199 sexdecies du CGI).\n`;
+    tarifDesc += `Montant par intervention HT : ${fmt2(_montantInterv3)} € (${fmtH(heures)} × ${fmt2(tarif)} €/h)\n`;
+    tarifDesc += `Montant par intervention TTC : ${fmt2(_montantInterv3TTC)} €\n`;
+    tarifDesc += `TVA applicable : ${tva}% (${_isEnt3?'régime général':'services à domicile — Art. 279 du CGI'})\n`;
   }
+  if(_freq3>0){
+    tarifDesc += `\nLe montant mensuel varie selon le calendrier :\n`;
+    tarifDesc += `  • Mois à ${_freq3*4} interventions : ${fmt2(_min4HT3)} €${_isExo3?'':' HT — '+fmt2(_min4TTC3)+' € TTC'}\n`;
+    tarifDesc += `  • Mois à ${_freq3*5} interventions : ${fmt2(_max5HT3)} €${_isExo3?'':' HT — '+fmt2(_max5TTC3)+' € TTC'}\n`;
+    tarifDesc += `Une majoration ou minoration peut s'appliquer selon le calendrier, les jours fériés ou toute modification convenue entre les parties.\n`;
+  } else {
+    tarifDesc += `Facturation à l'acte selon les interventions réalisées.\n`;
+  }
+  if(!_isEnt3) tarifDesc+=`\nAvantage fiscal : Le Client peut bénéficier d'un crédit d'impôt de 50 % des sommes versées pour des services à domicile (plafonds légaux en vigueur — Art. 199 sexdecies du CGI).\n`;
   tarifDesc += _isEnt3
     ? `Modalités de paiement : Virement bancaire sous 30 jours à réception de facture.`
     : `Modalités de paiement : Prélèvement mensuel ou virement bancaire à réception de facture.`;
+  tarifDesc += `\nLes prix sont révisables chaque année au 1er janvier selon l'indice INSEE des prix à la consommation.`;
   if(_lignesContrat.filter(l=>l.type==='produit').length) tarifDesc+=`\n\nProduits fournis facturés séparément selon utilisation réelle.`;
   section('ARTICLE 3 — CONDITIONS FINANCIÈRES', tarifDesc);
 
