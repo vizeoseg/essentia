@@ -93,6 +93,7 @@ body{font-family:'DM Sans',sans-serif;background:#111827;color:var(--text);displ
 #tab-parametres .card{--ca:#8fa3c0;}
 #tab-paiements .card{--ca:#12b87a;}
 #tab-exports .card{--ca:#7c6cf0;}
+#tab-archives .card{--ca:#7c6cf0;}
 #tab-tarifshoraires .card{--ca:#4a7cf7;}
 .card-header{display:flex;align-items:center;gap:9px;padding-bottom:13px;margin-bottom:15px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
 .card-header h3{font-size:14px;font-weight:700;flex:1;color:var(--text);}
@@ -749,6 +750,7 @@ tr{transition:background .12s;}
     <button class="nav-btn" data-tab="fournisseurs" data-label="Fournisseurs" onclick="changerTab(this)"><span class="ni"><i class="fas fa-truck"></i></span><span class="nav-btn-text">Fournisseurs</span></button>
     <button class="nav-btn" data-tab="tarifshoraires" data-label="Tarifs" onclick="changerTab(this)"><span class="ni"><i class="fas fa-clock"></i></span><span class="nav-btn-text">Tarifs horaires</span></button>
     <button class="nav-btn" data-tab="exports" data-label="Exports PDF" onclick="changerTab(this)"><span class="ni"><i class="fas fa-file-export"></i></span><span class="nav-btn-text">Exports PDF</span></button>
+    <button class="nav-btn" data-tab="archives" data-label="Archives" onclick="changerTab(this)"><span class="ni"><i class="fas fa-archive"></i></span><span class="nav-btn-text">Archives</span></button>
     <div class="nav-section">Réglages</div>
     <button class="nav-btn" data-tab="parametres" data-label="Paramètres" onclick="changerTab(this)"><span class="ni"><i class="fas fa-cog"></i></span><span class="nav-btn-text">Paramètres</span></button>
     <div style="padding:8px 4px 0;">
@@ -1841,6 +1843,40 @@ tr{transition:background .12s;}
             <table><thead><tr><th>Nom</th><th>Contact</th><th>Tél</th><th>Email</th><th>SIRET</th><th>Produits</th><th>Actions</th></tr></thead><tbody id="fournisseursTableBody"></tbody></table>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- ═══ ARCHIVES ═══ -->
+    <div id="tab-archives" class="tab-pane">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">
+        <div class="card" style="margin-bottom:0;padding:14px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:var(--purple);" id="archivesCountTotal">0</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">Contrats archivés</div>
+        </div>
+        <div class="card" style="margin-bottom:0;padding:14px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:var(--teal);" id="archivesCountPrestation">0</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">Prestations</div>
+        </div>
+        <div class="card" style="margin-bottom:0;padding:14px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:var(--accent);" id="archivesCountTravail">0</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">Contrats travail</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:var(--purple-l);color:var(--purple);"><i class="fas fa-archive"></i></div>
+          <h3>Documents archivés</h3>
+          <span class="badge badge-purple" id="archivesCount">0</span>
+          <select id="filtreArchiveType" style="font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:7px;background:var(--bg2);color:var(--text);cursor:pointer;" onchange="renderArchives()">
+            <option value="">Tous types</option>
+            <option value="prestation">Prestations</option>
+            <option value="cdi">CDI</option>
+            <option value="cdd">CDD</option>
+            <option value="avenant">Avenants</option>
+          </select>
+          <input type="text" id="filtreArchiveClient" placeholder="Rechercher un client…" oninput="renderArchives()" style="font-size:11px;padding:5px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg2);color:var(--text);width:160px;">
+        </div>
+        <div id="archivesListe"></div>
       </div>
     </div>
 
@@ -4790,7 +4826,7 @@ function changerTab(btn){
   btn.classList.add('active');
   const tab=btn.dataset.tab;
   document.getElementById('tab-'+tab).classList.add('active');
-  const labels={accueil:'Accueil',clients:'Clients',tournees:'Tournées',salaries:'Salariés',paiements:'Prévisions paiements',finances:'Finances',frais:'Notes de frais',resultat:'Résultat net',tva:'Déclaration TVA',factures:'Factures',attestations:'Attestations fiscales',tarifshoraires:'Tarifs horaires',exports:'Exports PDF',stock:'Gestion du stock',fournisseurs:'Fournisseurs',parametres:'Paramètres'};
+  const labels={accueil:'Accueil',clients:'Clients',tournees:'Tournées',salaries:'Salariés',paiements:'Prévisions paiements',finances:'Finances',frais:'Notes de frais',resultat:'Résultat net',tva:'Déclaration TVA',factures:'Factures',attestations:'Attestations fiscales',tarifshoraires:'Tarifs horaires',exports:'Exports PDF',stock:'Gestion du stock',fournisseurs:'Fournisseurs',parametres:'Paramètres',archives:'Archives'};
   setEl('topbarTitle',labels[tab]||tab);
   if(tab==='attestations'){chargerAttestations();}
   if(tab==='exports'){_chargerExportAttestSelect();}
@@ -4807,6 +4843,7 @@ function changerTab(btn){
   if(tab==='tournees'){chargerTournees();setTimeout(chargerPlanningPrevisionnel,300);if(typeof afficherInterventionsList==='function')afficherInterventionsList();}
   if(tab==='dsn'){chargerDSN();}
   if(tab==='contrats'){initContrats();}
+  if(tab==='archives'){initArchives();}
   if(tab==='remise-materiel'){initRemiseMateriel();}
   if(tab==='livrets'){initLivrets();}
   if(tab==='parametres'){chargerConfigServeur();}
@@ -7747,19 +7784,29 @@ function _regenererContratPDFb64(contrat){
     if(!c) c=clientsData.find(function(x){return x.nom===contrat.clientOuSalarie;});
     if(!c&&contrat.emailClient) c=clientsData.find(function(x){return x.email===contrat.emailClient;});
     if(!c) c={};
-    // Compléter avec les données du contrat si absentes
-    if(!c.email&&contrat.emailClient) c=Object.assign({},c,{email:contrat.emailClient});
+    // Snapshot : conditions signées au moment du contrat — priorité absolue sur la fiche client
+    var snap=contrat.snapshot||{};
+    c=Object.assign({},c,{
+      typeClient: snap.typeClient||c.typeClient,
+      commune:    snap.commune||c.commune,
+      jours:      snap.jours||c.jours,
+      heureDebut: snap.heureDebut||c.heureDebut,
+      tel:        snap.tel||c.tel,
+      adresse:    snap.adresse||c.adresse,
+      refClient:  snap.refClient||c.refClient,
+      email:      snap.email||c.email||contrat.emailClient
+    });
     const ref=contrat.ref||'';
     const debut=contrat.date||new Date().toLocaleDateString('fr-FR');
-    const tarif=parseFloat(c.tarif)||0;
-    const heures=_parseH(c.heures)||0;
-    // c.frequence est un nombre (passages/semaine) : 1=hebdo, 2=2x/semaine, etc.
-    const freq=parseFloat(c.frequence)||1;
-    const freqLabel=freq===1?'1 passage/semaine':freq===2?'2 passages/semaine':freq+' passages/semaine';
-    const tva=isNaN(parseFloat(c.tva))?10:parseFloat(c.tva);
-    // Priorité : montantMensuel stocké dans contratsData (calculé à la génération du contrat)
+    const tarif=parseFloat(snap.tarif!=null?snap.tarif:c.tarif)||0;
+    const heures=_parseH(snap.heures!=null?snap.heures:c.heures)||0;
+    // frequence : string depuis snapshot ('hebdomadaire','bihebdomadaire','mensuelle','ponctuelle')
+    const frequence=snap.frequence||null;
+    const freq=snap.freqPassages!=null?snap.freqPassages:(parseFloat(c.frequence)||1);
+    const freqLabel=freq===2?'2 passages/semaine':freq===1?'1 passage/semaine':freq+' passages/semaine';
+    const tva=snap.tva!=null?parseFloat(snap.tva):(isNaN(parseFloat(c.tva))?10:parseFloat(c.tva));
     const montantTTC=parseFloat(contrat.montantMensuel)||0;
-    const montantHT=montantTTC/(1+tva/100)||tarif*heures*freq*4.33;
+    const montantHT=montantTTC/(1+tva/100)||tarif*heures*(freq||1)*4.33;
     const fmt2=function(v){return v.toFixed(2).replace('.',',');};
     const logo=localStorage.getItem('progestLogo');
     const doc=new jsPDFCls({unit:'mm',format:'a4'}); const W=210,M=15; let y=M;
@@ -7856,7 +7903,7 @@ function _regenererContratPDFb64(contrat){
     var _isExonere    = (tva===0);
     var _montantInterv  = tarif * heures;
     var _montantIntervTTC = _isExonere ? _montantInterv : _montantInterv*(1+tva/100);
-    var _freqHebdo = (freq>=1); // passages/semaine
+    var _freqHebdo = frequence?(frequence==='hebdomadaire'||frequence==='bihebdomadaire'):(freq>=1);
     var _min4HT = _montantInterv*freq*4; var _max5HT = _montantInterv*freq*5;
     var _min4TTC = _isExonere?_min4HT:_min4HT*(1+tva/100);
     var _max5TTC = _isExonere?_max5HT:_max5HT*(1+tva/100);
@@ -10521,7 +10568,18 @@ function genererContratPrestation(){
   // Enregistrer dans l'historique
   // signatureData stockée en localStorage (pas dans Supabase — trop lourd)
   if(_signatureData) try{localStorage.setItem('sig_'+ref,_signatureData);}catch(e){}
-  contratsData.push({id:'CTR'+Date.now(),type:'prestation',ref,clientId:clientId,clientOuSalarie:c.nom,date:debut,montantMensuel:montantTTC,statut:'actif',emailClient:gv('contratEmailClient'),signatureIncluse:!!_signatureData});
+  const _snapFreqPassages={'hebdomadaire':1,'bihebdomadaire':2,'mensuelle':0,'ponctuelle':0}[frequence]||0;
+  const _snapshot={
+    tarif, heures, frequence, freqPassages:_snapFreqPassages, tva,
+    typeClient:c.typeClient||'particulier',
+    commune:c.commune||c.adresse||'',
+    jours:['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'].filter(j=>document.getElementById('contratJourBtn_'+j)?.classList.contains('jour-on')),
+    heureDebut:gv('contratHeureIntervention'),
+    dureeType, preavis,
+    nom:c.nom||'', email:gv('contratEmailClient')||c.email||'',
+    tel:c.tel||'', adresse:c.adresse||'', refClient:c.refClient||''
+  };
+  contratsData.push({id:'CTR'+Date.now(),type:'prestation',ref,clientId:clientId,clientOuSalarie:c.nom,date:debut,montantMensuel:montantTTC,statut:'actif',emailClient:gv('contratEmailClient'),signatureIncluse:!!_signatureData,snapshot:_snapshot});
   // Passage automatique en Client actif
   const _cIdx=clientsData.findIndex(x=>x.id===clientId);
   if(_cIdx>=0) clientsData[_cIdx].workflowStatut='client_actif';
@@ -11147,13 +11205,14 @@ function genererRetractationPDF(){
 function renderHistoriqueContrats(){
   const cont=document.getElementById('contratsHistorique'); if(!cont) return;
   const filtre=document.getElementById('filtreTypeContrat')?.value||'';
-  let data=contratsData.slice().reverse();
+  let data=contratsData.slice().reverse().filter(c=>c.statut!=='archivé');
   if(filtre) data=data.filter(c=>c.type===filtre);
-  setEl('contratsCount',contratsData.length);
-  if(!data.length){cont.innerHTML='<p style="color:var(--text3);font-size:12px;padding:10px;">Aucun contrat.</p>';return;}
+  setEl('contratsCount',data.length);
+  if(!data.length){cont.innerHTML='<p style="color:var(--text3);font-size:12px;padding:10px;">Aucun contrat actif.</p>';return;}
   const icons={prestation:'fas fa-handshake',cdi:'fas fa-id-card',cdd:'fas fa-calendar-alt',avenant:'fas fa-edit'};
   const colors={prestation:'var(--accent)',cdi:'var(--purple)',cdd:'var(--teal)',avenant:'var(--amber)'};
   const labels={prestation:'Prestation',cdi:'CDI',cdd:'CDD',avenant:'Avenant'};
+  const statutColor={actif:'var(--green)',suspendu:'var(--amber)',résilié:'var(--red)'};
   cont.innerHTML=data.map(c=>`
     <div class="finance-item" style="flex-direction:column;align-items:stretch;gap:8px;">
       <div style="display:flex;align-items:center;gap:9px;">
@@ -11162,11 +11221,12 @@ function renderHistoriqueContrats(){
           <div style="font-weight:600;font-size:12px;">${c.ref} — ${c.clientOuSalarie}</div>
           <div style="font-size:10px;color:var(--text3);">${c.date} · <span class="badge badge-blue">${labels[c.type]||c.type}</span>${c.montantMensuel?` · ${c.montantMensuel.toFixed(2).replace('.',',')} €/mois TTC`:''}</div>
         </div>
-        <span style="font-size:10px;font-weight:600;color:var(--green);">● ${c.statut||'Actif'}</span>
+        <span style="font-size:10px;font-weight:600;color:${statutColor[c.statut]||'var(--green)'};">● ${c.statut||'actif'}</span>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:6px;border-top:1px dashed var(--border);">
         ${c.emailClient||c.emailSalarie?`<button class="btn btn-primary btn-sm" onclick="envoyerContratEmailId('${c.id}')"><i class="fas fa-envelope"></i> Email</button>`:''}
         <button class="btn btn-ghost btn-sm" onclick="changerStatutContrat('${c.id}')"><i class="fas fa-sync"></i> Statut</button>
+        <button class="btn btn-ghost btn-sm" onclick="archiverContrat('${c.id}')" style="color:var(--purple);border-color:var(--purple-l);"><i class="fas fa-archive"></i> Archiver</button>
         <button class="btn btn-danger btn-sm" onclick="supprimerContrat('${c.id}')"><i class="fas fa-trash"></i></button>
       </div>
     </div>`).join('');
@@ -11185,6 +11245,91 @@ function supprimerContrat(id){
   if(!confirm('Supprimer ce contrat ?')) return;
   contratsData=contratsData.filter(x=>x.id!==id);
   sauvegarderTout(true); renderHistoriqueContrats();
+}
+
+function archiverContrat(id){
+  const c=contratsData.find(x=>x.id===id); if(!c) return;
+  if(!confirm(`Archiver le contrat ${c.ref} — ${c.clientOuSalarie} ?\nIl sera accessible dans la section Archives.`)) return;
+  c.statut='archivé'; c.dateArchivage=new Date().toLocaleDateString('fr-FR');
+  sauvegarderTout(true); renderHistoriqueContrats();
+  toast(`Contrat ${c.ref} archivé ✓`,'info');
+}
+
+function restaurerContrat(id){
+  const c=contratsData.find(x=>x.id===id); if(!c) return;
+  c.statut='actif'; delete c.dateArchivage;
+  sauvegarderTout(true); renderArchives(); renderHistoriqueContrats();
+  toast(`Contrat ${c.ref} restauré ✓`,'success');
+}
+
+function initArchives(){
+  renderArchives();
+}
+
+function renderArchives(){
+  const cont=document.getElementById('archivesListe'); if(!cont) return;
+  const filtreType=document.getElementById('filtreArchiveType')?.value||'';
+  const filtreClient=(document.getElementById('filtreArchiveClient')?.value||'').toLowerCase();
+  let data=contratsData.slice().reverse().filter(c=>c.statut==='archivé');
+  if(filtreType) data=data.filter(c=>c.type===filtreType);
+  if(filtreClient) data=data.filter(c=>(c.clientOuSalarie||'').toLowerCase().includes(filtreClient));
+  // Stats
+  const all=contratsData.filter(c=>c.statut==='archivé');
+  setEl('archivesCountTotal',all.length);
+  setEl('archivesCountPrestation',all.filter(c=>c.type==='prestation').length);
+  setEl('archivesCountTravail',all.filter(c=>c.type==='cdi'||c.type==='cdd').length);
+  setEl('archivesCount',data.length);
+  if(!data.length){
+    cont.innerHTML='<p style="color:var(--text3);font-size:12px;padding:10px;">Aucun document archivé'+(filtreType||filtreClient?' pour ce filtre':'')+'.</p>';
+    return;
+  }
+  const icons={prestation:'fas fa-handshake',cdi:'fas fa-id-card',cdd:'fas fa-calendar-alt',avenant:'fas fa-edit'};
+  const colors={prestation:'var(--accent)',cdi:'var(--purple)',cdd:'var(--teal)',avenant:'var(--amber)'};
+  const typeLabels={prestation:'Prestation',cdi:'CDI',cdd:'CDD',avenant:'Avenant'};
+  cont.innerHTML=data.map(c=>{
+    const snap=c.snapshot||{};
+    const snapInfo=snap.tarif?`${snap.tarif}€/h · ${snap.heures?((h=>{const hr=Math.floor(h);const mn=Math.round((h-hr)*60);return mn>0?`${hr}h${String(mn).padStart(2,'0')}`:`${hr}h`;})(snap.heures)):'—'}/intervention · ${snap.frequence||'—'}`:'' ;
+    return `
+    <div class="finance-item" style="flex-direction:column;align-items:stretch;gap:8px;opacity:.92;">
+      <div style="display:flex;align-items:center;gap:9px;">
+        <div style="width:32px;height:32px;border-radius:7px;background:rgba(124,108,240,.1);color:${colors[c.type]||'var(--purple)'};display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;"><i class="${icons[c.type]||'fas fa-file-contract'}"></i></div>
+        <div style="flex:1;">
+          <div style="font-weight:600;font-size:12px;">${c.ref} — ${c.clientOuSalarie}</div>
+          <div style="font-size:10px;color:var(--text3);">Signé le ${c.date} · <span class="badge badge-purple">${typeLabels[c.type]||c.type}</span>${c.dateArchivage?` · Archivé le ${c.dateArchivage}`:''}</div>
+          ${snapInfo?`<div style="font-size:10px;color:var(--purple);margin-top:3px;"><i class="fas fa-camera" style="font-size:9px;"></i> ${snapInfo}</div>`:''}
+        </div>
+        <span style="font-size:10px;font-weight:600;color:var(--text3);">● archivé</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:6px;border-top:1px dashed var(--border);">
+        ${c.type==='prestation'?`<button class="btn btn-ghost btn-sm" onclick="_telechargerContratArchive('${c.id}')"><i class="fas fa-file-pdf"></i> PDF</button>`:''}
+        ${c.emailClient||c.emailSalarie?`<button class="btn btn-primary btn-sm" onclick="envoyerContratEmailId('${c.id}')"><i class="fas fa-envelope"></i> Email</button>`:''}
+        <button class="btn btn-ghost btn-sm" onclick="restaurerContrat('${c.id}')" style="color:var(--green);border-color:rgba(18,184,122,.3);"><i class="fas fa-undo"></i> Restaurer</button>
+        <button class="btn btn-danger btn-sm" onclick="supprimerContratArchive('${c.id}')"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function _telechargerContratArchive(id){
+  const c=contratsData.find(x=>x.id===id); if(!c) return;
+  // Essaye le cache PDF d'abord
+  const cached=_getPDFCache(c.ref);
+  if(cached){
+    const a=document.createElement('a');
+    a.href='data:application/pdf;base64,'+cached;
+    a.download=`${c.ref}_contrat_prestation.pdf`; a.click();
+    return;
+  }
+  // Régénère depuis le snapshot
+  const b64=_regenererContratPDFb64(c);
+  if(b64){const a=document.createElement('a');a.href='data:application/pdf;base64,'+b64;a.download=`${c.ref}_contrat_prestation.pdf`;a.click();}
+  else toast('PDF non disponible pour ce contrat','warning');
+}
+
+function supprimerContratArchive(id){
+  if(!confirm('Supprimer définitivement ce contrat archivé ?\nCette action est irréversible.')) return;
+  contratsData=contratsData.filter(x=>x.id!==id);
+  sauvegarderTout(true); renderArchives();
 }
 
 // ══════════════════════════════════════════════════════════
