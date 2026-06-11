@@ -10227,10 +10227,11 @@ async function _envoyerEmailContratAvecCopie(dest, nom, ref, type, p){
   const text='Bonjour '+nom+',\n\nVeuillez trouver ci-joint votre '+typeLabel.toLowerCase()+' référence '+ref+'.\n\nCe document est établi en deux exemplaires originaux. Merci de le signer, de le parapher sur chaque page et de nous retourner un exemplaire signé.\n\nN\'hésitez pas à nous contacter pour toute question.\n\nCordialement,\n'+(p.nomSociete||'')+(p.tel?'\n'+p.tel:'')+(p.email?'\n'+p.email:'');
   // Utiliser le PDF complet en cache si disponible, sinon PDF résumé
   var attachments=[];
-  var attachments=[];
   var contratObj=contratsData.find(function(c){return c.ref===ref;});
   if(contratObj&&contratObj.type==='prestation'){
-    var b64r=_regenererContratPDFb64(contratObj);
+    // Cache en priorité (vient d'être écrit par genererContratPrestation si appelé juste avant)
+    var cached3=_loadPDFCache(ref);
+    var b64r=(cached3&&cached3.b64)?cached3.b64:_regenererContratPDFb64(contratObj);
     if(b64r) attachments=[{filename:ref+'_contrat_prestation.pdf',content:b64r}];
   } else {
     var cached3=_loadPDFCache(ref);
