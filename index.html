@@ -10285,15 +10285,26 @@ function remplirInfosContrat(){
   if(hEl) hEl.value=c.heures||'';
   const emailEl=document.getElementById('contratEmailClient');
   if(emailEl) emailEl.value=c.email||'';
+  // Fréquence : mapper c.frequence (nombre) → sélecteur contrat
+  const freqSel=document.getElementById('contratFrequence');
+  if(freqSel){
+    const fq=parseFloat(c.frequence)||1;
+    if(fq>=2) freqSel.value='bihebdomadaire';
+    else if(fq<0.5) freqSel.value='mensuelle';
+    else freqSel.value='hebdomadaire';
+  }
   ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'].forEach(function(j){
     var btn=document.getElementById('contratJourBtn_'+j);
     if(btn){btn.classList.remove('jour-on');if(c.jours&&c.jours.includes(j.toLowerCase()))btn.classList.add('jour-on');}
   });
   const heureEl=document.getElementById('contratHeureIntervention');
   if(heureEl) heureEl.value=c.heureDebut||'09:00';
-  // Remplir lignes auto
+  // Remplir lignes auto — qte = heures/intervention × passages/semaine
   if(c.heures){
-    _lignesContrat=[{type:'prestation',desc:`Nettoyage / entretien — ${c.commune||'domicile'}`,qte:c.heures,unite:'h/semaine',prix:c.tarif||20}];
+    const _fq=parseFloat(c.frequence)||1;
+    const _qteHebdo=(parseFloat(c.heures)||0)*(_fq>=1?_fq:1);
+    const _unite=_fq<1?'h/intervention':'h/semaine';
+    _lignesContrat=[{type:'prestation',desc:`Nettoyage / entretien — ${c.commune||'domicile'}`,qte:_qteHebdo,unite:_unite,prix:c.tarif||20}];
     renderLignesContrat();
   }
   // Auto-cocher crédit d'impôt pour les particuliers et exonérés
