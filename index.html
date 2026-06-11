@@ -10074,6 +10074,10 @@ async function envoyerContratEmail(source, mode){
     const c=clientsData.find(x=>x.id===id)||{};
     dest=document.getElementById('contratEmailClient')?.value||'';
     nom=c.nom||'Client'; ref=document.getElementById('contratRef')?.value||''; type='prestation';
+    // Si aucun contrat sauvegardé pour cette ref, générer d'abord le PDF (sauvegarde dans contratsData + cache)
+    if(ref && !contratsData.find(x=>x.ref===ref && x.type==='prestation')){
+      genererContratPrestation();
+    }
   } else if(source==='travail'){
     const id=document.getElementById('ctSalarie')?.value;
     const s=salariesData.find(x=>x.id===id)||{};
