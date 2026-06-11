@@ -10064,6 +10064,39 @@ function validerSignature(){
   toast('Signature validée ✓','success');
 }
 
+// Sauvegarde les données du formulaire contrat dans contratsData SANS générer/télécharger le PDF
+function _enregistrerDonneesContrat(){
+  const clientId=document.getElementById('contratClient')?.value||'';
+  if(!clientId) return;
+  const gv=function(id){return document.getElementById(id)?.value||'';};
+  const c=clientsData.find(function(x){return x.id===clientId;})||{};
+  const ref=gv('contratRef');
+  if(!ref||contratsData.find(function(x){return x.ref===ref&&x.type==='prestation';})) return;
+  const debut=new Date(gv('contratDebut')||new Date()).toLocaleDateString('fr-FR');
+  const tarif=parseFloat(gv('contratTarif'))||0;
+  const heures=_parseH(gv('contratHeures'))||0;
+  const tva=(function(v){return isNaN(v)?10:v;})(parseFloat(gv('contratTVA')));
+  const frequence=gv('contratFrequence');
+  const freqMult={'hebdomadaire':4.33,'bihebdomadaire':8.66,'mensuelle':1,'ponctuelle':1}[frequence]||4.33;
+  const montantTTC=(tarif*heures*freqMult)*(1+tva/100);
+  const _snapFreqPassages={'hebdomadaire':1,'bihebdomadaire':2,'mensuelle':0,'ponctuelle':0}[frequence]||0;
+  const snap={
+    tarif,heures,frequence,freqPassages:_snapFreqPassages,tva,
+    typeClient:c.typeClient||'particulier',
+    commune:c.commune||c.adresse||'',
+    jours:['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'].filter(function(j){return document.getElementById('contratJourBtn_'+j)?.classList.contains('jour-on');}),
+    heureDebut:gv('contratHeureIntervention'),
+    dureeType:gv('contratDureeType'),preavis:gv('contratPreavis'),contratFin:gv('contratFin'),
+    nom:c.nom||'',email:gv('contratEmailClient')||c.email||'',
+    tel:c.tel||'',adresse:c.adresse||'',refClient:c.refClient||'',
+    clauseConfidentialite:!!document.getElementById('clauseConfidentialite')?.checked,
+    clauseFournitures:!!document.getElementById('clauseFournitures')?.checked,
+    clauseAssurance:!!document.getElementById('clauseAssurance')?.checked,
+    clauseCreditImpot:!!document.getElementById('clauseCreditImpot')?.checked
+  };
+  contratsData.push({id:'CTR'+Date.now(),type:'prestation',ref,clientId,clientOuSalarie:c.nom,date:debut,montantMensuel:montantTTC,statut:'actif',emailClient:gv('contratEmailClient'),signatureIncluse:!!_signatureData,snapshot:snap});
+}
+
 // ── Email dual mode (Gmail / mailto) ─────────────────────
 async function envoyerContratEmail(source, mode){
   const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
@@ -10074,9 +10107,9 @@ async function envoyerContratEmail(source, mode){
     const c=clientsData.find(x=>x.id===id)||{};
     dest=document.getElementById('contratEmailClient')?.value||'';
     nom=c.nom||'Client'; ref=document.getElementById('contratRef')?.value||''; type='prestation';
-    // Si aucun contrat sauvegardé pour cette ref, générer d'abord le PDF (sauvegarde dans contratsData + cache)
+    // Si aucun contrat sauvegardé pour cette ref, enregistrer les données sans téléchargement
     if(ref && !contratsData.find(x=>x.ref===ref && x.type==='prestation')){
-      genererContratPrestation();
+      _enregistrerDonneesContrat();
     }
   } else if(source==='travail'){
     const id=document.getElementById('ctSalarie')?.value;
@@ -10229,9 +10262,7 @@ async function _envoyerEmailContratAvecCopie(dest, nom, ref, type, p){
   var attachments=[];
   var contratObj=contratsData.find(function(c){return c.ref===ref;});
   if(contratObj&&contratObj.type==='prestation'){
-    // Cache en priorité (vient d'être écrit par genererContratPrestation si appelé juste avant)
-    var cached3=_loadPDFCache(ref);
-    var b64r=(cached3&&cached3.b64)?cached3.b64:_regenererContratPDFb64(contratObj);
+    var b64r=_regenererContratPDFb64(contratObj);
     if(b64r) attachments=[{filename:ref+'_contrat_prestation.pdf',content:b64r}];
   } else {
     var cached3=_loadPDFCache(ref);
