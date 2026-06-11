@@ -10266,10 +10266,7 @@ function remplirInfosContrat(){
   refBadge.innerHTML=c.refClient?`<span style="font-size:10px;font-weight:700;color:var(--accent);background:rgba(74,124,247,.1);border-radius:4px;padding:2px 8px;margin-top:4px;display:inline-block;">${c.refClient}</span>`:'';
   // Référence contrat liée au client CLI-XXXX
   const refEl=document.getElementById('contratRef');
-  if(refEl && !refEl.value){
-    // Ref contrat liée au client CLI-XXXX
-    refEl.value=_genContratRef(id);
-  } else if(refEl && refEl.value && refEl.value.startsWith('undefined')){
+  if(refEl){
     refEl.value=_genContratRef(id);
   }
   const tvaSel=document.getElementById('contratTVA');
