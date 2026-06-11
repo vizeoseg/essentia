@@ -10279,17 +10279,17 @@ function remplirInfosContrat(){
     tvaSel.value = (!isNaN(tvaCli) && tvaCli===0) ? '0' : (c.typeClient==='entreprise'||c.typeClient==='airbnb_agence'?'20':'10');
   }
   const tariEl=document.getElementById('contratTarif');
-  if(tariEl&&c.tarif) tariEl.value=c.tarif;
+  if(tariEl) tariEl.value=c.tarif||'';
   const hEl=document.getElementById('contratHeures');
-  if(hEl&&c.heures) hEl.value=c.heures;
+  if(hEl) hEl.value=c.heures||'';
   const emailEl=document.getElementById('contratEmailClient');
-  if(emailEl&&c.email) emailEl.value=c.email;
+  if(emailEl) emailEl.value=c.email||'';
   ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'].forEach(function(j){
     var btn=document.getElementById('contratJourBtn_'+j);
     if(btn){btn.classList.remove('jour-on');if(c.jours&&c.jours.includes(j.toLowerCase()))btn.classList.add('jour-on');}
   });
   const heureEl=document.getElementById('contratHeureIntervention');
-  if(heureEl&&c.heureDebut) heureEl.value=c.heureDebut;
+  if(heureEl) heureEl.value=c.heureDebut||'09:00';
   // Remplir lignes auto
   if(c.heures){
     _lignesContrat=[{type:'prestation',desc:`Nettoyage / entretien — ${c.commune||'domicile'}`,qte:c.heures,unite:'h/semaine',prix:c.tarif||20}];
