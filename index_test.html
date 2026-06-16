@@ -1849,7 +1849,7 @@ tr{transition:background .12s;}
 
     <!-- ═══ ARCHIVES ═══ -->
     <div id="tab-archives" class="tab-pane">
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
         <div class="card" style="margin-bottom:0;padding:14px;text-align:center;">
           <div style="font-size:24px;font-weight:800;color:var(--purple);" id="archivesCountContrats">0</div>
           <div style="font-size:11px;color:var(--text3);margin-top:4px;">Contrats archivés</div>
@@ -1862,12 +1862,17 @@ tr{transition:background .12s;}
           <div style="font-size:24px;font-weight:800;color:var(--accent);" id="archivesCountDevis">0</div>
           <div style="font-size:11px;color:var(--text3);margin-top:4px;">Devis archivés</div>
         </div>
+        <div class="card" style="margin-bottom:0;padding:14px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:var(--amber);" id="archivesCountFrais">0</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">Frais archivés</div>
+        </div>
       </div>
       <div class="card">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:wrap;">
           <button id="archTabContrats" class="btn btn-primary btn-sm" onclick="setArchiveTab('contrats')"><i class="fas fa-file-contract"></i> Contrats</button>
           <button id="archTabFactures" class="btn btn-ghost btn-sm" onclick="setArchiveTab('factures')"><i class="fas fa-file-invoice"></i> Factures</button>
           <button id="archTabDevis" class="btn btn-ghost btn-sm" onclick="setArchiveTab('devis')"><i class="fas fa-file-signature"></i> Devis</button>
+          <button id="archTabFrais" class="btn btn-ghost btn-sm" onclick="setArchiveTab('frais')"><i class="fas fa-receipt"></i> Frais</button>
           <span style="flex:1;"></span>
           <select id="filtreArchiveType" style="font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:7px;background:var(--bg2);color:var(--text);cursor:pointer;" onchange="renderArchives()">
             <option value="">Tous types</option>
@@ -5858,6 +5863,7 @@ function chargerNotesFrais(){
   const filtreCategorie=(document.getElementById('fraisFiltreCategorie')?.value||'');
   const filtreEmploye=(document.getElementById('fraisFiltreEmploye')?.value||'').toLowerCase();
   const dataFiltree=notesFraisData.filter(function(f){
+    if(f.archivee) return false;
     if(filtreMois && !(f.date||'').startsWith(filtreMois)) return false;
     if(filtreCategorie && f.categorie!==filtreCategorie) return false;
     if(filtreEmploye && !(f.employe||'').toLowerCase().includes(filtreEmploye)) return false;
@@ -5868,7 +5874,7 @@ function chargerNotesFrais(){
   const kpiEl=document.getElementById('fraisKpis');
   if(kpiEl){
     const cats={};
-    notesFraisData.forEach(function(f){ if(!f.kmDetail){ cats[f.categorie||'Autre']=(cats[f.categorie||'Autre']||0)+f.montant; }});
+    notesFraisData.forEach(function(f){ if(!f.kmDetail && !f.archivee){ cats[f.categorie||'Autre']=(cats[f.categorie||'Autre']||0)+f.montant; }});
     const catEmojis={'Repas':'🍽','Transport':'🚗','Carburant':'⛽','Hébergement':'🏨','Fournitures':'📦','Téléphone':'📱','Formation':'📚','Autre':'📎'};
     kpiEl.innerHTML=Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([cat,total])=>
       `<div style="background:rgba(240,153,31,.1);border:1px solid rgba(240,153,31,.3);border-radius:8px;padding:5px 10px;font-size:11px;">
@@ -5941,6 +5947,7 @@ function chargerNotesFrais(){
         + '<div style="display:flex;align-items:center;gap:8px;margin-top:6px;">'
         + '<span class="fi-amount">' + f.montant.toFixed(2) + ' €</span>'
         + '<button class="btn btn-ghost btn-sm" onclick="_kmAfficherDetailGerant(\'' + f.id + '\')" title="Voir relevé complet"><i class="fas fa-search"></i></button>'
+        + '<button class="btn btn-ghost btn-sm" onclick="archiverFrais(\'' + f.id + '\')" title="Archiver"><i class="fas fa-archive"></i></button>'
         + '<button class="icon-btn del" onclick="supprimerFraisById(\'' + f.id + '\')" title="Supprimer"><i class="fas fa-trash"></i></button>'
         + '</div></div>';
       htmlFinal += kmHtml;
@@ -5962,7 +5969,8 @@ function chargerNotesFrais(){
           ? `<div class="frais-photo-placeholder editable" onclick="ajouterPhotoFraisById('${f.id}')" title="Ajouter une photo"><i class="fas fa-camera"></i></div>`
           : `<div class="frais-photo-placeholder"><i class="fas fa-image"></i></div>`);
     var _delCall = f.id ? `supprimerFraisById('${f.id}')` : `supprimerFrais(${idx})`;
-    htmlFinal += `<div class="frais-item"><div style="display:flex;align-items:center;gap:10px;">${photoHtml}<div><span class="badge badge-orange">${f.date}</span> <span style="font-weight:500;">${f.libelle}</span><span class="frais-cat" style="background:rgba(240,153,31,.15);color:var(--amber);padding:2px 7px;border-radius:50px;font-size:10px;font-weight:600;margin-left:7px;">${f.categorie}</span><div style="font-size:10px;color:var(--text3);margin-top:2px;">${f.employe}${f.entreprise?' • '+f.entreprise:''}</div></div></div><div style="display:flex;align-items:center;gap:8px;"><span class="fi-amount">${f.montant.toFixed(2)} €</span><button class="icon-btn del" onclick="${_delCall}"><i class="fas fa-trash"></i></button></div></div>`;
+    var _archiveBtn = f.id ? `<button class="btn btn-ghost btn-sm" onclick="archiverFrais('${f.id}')" title="Archiver"><i class="fas fa-archive"></i></button>` : '';
+    htmlFinal += `<div class="frais-item"><div style="display:flex;align-items:center;gap:10px;">${photoHtml}<div><span class="badge badge-orange">${f.date}</span> <span style="font-weight:500;">${f.libelle}</span><span class="frais-cat" style="background:rgba(240,153,31,.15);color:var(--amber);padding:2px 7px;border-radius:50px;font-size:10px;font-weight:600;margin-left:7px;">${f.categorie}</span><div style="font-size:10px;color:var(--text3);margin-top:2px;">${f.employe}${f.entreprise?' • '+f.entreprise:''}</div></div></div><div style="display:flex;align-items:center;gap:8px;"><span class="fi-amount">${f.montant.toFixed(2)} €</span>${_archiveBtn}<button class="icon-btn del" onclick="${_delCall}"><i class="fas fa-trash"></i></button></div></div>`;
     }); // end items.forEach
   }); // end parMois forEach
   list.innerHTML = htmlFinal || '<p style="color:var(--text3);font-size:12px;">Aucune note de frais</p>';
@@ -11691,6 +11699,32 @@ function supprimerDevisArchive(id){
 }
 window.supprimerDevisArchive=supprimerDevisArchive;
 
+function archiverFrais(id){
+  const f=notesFraisData.find(x=>x.id===id);if(!f)return;
+  if(!confirm('Archiver cette note de frais ?\nElle sera accessible dans la section Archives.'))return;
+  f.archivee=true;f.dateArchivage=new Date().toLocaleDateString('fr-FR');
+  _archiveTab='frais';
+  sauvegarderTout(true);chargerNotesFrais();renderArchives();calculerStats();
+  toast('Note de frais archivée ✓','info');
+}
+window.archiverFrais=archiverFrais;
+
+function restaurerFrais(id){
+  const f=notesFraisData.find(x=>x.id===id);if(!f)return;
+  delete f.archivee;delete f.dateArchivage;
+  sauvegarderTout(true);chargerNotesFrais();renderArchives();calculerStats();
+  toast('Note de frais restaurée ✓','success');
+}
+window.restaurerFrais=restaurerFrais;
+
+function supprimerFraisArchive(id){
+  if(!confirm('Supprimer définitivement cette note de frais archivée ?'))return;
+  notesFraisData=notesFraisData.filter(x=>x.id!==id);
+  sauvegarderTout(true);renderArchives();
+  toast('Note de frais supprimée','info');
+}
+window.supprimerFraisArchive=supprimerFraisArchive;
+
 function initArchives(){
   setArchiveTab(_archiveTab||'contrats');
 }
@@ -11698,7 +11732,7 @@ function initArchives(){
 let _archiveTab='contrats';
 function setArchiveTab(tab){
   _archiveTab=tab;
-  ['contrats','factures','devis'].forEach(t=>{
+  ['contrats','factures','devis','frais'].forEach(t=>{
     const b=document.getElementById('archTab'+t.charAt(0).toUpperCase()+t.slice(1));
     if(b) b.className='btn btn-sm '+(t===tab?'btn-primary':'btn-ghost');
   });
@@ -11715,6 +11749,7 @@ function renderArchives(){
   setEl('archivesCountContrats',contratsData.filter(c=>c.statut==='archivé').length);
   setEl('archivesCountFactures',facturesData.filter(f=>f.type!=='avoir'&&f.statut==='archivee').length);
   setEl('archivesCountDevis',devisData.filter(d=>d.statut==='archive').length);
+  setEl('archivesCountFrais',notesFraisData.filter(f=>f.archivee===true).length);
   const tab=_archiveTab||'contrats';
   if(tab==='contrats'){
     setEl('archivesTitre','Contrats archivés');
@@ -11792,6 +11827,30 @@ function renderArchives(){
           <button class="btn btn-ghost btn-sm" onclick="reimprimerDevis('${d.id}')"><i class="fas fa-file-pdf"></i> PDF</button>
           <button class="btn btn-ghost btn-sm" onclick="restaurerDevis('${d.id}')" style="color:var(--green);border-color:rgba(18,184,122,.3);"><i class="fas fa-undo"></i> Restaurer</button>
           <button class="btn btn-danger btn-sm" onclick="supprimerDevisArchive('${d.id}')"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>`).join('');
+  } else if(tab==='frais'){
+    setEl('archivesTitre','Notes de frais archivées');
+    let data=notesFraisData.slice().reverse().filter(f=>f.archivee===true);
+    if(filtreClient) data=data.filter(f=>(f.employe||'').toLowerCase().includes(filtreClient)||(f.libelle||'').toLowerCase().includes(filtreClient));
+    setEl('archivesCount',data.length);
+    if(!data.length){cont.innerHTML='<p style="color:var(--text3);font-size:12px;padding:10px;">Aucune note de frais archivée'+(filtreClient?' pour ce filtre':'')+'.</p>';return;}
+    const catEmojis={'Repas':'🍽','Transport':'🚗','Carburant':'⛽','Hébergement':'🏨','Fournitures':'📦','Téléphone':'📱','Formation':'📚','Autre':'📎'};
+    cont.innerHTML=data.map(f=>`
+      <div class="finance-item" style="flex-direction:column;align-items:stretch;gap:8px;opacity:.92;">
+        <div style="display:flex;align-items:center;gap:9px;">
+          <div style="width:32px;height:32px;border-radius:7px;background:rgba(240,153,31,.12);color:var(--amber);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">${catEmojis[f.categorie]||'📎'}</div>
+          <div style="flex:1;">
+            <div style="font-weight:600;font-size:12px;">${f.libelle||'—'}${f.categorie?` <span style="background:rgba(240,153,31,.15);color:var(--amber);padding:1px 6px;border-radius:10px;font-size:10px;">${f.categorie}</span>`:''}</div>
+            <div style="font-size:10px;color:var(--text3);">${f.date||'—'} · ${f.employe||'—'}${f.entreprise?' · '+f.entreprise:''}${f.dateArchivage?' · Archivée le '+f.dateArchivage:''}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;">
+            <div style="font-weight:700;font-size:13px;color:var(--amber);">${(f.montant||0).toFixed(2).replace('.',',')} €</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:6px;border-top:1px dashed var(--border);">
+          <button class="btn btn-ghost btn-sm" onclick="restaurerFrais('${f.id}')" style="color:var(--green);border-color:rgba(18,184,122,.3);"><i class="fas fa-undo"></i> Restaurer</button>
+          <button class="btn btn-danger btn-sm" onclick="supprimerFraisArchive('${f.id}')"><i class="fas fa-trash"></i></button>
         </div>
       </div>`).join('');
   }
@@ -15290,7 +15349,20 @@ function lingeAjouterLigne(pfx,nbLits){
         var fraisLocauxNouveaux = notesFraisData.filter(function(f) {
           return distFraisIds.indexOf(f.id) === -1 && deletedIds.indexOf(f.id) === -1;
         });
+        // Sauvegarder les flags archivée locaux AVANT remplacement (race condition : le reload Supabase
+        // peut arriver pendant que le debounce de sauvegarde est en cours, effaçant archivee:true local)
+        var _localArchiveeFlags = {};
+        notesFraisData.forEach(function(f) {
+          if (f.archivee) _localArchiveeFlags[f.id] = f.dateArchivage || true;
+        });
         notesFraisData = restoredFrais.concat(fraisLocauxNouveaux);
+        // Réappliquer les flags archivée locaux non encore persistés dans Supabase
+        notesFraisData.forEach(function(f) {
+          if (_localArchiveeFlags[f.id] && !f.archivee) {
+            f.archivee = true;
+            if (_localArchiveeFlags[f.id] !== true) f.dateArchivage = _localArchiveeFlags[f.id];
+          }
+        });
         setTimeout(function() {
           notesFraisData.forEach(function(f) {
             if (!f.photo || !f.photo.startsWith('http')) return;
