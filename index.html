@@ -1491,6 +1491,7 @@ tr{transition:background .12s;}
           <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;"><i class="fas fa-list-check" style="color:var(--accent);"></i> Mentions obligatoires DGFiP</div>
           <div class="form-row" style="margin-bottom:0;">
             <div class="form-group"><label>Client <span style="color:var(--red);">*</span></label><select id="facClient" onchange="remplirInfosFacture()"><option value="">— Sélectionner —</option></select></div>
+            <div id="facAvoirAlerte" style="display:none;"></div>
             <div class="form-group"><label>SIREN client</label><input type="text" id="facSirenClient" placeholder="123 456 789" maxlength="11" style="font-family:'DM Mono',monospace;"></div>
             <div class="form-group"><label>N° Facture <span style="color:var(--red);">*</span></label><input type="text" id="facNumero"></div>
             <div class="form-group"><label>Date d'émission <span style="color:var(--red);">*</span></label><input type="date" id="facDate" onchange="onFacDateChange()"></div>
@@ -1850,23 +1851,24 @@ tr{transition:background .12s;}
     <div id="tab-archives" class="tab-pane">
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">
         <div class="card" style="margin-bottom:0;padding:14px;text-align:center;">
-          <div style="font-size:24px;font-weight:800;color:var(--purple);" id="archivesCountTotal">0</div>
+          <div style="font-size:24px;font-weight:800;color:var(--purple);" id="archivesCountContrats">0</div>
           <div style="font-size:11px;color:var(--text3);margin-top:4px;">Contrats archivés</div>
         </div>
         <div class="card" style="margin-bottom:0;padding:14px;text-align:center;">
-          <div style="font-size:24px;font-weight:800;color:var(--teal);" id="archivesCountPrestation">0</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:4px;">Prestations</div>
+          <div style="font-size:24px;font-weight:800;color:var(--teal);" id="archivesCountFactures">0</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">Factures archivées</div>
         </div>
         <div class="card" style="margin-bottom:0;padding:14px;text-align:center;">
-          <div style="font-size:24px;font-weight:800;color:var(--accent);" id="archivesCountTravail">0</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:4px;">Contrats travail</div>
+          <div style="font-size:24px;font-weight:800;color:var(--accent);" id="archivesCountDevis">0</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">Devis archivés</div>
         </div>
       </div>
       <div class="card">
-        <div class="card-header">
-          <div class="card-icon" style="background:var(--purple-l);color:var(--purple);"><i class="fas fa-archive"></i></div>
-          <h3>Documents archivés</h3>
-          <span class="badge badge-purple" id="archivesCount">0</span>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:wrap;">
+          <button id="archTabContrats" class="btn btn-primary btn-sm" onclick="setArchiveTab('contrats')"><i class="fas fa-file-contract"></i> Contrats</button>
+          <button id="archTabFactures" class="btn btn-ghost btn-sm" onclick="setArchiveTab('factures')"><i class="fas fa-file-invoice"></i> Factures</button>
+          <button id="archTabDevis" class="btn btn-ghost btn-sm" onclick="setArchiveTab('devis')"><i class="fas fa-file-signature"></i> Devis</button>
+          <span style="flex:1;"></span>
           <select id="filtreArchiveType" style="font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:7px;background:var(--bg2);color:var(--text);cursor:pointer;" onchange="renderArchives()">
             <option value="">Tous types</option>
             <option value="prestation">Prestations</option>
@@ -1874,7 +1876,12 @@ tr{transition:background .12s;}
             <option value="cdd">CDD</option>
             <option value="avenant">Avenants</option>
           </select>
-          <input type="text" id="filtreArchiveClient" placeholder="Rechercher un client…" oninput="renderArchives()" style="font-size:11px;padding:5px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg2);color:var(--text);width:160px;">
+          <input type="text" id="filtreArchiveClient" placeholder="Rechercher…" oninput="renderArchives()" style="font-size:11px;padding:5px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg2);color:var(--text);width:140px;">
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <div class="card-icon" style="background:var(--purple-l);color:var(--purple);width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;"><i class="fas fa-archive" style="font-size:12px;"></i></div>
+          <h3 style="margin:0;font-size:13px;font-weight:700;flex:1;" id="archivesTitre">Contrats archivés</h3>
+          <span class="badge badge-purple" id="archivesCount">0</span>
         </div>
         <div id="archivesListe"></div>
       </div>
@@ -3344,7 +3351,7 @@ function chargerGestPlanning(){
     if(!planningPrevData[c.id]) planningPrevData[c.id]={};
     const entry = planningPrevData[c.id][dateKey]||{statut:'prevu',heuresReelles:_parseH(c.heures)||0,note:''};
     const hPrev = _parseH(c.heures)||0;
-    const statOpts=['prevu','prevu_passe','confirme','partiel','absent'].map(s=>`<option value="${s}"${entry.statut===s?' selected':''}>${{prevu:'⧖ Prévu',prevu_passe:'? À confirmer',confirme:'✓ Confirmé',partiel:'~ Partiel',absent:'✗ Absent'}[s]}</option>`).join('');
+    const statOpts=['prevu','prevu_passe','confirme','partiel','absent','absent_essentia'].map(s=>`<option value="${s}"${entry.statut===s?' selected':''}>${{prevu:'⧖ Prévu',prevu_passe:'? À confirmer',confirme:'✓ Confirmé',partiel:'~ Partiel',absent:'✗ Client absent',absent_essentia:'✗ Essentia indispo'}[s]}</option>`).join('');
     const interv = (c.interventions||[]).find(i=>i.jour===jourNom);
     const intervenant = interv?.intervenant||'—';
     return `<div class="gest-plan-row" data-cid="${_esc(c.id)}" data-key="${_esc(dateKey)}" style="border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:8px;background:var(--bg2);">
@@ -3478,7 +3485,7 @@ function chargerGestHeures(){
     <div style="border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:7px;background:var(--bg2);display:grid;grid-template-columns:1fr 90px 90px;gap:8px;align-items:center;">
       <div>
         <div style="font-weight:700;font-size:12px;">${_esc(c.nom)}</div>
-        <div style="font-size:10px;color:var(--text3);">${new Date(dk+'T12:00:00').toLocaleDateString('fr-FR')} · ${({prevu:'Prévu',prevu_passe:'À confirmer',confirme:'Confirmé',partiel:'Partiel',absent:'Absent'})[entry.statut]||entry.statut}</div>
+        <div style="font-size:10px;color:var(--text3);">${new Date(dk+'T12:00:00').toLocaleDateString('fr-FR')} · ${({prevu:'Prévu',prevu_passe:'À confirmer',confirme:'Confirmé',partiel:'Partiel',absent:'Client absent',absent_essentia:'Essentia indispo'})[entry.statut]||entry.statut}</div>
       </div>
       <div style="text-align:center;">
         <div style="font-size:10px;color:var(--text3);margin-bottom:2px;">Prévu</div>
@@ -4195,8 +4202,8 @@ function ouvrirDrawerJour(dateKey, jourNom){
       })() : '—';
       const ht = duree*(parseFloat(c.tarif)||0);
       const entryPrev = (_prev[c.id]||{})[dateKey];
-      const statutColor = {'confirme':'var(--green)','partiel':'var(--amber)','absent':'var(--red)','prevu':'var(--text3)','prevu_passe':'var(--amber)'}[entryPrev?.statut||'prevu'];
-      const statutLabel = {'confirme':'✓ Confirmé','partiel':'~ Partiel','absent':'✗ Absent','prevu':'⧖ Prévu','prevu_passe':'? À confirmer'}[entryPrev?.statut||'prevu'];
+      const statutColor = {'confirme':'var(--green)','partiel':'var(--amber)','absent':'var(--red)','absent_essentia':'#c2410c','prevu':'var(--text3)','prevu_passe':'var(--amber)'}[entryPrev?.statut||'prevu'];
+      const statutLabel = {'confirme':'✓ Confirmé','partiel':'~ Partiel','absent':'✗ Client absent','absent_essentia':'✗ Essentia indispo','prevu':'⧖ Prévu','prevu_passe':'? À confirmer'}[entryPrev?.statut||'prevu'];
       const borderStyle = c._deplaceVers ? 'border:1px solid #fed7aa;' : 'border:1px solid var(--border);';
       const bgStyle = c._deplaceVers ? 'background:rgba(249,115,22,.06);' : 'background:var(--bg3);';
       const depBadge = c._deplaceVers
@@ -4246,7 +4253,7 @@ function ouvrirDrawerJour(dateKey, jourNom){
         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
           ${!c._deplaceVers ? `<button class="btn btn-warning btn-sm" data-cid="${c.id}" data-date="${dateKey}" data-heure="${c.heureDebut||'09:00'}" data-nom="${c.nom.replace(/"/g,'&quot;')}" onclick="ouvrirModalDeplacement(this.dataset.cid,this.dataset.date,this.dataset.heure,this.dataset.nom)"><i class="fas fa-arrows-alt"></i> Déplacer</button>` : ''}
           ${c._deplaceVers && c._deplacement ? `<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;" onclick="if(confirm('Supprimer cette intervention ?')){annulerDeplacement('${c._deplacement.id}');fermerDrawerJour();}"><i class="fas fa-trash"></i> Supprimer</button>` : ''}
-          ${entryPrev?.statut !== 'absent' ? `<button class="btn btn-danger btn-sm" onclick="setPlanStatut('${c.id}','${dateKey}','absent');ouvrirDrawerJour('${dateKey}','${jourNom}');"><i class="fas fa-times-circle"></i> Absent</button>` : `<button class="btn btn-ghost btn-sm" onclick="setPlanStatut('${c.id}','${dateKey}','prevu');ouvrirDrawerJour('${dateKey}','${jourNom}');"><i class="fas fa-undo"></i> Rétablir</button>`}
+          ${['absent','absent_essentia'].includes(entryPrev?.statut) ? `<button class="btn btn-ghost btn-sm" onclick="setPlanStatut('${c.id}','${dateKey}','prevu');ouvrirDrawerJour('${dateKey}','${jourNom}');"><i class="fas fa-undo"></i> Rétablir</button>` : `<button class="btn btn-danger btn-sm" onclick="setPlanStatut('${c.id}','${dateKey}','absent');ouvrirDrawerJour('${dateKey}','${jourNom}');"><i class="fas fa-user-slash"></i> Client absent</button><button class="btn btn-sm" style="background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;" onclick="setPlanStatut('${c.id}','${dateKey}','absent_essentia');ouvrirDrawerJour('${dateKey}','${jourNom}');"><i class="fas fa-ban"></i> Je ne peux pas</button>`}
           ${(!entryPrev || entryPrev.statut==='prevu' || entryPrev.statut==='prevu_passe') ? `<button class="btn btn-success btn-sm" onclick="setPlanStatut('${c.id}','${dateKey}','confirme');ouvrirDrawerJour('${dateKey}','${jourNom}');"><i class="fas fa-check"></i> Confirmer</button>` : ''}
           <button class="btn btn-sm" style="background:#fef9c3;color:#854d0e;border:1.5px solid #fde68a;" onclick="stopperRecurrenceClient('${c.id}','${dateKey}','${jourNom}')" title="Arrêter la récurrence à partir de cette date"><i class="fas fa-ban"></i> Arrêter ici</button>
         </div>
@@ -4519,9 +4526,11 @@ function renderPlanningMois(containerId, offset){
         const _interv=(c.interventions||[]).find(i=>i.jour===jourNom);
         const _assigné=_interv?.intervenant||'';
         const _isAirbnb=c._airbnb||(c._deplacement&&(c.typeClient==='airbnb_particulier'||c.typeClient==='airbnb_agence'));
-        const _estAbsent=planningPrevData[c.id]?.[dateKey]?.statut==='absent';
-        const _cl=_estAbsent?{bg:'rgba(239,68,68,.18)',color:'#dc2626'}:_isAirbnb?{bg:'rgba(249,115,22,.18)',color:'#c2410c'}:c._deplacement?{bg:'rgba(245,158,11,.15)',color:'var(--amber)'}:_getCouleurSal(_assigné);
-        const _prefix=_estAbsent?'✗ ':_isAirbnb?'🏠 ':c._deplacement?'🔄 ':_assigné?'👤 ':'';
+        const _statAbsent=planningPrevData[c.id]?.[dateKey]?.statut;
+        const _estAbsent=_statAbsent==='absent';
+        const _estAbsentEss=_statAbsent==='absent_essentia';
+        const _cl=_estAbsent?{bg:'rgba(239,68,68,.18)',color:'#dc2626'}:_estAbsentEss?{bg:'rgba(194,65,12,.18)',color:'#c2410c'}:_isAirbnb?{bg:'rgba(249,115,22,.18)',color:'#c2410c'}:c._deplacement?{bg:'rgba(245,158,11,.15)',color:'var(--amber)'}:_getCouleurSal(_assigné);
+        const _prefix=_estAbsent?'✗ ':_estAbsentEss?'🚫 ':_isAirbnb?'🏠 ':c._deplacement?'🔄 ':_assigné?'👤 ':'';
         return `<div style="font-size:9px;background:${_cl.bg};color:${_cl.color};border-radius:4px;padding:1px 4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${c.nom}${_assigné?' · '+_assigné:''}${_isAirbnb?' · Airbnb':''}"><span style="font-weight:700;">${c.heureDebut||''}</span>${c.heureDebut?' ':''}${_prefix}${c.nom}</div>`;
       }).join('')}
     </div>`;
@@ -5233,7 +5242,7 @@ function sauvegarderModificationClient(){
   const id=window.currentEditClientId;const c=clientsData.find(x=>x.id===id);if(!c)return;
   c.nom=document.getElementById('editNom').value;
   c.tel=document.getElementById('editTel')?.value||c.tel||'';
-  c.email=document.getElementById('editEmail')?.value||c.email||'';
+  c.email=document.getElementById('editEmail')?.value??'';
   c.adresse=document.getElementById('editAdresse')?.value||c.adresse||'';
   c.adresseProprietaire=document.getElementById('editAdresseProprietaire')?.value??c.adresseProprietaire??'';
   c.entreprise=document.getElementById('editEntreprise').value;
@@ -6700,6 +6709,33 @@ function remplirInfosFacture(){
   mettreAJourTypeOp();
   calculerTotauxFacture();
   remplirLignesAuto();
+  // ── Alerte avoirs en cours pour ce client (non appliqués) ──
+  const avoirsClient=(facturesData||[]).filter(a=>a.type==='avoir'&&a.clientId===id&&a.statut!=='applique');
+  const alerte=document.getElementById('facAvoirAlerte');
+  if(alerte){
+    if(avoirsClient.length){
+      const totalAvoir=avoirsClient.reduce((s,a)=>s+(a.totalTTC||0),0);
+      const lignesAvoirs=avoirsClient.map(a=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;padding-top:6px;border-top:1px solid #fed7aa;">
+          <div>
+            <span style="font-weight:700;">${a.numero}</span>
+            <span style="color:#b45309;"> — ${a.motif||'—'}</span>
+            <span style="font-weight:700;margin-left:6px;">${a.totalTTC.toFixed(2).replace('.',',')} € TTC</span>
+          </div>
+          <button onclick="appliquerAvoir('${a.id}')" style="background:#f97316;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;margin-left:10px;">
+            ✓ Appliquer
+          </button>
+        </div>`).join('');
+      alerte.style.display='block';
+      alerte.innerHTML=`<div style="background:#fff7ed;border:1px solid #fed7aa;border-left:4px solid #f97316;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:11px;color:#92400e;">
+        <div style="font-weight:700;font-size:12px;">⚠️ Avoir${avoirsClient.length>1?'s':''} non appliqué${avoirsClient.length>1?'s':''} pour ce client — Total : <strong>${totalAvoir.toFixed(2).replace('.',',')} € TTC</strong></div>
+        ${lignesAvoirs}
+      </div>`;
+    } else {
+      alerte.style.display='none';
+      alerte.innerHTML='';
+    }
+  }
 }
 
 function mettreAJourTypeOp(){
@@ -7077,8 +7113,12 @@ function _refDoc(type, c, annee){
     return `DEV-${y}-${n}-${String(cnt).padStart(2,'0')}`;
   }
   if(type==='facture'){
-    const cnt=(facturesData||[]).filter(function(f){return f.clientId===c?.id&&(f.dateRaw||f.date||'').includes(String(y));}).length+1;
+    const cnt=(facturesData||[]).filter(function(f){return f.type!=='avoir'&&f.clientId===c?.id&&(f.dateRaw||f.date||'').includes(String(y));}).length+1;
     return `FAC-${y}-${n}-${String(cnt).padStart(2,'0')}`;
+  }
+  if(type==='avoir'){
+    const cnt=(facturesData||[]).filter(function(f){return f.type==='avoir'&&f.clientId===c?.id&&(f.dateRaw||f.date||'').includes(String(y));}).length+1;
+    return `AVO-${y}-${n}-${String(cnt).padStart(2,'0')}`;
   }
   if(type==='planning'){
     const m=String(new Date().getMonth()+1).padStart(2,'0');
@@ -7230,7 +7270,7 @@ function genererFacturePDF(opts){
   const _clientPrev=(planningPrevData&&clientId)?(planningPrevData[clientId]||{}):{};
   const _today=new Date().toISOString().split('T')[0];
   const _interventions=(!_isAirbnbPdf&&c.type!=='Acte')?Object.entries(_clientPrev)
-    .filter(([,entry])=>entry&&(entry.statut==='confirme'||entry.statut==='partiel'||entry.statut==='prevu'||entry.statut==='absent'))
+    .filter(([,entry])=>entry&&(entry.statut==='confirme'||entry.statut==='partiel'||entry.statut==='prevu'||entry.statut==='absent'||entry.statut==='absent_essentia'))
     .filter(([dateKey])=>{
       const d=new Date(dateKey);
       return d.getFullYear()===_periodeStart.getFullYear()&&d.getMonth()===_periodeStart.getMonth()&&dateKey<=_today;
@@ -7252,20 +7292,22 @@ function genererFacturePDF(opts){
     _interventions.forEach(([dateKey,entry],idx)=>{
       if(y>262){doc.addPage();y=M;}
       const _d=new Date(dateKey+'T12:00:00');
-      const _hReal=entry.statut==='absent'?0:(_parseH(entry.heuresReelles)||_parseH(c.heures)||0);
+      const _hReal=(entry.statut==='absent'||entry.statut==='absent_essentia')?0:(_parseH(entry.heuresReelles)||_parseH(c.heures)||0);
       const _st=entry.statut||'prevu';
       const _absent=_st==='absent';
+      const _absentEssentia=_st==='absent_essentia';
       const _partiel=_st==='partiel';
       const _prevu=_st==='prevu';
       const _confirme=_st==='confirme';
       // Fond coloré selon statut
-      if(_absent)      {doc.setFillColor(245,245,245);}
-      else if(_partiel){doc.setFillColor(255,250,240);}
-      else if(_prevu)  {doc.setFillColor(240,246,255);}
-      else             {if(idx%2===0){doc.setFillColor(252,253,255);}else{doc.setFillColor(246,248,252);}}
+      if(_absent)         {doc.setFillColor(245,245,245);}
+      else if(_absentEssentia){doc.setFillColor(255,247,237);}
+      else if(_partiel)   {doc.setFillColor(255,250,240);}
+      else if(_prevu)     {doc.setFillColor(240,246,255);}
+      else                {if(idx%2===0){doc.setFillColor(252,253,255);}else{doc.setFillColor(246,248,252);}}
       doc.rect(M,y,W-2*M,5.5,'F');
       // Date courte
-      const _tc=_absent?[150,150,150]:_prevu?[80,100,160]:[20,37,64];
+      const _tc=_absent?[150,150,150]:_absentEssentia?[194,65,12]:_prevu?[80,100,160]:[20,37,64];
       doc.setFontSize(7.5);doc.setFont('helvetica','normal');
       doc.setTextColor(_tc[0],_tc[1],_tc[2]);
       doc.text(_dd(_d),M+3,y+4);
@@ -7275,10 +7317,11 @@ function genererFacturePDF(opts){
       doc.text(fmtH(_hReal),M+50,y+4,{align:'right'});
       // Statut
       doc.setFontSize(6.5);doc.setFont('helvetica','italic');
-      if(_absent)      {doc.setTextColor(150,150,150);doc.text('Absent',M+54,y+4);}
-      else if(_partiel){doc.setTextColor(180,100,0);doc.text('Partiel',M+54,y+4);}
-      else if(_prevu)  {doc.setTextColor(29,78,216);doc.text('Pr\xe9vu',M+54,y+4);}
-      else             {doc.setTextColor(16,120,80);doc.text('Confirm\xe9',M+54,y+4);}
+      if(_absent)         {doc.setTextColor(150,150,150);doc.text('Client absent',M+54,y+4);}
+      else if(_absentEssentia){doc.setTextColor(194,65,12);doc.text('Annul\xe9 Essentia',M+54,y+4);}
+      else if(_partiel)   {doc.setTextColor(180,100,0);doc.text('Partiel',M+54,y+4);}
+      else if(_prevu)     {doc.setTextColor(29,78,216);doc.text('Pr\xe9vu',M+54,y+4);}
+      else                {doc.setTextColor(16,120,80);doc.text('Confirm\xe9',M+54,y+4);}
       // Montant
       doc.setFont('helvetica','bold');doc.setFontSize(7.5);
       doc.setTextColor(_tc[0],_tc[1],_tc[2]);
@@ -7455,29 +7498,52 @@ function renderHistoriqueFactures(){
   _alimenterFiltreMois();
   const filtre=document.getElementById('filtreStatutFac')?.value||'';
   const filtreMois=document.getElementById('filtreMoisFac')?.value||'';
-  let data=facturesData.slice().reverse();
-  if(filtreMois) data=data.filter(f=>_facMoisKey(f)===filtreMois);
-  if(filtre==='envoyee') data=data.filter(f=>f.statut==='envoyee');
-  else if(filtre==='payee') data=data.filter(f=>f.statut==='payee');
-  else if(filtre==='attente') data=data.filter(f=>f.statut!=='payee'&&f.statut!=='envoyee');
-  // Totaux de la sélection
-  const totalTTC=data.reduce((s,f)=>s+(f.totalTTC||0),0);
-  const totalHT=data.reduce((s,f)=>s+(f.totalHT||0),0);
-  setEl('factureCount',facturesData.length);
-  if(!data.length){cont.innerHTML='<p style="color:var(--text3);font-size:12px;padding:10px;">Aucune facture correspondante.</p>';return;}
+  // Tous les avoirs (pas filtrés — toujours rattachés à leur facture)
+  const tousAvoirs=facturesData.filter(f=>f.type==='avoir');
+  // Factures uniquement
+  let factures=facturesData.slice().reverse().filter(f=>f.type!=='avoir'&&f.statut!=='archivee');
+  if(filtreMois) factures=factures.filter(f=>_facMoisKey(f)===filtreMois);
+  if(filtre==='envoyee') factures=factures.filter(f=>f.statut==='envoyee');
+  else if(filtre==='payee') factures=factures.filter(f=>f.statut==='payee');
+  else if(filtre==='attente') factures=factures.filter(f=>f.statut!=='payee'&&f.statut!=='envoyee');
+  // Totaux
+  const totalHT=factures.reduce((s,f)=>s+(f.totalHT||0),0);
+  const totalTTC=factures.reduce((s,f)=>s+(f.totalTTC||0),0);
+  const totalAvoirs=tousAvoirs.reduce((s,a)=>s+(a.totalTTC||0),0);
+  const aEncaisser=facturesData.filter(f=>f.type!=='avoir'&&f.statut!=='payee'&&f.statut!=='archivee').reduce((s,f)=>s+(f.totalTTC||0),0)-totalAvoirs;
+  setEl('factureCount',facturesData.filter(f=>f.type!=='avoir'&&f.statut!=='archivee').length);
+  if(!factures.length){cont.innerHTML='<p style="color:var(--text3);font-size:12px;padding:10px;">Aucune facture correspondante.</p>';return;}
   const resumeHtml=`<div style="display:flex;gap:12px;flex-wrap:wrap;padding:8px 10px;background:var(--bg3);border-radius:8px;margin-bottom:10px;font-size:11px;">
-    <span style="color:var(--text2);">${data.length} facture${data.length>1?'s':''}</span>
+    <span style="color:var(--text2);">${factures.length} facture${factures.length>1?'s':''}</span>
     <span style="font-weight:700;color:var(--text);">HT : ${totalHT.toFixed(2).replace('.',',')} €</span>
     <span style="font-weight:700;color:var(--green);">TTC : ${totalTTC.toFixed(2).replace('.',',')} €</span>
-    <span style="color:var(--green);">Payées : ${data.filter(f=>f.statut==='payee').reduce((s,f)=>s+(f.totalTTC||0),0).toFixed(2).replace('.',',')} €</span>
-    <span style="color:var(--accent);">À encaisser : ${data.filter(f=>f.statut!=='payee').reduce((s,f)=>s+(f.totalTTC||0),0).toFixed(2).replace('.',',')} €</span>
+    <span style="color:var(--green);">Payées : ${factures.filter(f=>f.statut==='payee').reduce((s,f)=>s+(f.totalTTC||0),0).toFixed(2).replace('.',',')} €</span>
+    <span style="color:var(--accent);">À encaisser : ${aEncaisser.toFixed(2).replace('.',',')} €</span>
+    ${tousAvoirs.length?`<span style="color:#6366f1;font-weight:700;">Avoirs : −${totalAvoirs.toFixed(2).replace('.',',')} €</span>`:''}
   </div>`;
-  cont.innerHTML=resumeHtml+data.map(f=>{
+  const facturesHtml=factures.map(f=>{
+    const avoirsFacture=tousAvoirs.filter(a=>a.factureRef===f.id);
     const statutColor=f.statut==='payee'?'var(--green)':f.statut==='envoyee'?'var(--accent)':'var(--amber)';
     const statutLabel=f.statut==='payee'?'Payée':f.statut==='envoyee'?'Envoyée':'En attente';
     const typeOp=f.typeOp||'b2c';
     const typeLabel=typeOp==='b2b'?'B2B':typeOp==='export'?'Export':'B2C';
     const typeColor=typeOp==='b2b'?'#1d4ed8':typeOp==='export'?'var(--amber)':'#7c3aed';
+    const avoirsSousHtml=avoirsFacture.map(a=>{
+      const isApplique=a.statut==='applique';
+      return `
+      <div style="margin-top:6px;margin-left:16px;padding:8px 12px;background:${isApplique?'rgba(16,185,129,.04)':'rgba(99,102,241,.06)'};border-left:3px solid ${isApplique?'var(--green)':'#6366f1'};border-radius:0 8px 8px 0;display:flex;align-items:center;gap:8px;opacity:${isApplique?'.75':'1'};">
+        <i class="fas fa-file-minus" style="color:${isApplique?'var(--green)':'#6366f1'};font-size:11px;flex-shrink:0;"></i>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:11px;font-weight:700;color:${isApplique?'var(--green)':'#6366f1'};">${a.numero} ${isApplique?'<span style="background:rgba(16,185,129,.12);color:var(--green);padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;">✓ Appliqué</span>':''}</div>
+          <div style="font-size:10px;color:var(--text3);">${a.dateDisplay||'—'} · ${a.motif||'—'}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:12px;font-weight:700;color:${isApplique?'var(--green)':'#6366f1'};">−${a.totalTTC.toFixed(2).replace('.',',')} € TTC</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="genererAvoirPDF(facturesData.find(x=>x.id==='${a.id}'))" title="Télécharger PDF avoir"><i class="fas fa-download"></i></button>
+        <button class="btn btn-danger btn-sm" onclick="supprimerFacture('${a.id}')" title="Supprimer l'avoir"><i class="fas fa-trash"></i></button>
+      </div>`;
+    }).join('');
     return `<div class="finance-item" style="flex-direction:column;align-items:stretch;gap:8px;">
       <div style="display:flex;align-items:center;gap:9px;">
         <div style="width:32px;height:32px;border-radius:7px;background:rgba(29,78,216,.1);color:#1d4ed8;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;"><i class="fas fa-file-invoice"></i></div>
@@ -7502,11 +7568,16 @@ function renderHistoriqueFactures(){
         <button class="btn btn-sm" style="background:rgba(5,150,105,.1);color:#059669;border:1px solid rgba(5,150,105,.2);" onclick="ouvrirModalPlateformeId('${f.id}')"><i class="fas fa-upload"></i> Plateforme</button>
         <button class="btn btn-primary btn-sm" onclick="envoyerFactureEmailId('${f.id}')"><i class="fas fa-envelope"></i> Email</button>
         ${typeOp!=='b2b'?`<button class="btn btn-sm" style="background:rgba(124,58,237,.1);color:#7c3aed;border:1px solid rgba(124,58,237,.2);" onclick="toast('E-reporting B2C : déposez le XML sur votre plateforme agréée','info')"><i class="fas fa-upload"></i> E-reporting</button>`:''}
+        <button class="btn btn-sm" style="background:rgba(99,102,241,.1);color:#6366f1;border:1px solid rgba(99,102,241,.2);" onclick="creerAvoir('${f.id}')"><i class="fas fa-file-minus"></i> Avoir</button>
         ${f.statut!=='payee'?`<button class="btn btn-success btn-sm" onclick="marquerPayee('${f.id}')"><i class="fas fa-check"></i> Payée</button>`:''}
+        ${f.statut==='payee'?`<button class="btn btn-ghost btn-sm" onclick="archiverFacture('${f.id}')" style="color:var(--purple);border-color:rgba(124,108,240,.3);" title="Archiver cette facture"><i class="fas fa-archive"></i> Archiver</button>`:''}
         <button class="btn btn-danger btn-sm" onclick="supprimerFacture('${f.id}')"><i class="fas fa-trash"></i></button>
       </div>
+      ${avoirsSousHtml}
     </div>`;
   }).join('');
+  // Supprimer le filtre "avoir" du select s'il existe (obsolète)
+  cont.innerHTML=resumeHtml+facturesHtml;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -7920,7 +7991,7 @@ function _regenererContratPDFb64(contrat){
         +'Une majoration ou minoration peut s\'appliquer selon le calendrier, les jours fériés ou toute modification convenue entre les parties.'
       : 'Facturation à l\'acte selon les interventions réalisées.';
     var _creditImpot = (!_isEntreprise)
-      ? 'Avantage fiscal : Le Client peut bénéficier d\'un crédit d\'impôt de 50 % des sommes versées pour des services à domicile (plafonds légaux en vigueur — Art. 199 sexdecies du CGI).'
+      ? 'Avantage fiscal : Le Client peut bénéficier d\'un crédit d\'impôt de 50 % des sommes versées pour des services à domicile (plafonds légaux en vigueur — Art. 199 sexdecies du CGI).'
       : '';
     var _paiement = _isEntreprise
       ? 'Modalités de paiement : Virement bancaire sous 30 jours à réception de facture.'
@@ -8169,6 +8240,235 @@ function supprimerFacture(id){
   toastConfirm('Facture supprimée');
 }
 
+function appliquerAvoir(avoirId){
+  const a=facturesData.find(x=>x.id===avoirId);if(!a)return;
+  // Ajoute une ligne de déduction négative dans la facture en cours
+  lignesFactureData.push({
+    desc:'D\xe9duction avoir '+a.numero+' — '+a.motif,
+    qte:1, unite:'forfait', prixUnit:-a.totalHT
+  });
+  // Marque l'avoir comme appliqué
+  a.statut='applique';
+  sauvegarderTout(true);
+  renderLignesFacture();
+  calculerTotauxFacture();
+  // Rafraîchit uniquement la bannière (sans remplirInfosFacture qui écrase les lignes)
+  const clientId=document.getElementById('facClient')?.value;
+  const alerte=document.getElementById('facAvoirAlerte');
+  if(alerte&&clientId){
+    const avoirsRestants=(facturesData||[]).filter(x=>x.type==='avoir'&&x.clientId===clientId&&x.statut!=='applique');
+    if(!avoirsRestants.length){alerte.style.display='none';alerte.innerHTML='';}
+    else{
+      const total=avoirsRestants.reduce((s,x)=>s+(x.totalTTC||0),0);
+      const lignes=avoirsRestants.map(x=>`<div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;padding-top:6px;border-top:1px solid #fed7aa;"><div><span style="font-weight:700;">${x.numero}</span><span style="color:#b45309;"> — ${x.motif||'—'}</span><span style="font-weight:700;margin-left:6px;">${x.totalTTC.toFixed(2).replace('.',',')} € TTC</span></div><button onclick="appliquerAvoir('${x.id}')" style="background:#f97316;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;margin-left:10px;">✓ Appliquer</button></div>`).join('');
+      alerte.innerHTML=`<div style="background:#fff7ed;border:1px solid #fed7aa;border-left:4px solid #f97316;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:11px;color:#92400e;"><div style="font-weight:700;font-size:12px;">⚠️ Avoir${avoirsRestants.length>1?'s':''} non appliqu\xe9${avoirsRestants.length>1?'s':''} — Total : <strong>${total.toFixed(2).replace('.',',')} € TTC</strong></div>${lignes}</div>`;
+    }
+  }
+  toast('Avoir '+a.numero+' appliqu\xe9 — ligne de d\xe9duction ajout\xe9e','success');
+}
+window.appliquerAvoir=appliquerAvoir;
+
+function creerAvoir(factureId){
+  const f=facturesData.find(x=>x.id===factureId);if(!f)return;
+  document.getElementById('avoirFactureRef').textContent=f.numero;
+  document.getElementById('avoirFactureId').value=factureId;
+  document.getElementById('avoirMontantTTC').textContent=f.totalTTC.toFixed(2).replace('.',',')+' €';
+  document.getElementById('avoirMontantHTSaisie').value=f.totalHT.toFixed(2);
+  document.getElementById('avoirTaux').value=f.tva||10;
+  document.getElementById('avoirDate').value=new Date().toISOString().split('T')[0];
+  document.getElementById('avoirMotif').value='';
+  document.getElementById('avoirTypeSelect').value='total';
+  _avoirTogglePartiel();
+  document.getElementById('modalAvoir').style.display='flex';
+}
+window.creerAvoir=creerAvoir;
+
+function _avoirTogglePartiel(){
+  const isPartiel=document.getElementById('avoirTypeSelect').value==='partiel';
+  document.getElementById('avoirPartielFields').style.display=isPartiel?'block':'none';
+}
+window._avoirTogglePartiel=_avoirTogglePartiel;
+
+function fermerModalAvoir(){document.getElementById('modalAvoir').style.display='none';}
+window.fermerModalAvoir=fermerModalAvoir;
+
+function confirmerAvoir(){
+  const factureId=document.getElementById('avoirFactureId').value;
+  const f=facturesData.find(x=>x.id===factureId);if(!f)return;
+  const motif=document.getElementById('avoirMotif').value.trim()||'Avoir';
+  const date=document.getElementById('avoirDate').value||new Date().toISOString().split('T')[0];
+  const isPartiel=document.getElementById('avoirTypeSelect').value==='partiel';
+  const tva=parseFloat(f.tva)||10;
+  let totalHT,totalTTC;
+  if(isPartiel){
+    totalHT=parseFloat(document.getElementById('avoirMontantHTSaisie').value)||0;
+    if(totalHT<=0){toast('Montant invalide','warning');return;}
+    if(totalHT>f.totalHT){toast('Le montant ne peut pas dépasser la facture originale','warning');return;}
+    totalTTC=Math.round(totalHT*(1+tva/100)*100)/100;
+  } else {
+    totalHT=f.totalHT; totalTTC=f.totalTTC;
+  }
+  const c=clientsData.find(x=>x.id===f.clientId)||{};
+  const numero=_refDoc('avoir',c,new Date(date).getFullYear());
+  const avoir={
+    id:'AVO'+Date.now(), type:'avoir', numero,
+    client:f.client, clientId:f.clientId,
+    date, dateDisplay:new Date(date+'T12:00:00').toLocaleDateString('fr-FR'), dateRaw:date,
+    factureRef:factureId, factureNumero:f.numero,
+    motif, totalHT, totalTTC, tva, statut:'emis'
+  };
+  facturesData.push(avoir);
+  sauvegarderTout(true);
+  renderHistoriqueFactures();
+  fermerModalAvoir();
+  genererAvoirPDF(avoir);
+  toast('Avoir '+numero+' créé','success');
+}
+window.confirmerAvoir=confirmerAvoir;
+
+function genererAvoirPDF(avoir){
+  if(!avoir){toast('Avoir introuvable','error');return;}
+  const {jsPDF}=window.jspdf;if(!jsPDF){toast('PDF non disponible','error');return;}
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const W=210,M=15;
+  const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
+  const nomSoc=p.nomSociete||'Essentia Services';
+  const adresseSoc=(p.adresse||'').replace(/\n/g,' ');
+  const telSoc=p.tel||'';
+  const emailSoc=p.email||'';
+  const siretSoc=p.siret||'';
+  const tvaSoc=p.tvaIntra||'';
+  const formeSoc=p.forme||'';
+  const mentionLeg=p.mentionLegale||'';
+  const logoB64=localStorage.getItem('progestLogo')||null;
+  const c=clientsData.find(x=>x.id===avoir.clientId)||{nom:avoir.client};
+  const fmt2=n=>Number(n).toFixed(2).replace('.',',');
+  const tva=parseFloat(avoir.tva)||10;
+  const montantTVA=Math.round((avoir.totalTTC-avoir.totalHT)*100)/100;
+  let y=M;
+
+  // ── En-tête société (même bandeau que facture) ────────────
+  doc.setFillColor(14,32,64);
+  doc.roundedRect(M,y,W-2*M,30,3,3,'F');
+  if(logoB64){
+    try{doc.addImage(logoB64,'PNG',M+4,y+4,22,22);}catch(e){}
+    doc.setTextColor(255,255,255);doc.setFontSize(14);doc.setFont('helvetica','bold');
+    doc.text(nomSoc,M+30,y+11);
+    doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(180,200,240);
+    if(formeSoc) doc.text(formeSoc,M+30,y+17);
+    if(adresseSoc) doc.text(adresseSoc,M+30,y+22);
+    if(telSoc||emailSoc) doc.text([telSoc,emailSoc].filter(Boolean).join(' · '),M+30,y+27);
+  } else {
+    doc.setTextColor(255,255,255);doc.setFontSize(14);doc.setFont('helvetica','bold');
+    doc.text(nomSoc,M+5,y+11);
+    doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(180,200,240);
+    if(formeSoc) doc.text(formeSoc,M+5,y+17);
+    if(adresseSoc) doc.text(adresseSoc,M+5,y+22);
+    if(telSoc||emailSoc) doc.text([telSoc,emailSoc].filter(Boolean).join(' · '),M+5,y+27);
+  }
+  // Titre AVOIR côté droit
+  doc.setTextColor(255,220,100);doc.setFontSize(12);doc.setFont('helvetica','bold');
+  doc.text('AVOIR N\xb0 '+avoir.numero,W-M-5,y+10,{align:'right'});
+  doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(180,200,240);
+  doc.text('Date : '+avoir.dateDisplay,W-M-5,y+17,{align:'right'});
+  doc.text('R\xe9f. facture : '+avoir.factureNumero,W-M-5,y+23,{align:'right'});
+  if(siretSoc) doc.text('SIRET : '+siretSoc,W-M-5,y+29,{align:'right'});
+  y+=36;
+
+  // ── Blocs Prestataire / Client (même style que facture) ───
+  const colW2=87,colGap=W/2+2,maxTxt=colW2-8,lh=5;
+  doc.setFontSize(9);doc.setFont('helvetica','bold');
+  const nomSocLines=doc.splitTextToSize(nomSoc,maxTxt);
+  const clientNomLines=doc.splitTextToSize(c.nom||'—',maxTxt);
+  doc.setFontSize(8);doc.setFont('helvetica','normal');
+  const adresseSocLines=adresseSoc?doc.splitTextToSize(adresseSoc,maxTxt):[];
+  const adresseClientLines=c.adresse?doc.splitTextToSize(c.adresse,maxTxt):[];
+  const communeClientLines=c.commune?doc.splitTextToSize(c.commune,maxTxt):[];
+  const emailClientLines=c.email?doc.splitTextToSize(c.email,maxTxt):[];
+  const telClientLines=c.tel?doc.splitTextToSize('T\xe9l : '+c.tel,maxTxt):[];
+  const telSocLines=telSoc?doc.splitTextToSize('T\xe9l : '+telSoc,maxTxt):[];
+  const emailSocLines2=emailSoc?doc.splitTextToSize(emailSoc,maxTxt):[];
+  const leftH=8+(nomSocLines.length*lh)+(siretSoc?lh:0)+(adresseSocLines.length*lh)+(telSocLines.length*lh)+(emailSocLines2.length*lh)+2;
+  const rightH=8+(clientNomLines.length*lh)+(adresseClientLines.length*lh)+(communeClientLines.length*lh)+(emailClientLines.length*lh)+(telClientLines.length*lh)+2;
+  const boxH=Math.max(leftH,rightH,28);
+  doc.setDrawColor(0,0,0);doc.setLineWidth(0.3);
+  doc.rect(M,y,colW2,boxH);doc.rect(colGap,y,colW2,boxH);
+  doc.setFontSize(7);doc.setFont('helvetica','bold');doc.setTextColor(0,0,0);
+  doc.text('LE PRESTATAIRE',M+3,y+5);doc.text('LE CLIENT',colGap+3,y+5);
+  let yL=y+10,yR=y+10;
+  doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(20,37,64);
+  nomSocLines.forEach(l=>{doc.text(l,M+3,yL);yL+=lh;});
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
+  if(siretSoc){doc.text('SIRET : '+siretSoc,M+3,yL);yL+=lh;}
+  adresseSocLines.forEach(l=>{doc.text(l,M+3,yL);yL+=lh;});
+  telSocLines.forEach(l=>{doc.text(l,M+3,yL);yL+=lh;});
+  emailSocLines2.forEach(l=>{doc.text(l,M+3,yL);yL+=lh;});
+  doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(20,37,64);
+  clientNomLines.forEach(l=>{doc.text(l,colGap+3,yR);yR+=lh;});
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
+  adresseClientLines.forEach(l=>{doc.text(l,colGap+3,yR);yR+=lh;});
+  communeClientLines.forEach(l=>{doc.text(l,colGap+3,yR);yR+=lh;});
+  emailClientLines.forEach(l=>{doc.text(l,colGap+3,yR);yR+=lh;});
+  telClientLines.forEach(l=>{doc.text(l,colGap+3,yR);yR+=lh;});
+  y+=boxH+8;
+
+  // ── Motif ─────────────────────────────────────────────────
+  doc.setFillColor(238,242,255);doc.rect(M,y,W-2*M,10,'F');
+  doc.setFontSize(8.5);doc.setFont('helvetica','bold');doc.setTextColor(79,70,229);
+  doc.text('Motif : '+avoir.motif,M+3,y+6.5);
+  y+=16;
+
+  // ── Table ─────────────────────────────────────────────────
+  const cols=[95,25,25,35];
+  doc.setFillColor(14,32,64);doc.rect(M,y,W-2*M,7,'F');
+  doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.setTextColor(255,255,255);
+  let cx=M+2;
+  ['Description','Qt\xe9','TVA','Montant HT'].forEach((h,i)=>{doc.text(h,cx,y+5);cx+=cols[i];});
+  y+=7;
+  doc.setFillColor(248,247,255);doc.rect(M,y,W-2*M,9,'F');
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(20,37,64);
+  cx=M+2;
+  const desc=doc.splitTextToSize('Avoir sur '+avoir.factureNumero+' — '+avoir.motif,cols[0]-4);
+  doc.text(desc,cx,y+5);
+  cx+=cols[0];doc.text('1',cx,y+5);
+  cx+=cols[1];doc.text(tva+'%',cx,y+5);
+  cx+=cols[2];doc.text(fmt2(avoir.totalHT)+' €',cx+cols[3]-4,y+5,{align:'right'});
+  y+=13;
+
+  // ── Totaux ────────────────────────────────────────────────
+  [['Total HT',fmt2(avoir.totalHT)+' €'],['TVA '+tva+'%',fmt2(montantTVA)+' €'],['TOTAL AVOIR TTC',fmt2(avoir.totalTTC)+' €']].forEach(([lbl,val],i)=>{
+    const isLast=i===2;
+    if(isLast){doc.setFillColor(14,32,64);doc.rect(W-M-75,y,75,8,'F');doc.setTextColor(255,220,100);doc.setFont('helvetica','bold');doc.setFontSize(9);}
+    else{doc.setTextColor(60,60,60);doc.setFont('helvetica','normal');doc.setFontSize(8);}
+    doc.text(lbl,W-M-72,y+5.5);
+    doc.text(val,W-M-2,y+5.5,{align:'right'});
+    y+=8;
+  });
+  y+=6;
+
+  // ── Note avoir ────────────────────────────────────────────
+  doc.setFontSize(8);doc.setFont('helvetica','italic');doc.setTextColor(79,70,229);
+  doc.text('Cet avoir sera d\xe9duit de votre prochaine facture ou rembours\xe9 selon accord.',M,y);
+  y+=8;
+
+  // ── Pied de page légal (identique facture) ────────────────
+  const pageH=doc.internal.pageSize.getHeight();
+  doc.setDrawColor(200,215,240);doc.setLineWidth(0.3);
+  doc.line(M,pageH-30,W-M,pageH-30);
+  doc.setTextColor(120,140,170);doc.setFontSize(6);doc.setFont('helvetica','normal');
+  const footerLines=[
+    nomSoc+(formeSoc?' — '+formeSoc:'')+(siretSoc?' · SIRET : '+siretSoc:'')+(p.numSAP?' · Agr\xe9ment SAP : '+p.numSAP:''),
+    ...(p.assurance?['Assurance RCP : n\xb0 '+p.assurance]:[]),
+    ...(tva===0?[mentionLeg||'Exon\xe9ration de TVA — Art. 261 D 4\xb0 du CGI (services \xe0 la personne agr\xe9\xe9s)']:[]),
+    'Avoir \xe9mis conform\xe9ment \xe0 l\'article 289 du CGI. Document tenant lieu de facture rectificative.',
+    'En cas de litige, le tribunal comp\xe9tent est le Tribunal de Commerce de Troyes (10000).'+(tvaSoc?' N\xb0 TVA : '+tvaSoc:''),
+  ];
+  doc.text(footerLines,M,pageH-25,{lineHeightFactor:1.4,maxWidth:W-2*M});
+
+  doc.save('AVOIR_'+avoir.numero+'.pdf');
+}
+window.genererAvoirPDF=genererAvoirPDF;
+
 function reediterFacture(id){
   const f=facturesData.find(x=>x.id===id);if(!f)return;
   const {jsPDF}=window.jspdf;if(!jsPDF)return;
@@ -8220,7 +8520,7 @@ function calculerStats(){
   setEl('statsSalaries',salariesData.length);
   setEl('statsMasseSalariale',masseSal.toFixed(0)+' €');
   setEl('kpiMasseSal',masseSal.toFixed(2)+' €');
-  const impayees=facturesData.filter(f=>f.statut!=='payee').length;
+  const impayees=facturesData.filter(f=>f.type!=='avoir'&&f.statut!=='payee').length;
   setEl('statsImpayees',impayees);
   const tva10=clientsData.filter(c=>getTVAClient(c)===10).reduce((s,c)=>s+(c.totalMoisHT||0)*0.1,0);
   const tva20=clientsData.filter(c=>getTVAClient(c)===20).reduce((s,c)=>s+(c.totalMoisHT||0)*0.2,0);
@@ -8258,7 +8558,7 @@ function chargerAccueil(){
   const clientsHab=clientsData.filter(function(c){
     if(!(_getJoursClientDate?_getJoursClientDate(c,dateKey):(c.jours||[])).includes(jourNom)) return false;
     const entry=(planningPrevData[c.id]||{})[dateKey];
-    if(entry&&entry.statut==='absent') return false;
+    if(entry&&(entry.statut==='absent'||entry.statut==='absent_essentia')) return false;
     if(clientEstAbsentCeJour(c.id,dateKey)) return false;
     return true;
   });
@@ -8275,8 +8575,8 @@ function chargerAccueil(){
   if(divT)divT.innerHTML=todayI.map(function(c){
     const entry=(planningPrevData[c.id]||{})[dateKey];
     const statut=entry?entry.statut:'prevu';
-    const statutColors={confirme:'var(--green)',absent:'var(--red)',partiel:'var(--amber)',prevu:'var(--accent)',prevu_passe:'var(--amber)'};
-    const statutIcons={confirme:'✓',absent:'✗',partiel:'~',prevu:'⧖',prevu_passe:'?'};
+    const statutColors={confirme:'var(--green)',absent:'var(--red)',absent_essentia:'#c2410c',partiel:'var(--amber)',prevu:'var(--accent)',prevu_passe:'var(--amber)'};
+    const statutIcons={confirme:'✓',absent:'✗',absent_essentia:'✗',partiel:'~',prevu:'⧖',prevu_passe:'?'};
     const bColor=c._airbnb?'#f97316':statutColors[statut]||'var(--accent)';
     const prefix=c._airbnb?'🏠 ':c._dep?'🔄 ':'';
     return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:8px;margin-bottom:6px;border:1px solid var(--border);font-size:12px;">
@@ -11038,7 +11338,7 @@ function confirmerAnnulation() {
   fermerModalAnnulation();
   afficherInterventionsList();
   if(typeof renderPlanningMois==='function') renderPlanningMois('planningMoisCalendar', planningMoisOffset);
-  const motifLabel = {replanifier:'À replanifier', client_annule:'Client annulé', autre:'Autre'}[interv.motifAnnulation]||'';
+  const motifLabel = {replanifier:'Client replanifie', client_annule:'Client annulé', replanifier_essentia:'Je replanifie', essentia_annule:'Essentia annulé', autre:'Autre'}[interv.motifAnnulation]||'';
   toast('Intervention annulée — ' + motifLabel, 'warning');
 }
 function fermerModalAnnulation() {
@@ -11078,7 +11378,7 @@ window._annulDrawer = _annulDrawer;
 const statutColors = { planifie: 'var(--amber)', confirme: 'var(--accent)', realise: 'var(--green)', annule: 'var(--red)' };
 const statutLabels = { planifie: 'Planifié', confirme: 'Confirmé', realise: 'Réalisé', annule: '✗ Annulé' };
 const typeColors = { 'Ménage': '#3b82f6', 'Repassage': '#ec4899', 'Airbnb': '#10b981', 'Ponctuel': '#f59e0b' };
-const motifLabels = { replanifier: '🔄 À replanifier', client_annule: '✗ Client annulé', autre: 'Autre' };
+const motifLabels = { replanifier: '🔄 Client replanifie', client_annule: '✗ Client annulé', replanifier_essentia: '🔄 Essentia replanifie', essentia_annule: '✗ Essentia annulé', autre: 'Autre' };
 
 function afficherInterventionsList() {
   const cont = document.getElementById('interventionsList');
@@ -11092,7 +11392,7 @@ function afficherInterventionsList() {
     .slice(0, 10);
 
   // À replanifier
-  const areplanifier = interventionsData.filter(i => i.statut === 'annule' && i.motifAnnulation === 'replanifier');
+  const areplanifier = interventionsData.filter(i => i.statut === 'annule' && (i.motifAnnulation === 'replanifier' || i.motifAnnulation === 'replanifier_essentia'));
 
   let html = '';
 
@@ -11338,52 +11638,163 @@ function restaurerContrat(id){
   toast(`Contrat ${c.ref} restauré ✓`,'success');
 }
 
+function archiverFacture(id){
+  const f=facturesData.find(x=>x.id===id);if(!f)return;
+  if(!confirm('Archiver la facture '+f.numero+' ?\nElle sera accessible dans la section Archives.'))return;
+  f.statut='archivee';f.dateArchivage=new Date().toLocaleDateString('fr-FR');
+  _archiveTab='factures';
+  sauvegarderTout(true);renderHistoriqueFactures();renderArchives();calculerStats();
+  toast('Facture '+f.numero+' archivée ✓','info');
+}
+window.archiverFacture=archiverFacture;
+
+function restaurerFacture(id){
+  const f=facturesData.find(x=>x.id===id);if(!f)return;
+  f.statut='payee';delete f.dateArchivage;
+  sauvegarderTout(true);renderHistoriqueFactures();renderArchives();calculerStats();
+  toast('Facture '+f.numero+' restaurée ✓','success');
+}
+window.restaurerFacture=restaurerFacture;
+
+function supprimerFactureArchivee(id){
+  if(!confirm('Supprimer définitivement cette facture archivée ?'))return;
+  facturesData=facturesData.filter(x=>x.id!==id);
+  sauvegarderTout(true);renderArchives();calculerStats();
+  toast('Facture supprimée','info');
+}
+window.supprimerFactureArchivee=supprimerFactureArchivee;
+
+function archiverDevis(id){
+  const d=devisData.find(x=>x.id===id);if(!d)return;
+  if(!confirm('Archiver le devis '+d.numero+' ?\nIl sera accessible dans la section Archives.'))return;
+  d._statutAvantArchive=d.statut;
+  d.statut='archive';d.dateArchivage=new Date().toLocaleDateString('fr-FR');
+  _archiveTab='devis';
+  sauvegarderTout(true);renderHistoriqueDevis();renderArchives();
+  toast('Devis '+d.numero+' archivé ✓','info');
+}
+window.archiverDevis=archiverDevis;
+
+function restaurerDevis(id){
+  const d=devisData.find(x=>x.id===id);if(!d)return;
+  d.statut=d._statutAvantArchive||'en_attente';delete d.dateArchivage;delete d._statutAvantArchive;
+  sauvegarderTout(true);renderHistoriqueDevis();renderArchives();
+  toast('Devis '+d.numero+' restauré ✓','success');
+}
+window.restaurerDevis=restaurerDevis;
+
+function supprimerDevisArchive(id){
+  if(!confirm('Supprimer définitivement ce devis archivé ?'))return;
+  devisData=devisData.filter(x=>x.id!==id);
+  sauvegarderTout(true);renderArchives();
+  toast('Devis supprimé','info');
+}
+window.supprimerDevisArchive=supprimerDevisArchive;
+
 function initArchives(){
+  setArchiveTab(_archiveTab||'contrats');
+}
+
+let _archiveTab='contrats';
+function setArchiveTab(tab){
+  _archiveTab=tab;
+  ['contrats','factures','devis'].forEach(t=>{
+    const b=document.getElementById('archTab'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(b) b.className='btn btn-sm '+(t===tab?'btn-primary':'btn-ghost');
+  });
+  const ft=document.getElementById('filtreArchiveType');
+  if(ft) ft.style.display=tab==='contrats'?'':'none';
   renderArchives();
 }
+window.setArchiveTab=setArchiveTab;
 
 function renderArchives(){
   const cont=document.getElementById('archivesListe'); if(!cont) return;
-  const filtreType=document.getElementById('filtreArchiveType')?.value||'';
   const filtreClient=(document.getElementById('filtreArchiveClient')?.value||'').toLowerCase();
-  let data=contratsData.slice().reverse().filter(c=>c.statut==='archivé');
-  if(filtreType) data=data.filter(c=>c.type===filtreType);
-  if(filtreClient) data=data.filter(c=>(c.clientOuSalarie||'').toLowerCase().includes(filtreClient));
-  // Stats
-  const all=contratsData.filter(c=>c.statut==='archivé');
-  setEl('archivesCountTotal',all.length);
-  setEl('archivesCountPrestation',all.filter(c=>c.type==='prestation').length);
-  setEl('archivesCountTravail',all.filter(c=>c.type==='cdi'||c.type==='cdd').length);
-  setEl('archivesCount',data.length);
-  if(!data.length){
-    cont.innerHTML='<p style="color:var(--text3);font-size:12px;padding:10px;">Aucun document archivé'+(filtreType||filtreClient?' pour ce filtre':'')+'.</p>';
-    return;
-  }
-  const icons={prestation:'fas fa-handshake',cdi:'fas fa-id-card',cdd:'fas fa-calendar-alt',avenant:'fas fa-edit'};
-  const colors={prestation:'var(--accent)',cdi:'var(--purple)',cdd:'var(--teal)',avenant:'var(--amber)'};
-  const typeLabels={prestation:'Prestation',cdi:'CDI',cdd:'CDD',avenant:'Avenant'};
-  cont.innerHTML=data.map(c=>{
-    const snap=c.snapshot||{};
-    const snapInfo=snap.tarif?`${snap.tarif}€/h · ${snap.heures?((h=>{const hr=Math.floor(h);const mn=Math.round((h-hr)*60);return mn>0?`${hr}h${String(mn).padStart(2,'0')}`:`${hr}h`;})(snap.heures)):'—'}/intervention · ${snap.frequence||'—'}`:'' ;
-    return `
-    <div class="finance-item" style="flex-direction:column;align-items:stretch;gap:8px;opacity:.92;">
-      <div style="display:flex;align-items:center;gap:9px;">
-        <div style="width:32px;height:32px;border-radius:7px;background:rgba(124,108,240,.1);color:${colors[c.type]||'var(--purple)'};display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;"><i class="${icons[c.type]||'fas fa-file-contract'}"></i></div>
-        <div style="flex:1;">
-          <div style="font-weight:600;font-size:12px;">${c.ref} — ${c.clientOuSalarie}</div>
-          <div style="font-size:10px;color:var(--text3);">Signé le ${c.date} · <span class="badge badge-purple">${typeLabels[c.type]||c.type}</span>${c.dateArchivage?` · Archivé le ${c.dateArchivage}`:''}</div>
-          ${snapInfo?`<div style="font-size:10px;color:var(--purple);margin-top:3px;"><i class="fas fa-camera" style="font-size:9px;"></i> ${snapInfo}</div>`:''}
+  // Stats globales
+  setEl('archivesCountContrats',contratsData.filter(c=>c.statut==='archivé').length);
+  setEl('archivesCountFactures',facturesData.filter(f=>f.type!=='avoir'&&f.statut==='archivee').length);
+  setEl('archivesCountDevis',devisData.filter(d=>d.statut==='archive').length);
+  const tab=_archiveTab||'contrats';
+  if(tab==='contrats'){
+    setEl('archivesTitre','Contrats archivés');
+    const filtreType=document.getElementById('filtreArchiveType')?.value||'';
+    let data=contratsData.slice().reverse().filter(c=>c.statut==='archivé');
+    if(filtreType) data=data.filter(c=>c.type===filtreType);
+    if(filtreClient) data=data.filter(c=>(c.clientOuSalarie||'').toLowerCase().includes(filtreClient));
+    setEl('archivesCount',data.length);
+    if(!data.length){cont.innerHTML='<p style="color:var(--text3);font-size:12px;padding:10px;">Aucun contrat archivé'+(filtreType||filtreClient?' pour ce filtre':'')+'.</p>';return;}
+    const icons={prestation:'fas fa-handshake',cdi:'fas fa-id-card',cdd:'fas fa-calendar-alt',avenant:'fas fa-edit'};
+    const colors={prestation:'var(--accent)',cdi:'var(--purple)',cdd:'var(--teal)',avenant:'var(--amber)'};
+    const typeLabels={prestation:'Prestation',cdi:'CDI',cdd:'CDD',avenant:'Avenant'};
+    cont.innerHTML=data.map(c=>{
+      const snap=c.snapshot||{};
+      const snapInfo=snap.tarif?`${snap.tarif}€/h · ${snap.heures?((h=>{const hr=Math.floor(h);const mn=Math.round((h-hr)*60);return mn>0?`${hr}h${String(mn).padStart(2,'0')}`:`${hr}h`;})(snap.heures)):'—'}/intervention · ${snap.frequence||'—'}`:'' ;
+      return `
+      <div class="finance-item" style="flex-direction:column;align-items:stretch;gap:8px;opacity:.92;">
+        <div style="display:flex;align-items:center;gap:9px;">
+          <div style="width:32px;height:32px;border-radius:7px;background:rgba(124,108,240,.1);color:${colors[c.type]||'var(--purple)'};display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;"><i class="${icons[c.type]||'fas fa-file-contract'}"></i></div>
+          <div style="flex:1;">
+            <div style="font-weight:600;font-size:12px;">${c.ref} — ${c.clientOuSalarie}</div>
+            <div style="font-size:10px;color:var(--text3);">Signé le ${c.date} · <span class="badge badge-purple">${typeLabels[c.type]||c.type}</span>${c.dateArchivage?` · Archivé le ${c.dateArchivage}`:''}</div>
+            ${snapInfo?`<div style="font-size:10px;color:var(--purple);margin-top:3px;"><i class="fas fa-camera" style="font-size:9px;"></i> ${snapInfo}</div>`:''}
+          </div>
+          <span style="font-size:10px;font-weight:600;color:var(--text3);">● archivé</span>
         </div>
-        <span style="font-size:10px;font-weight:600;color:var(--text3);">● archivé</span>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:6px;border-top:1px dashed var(--border);">
-        ${c.type==='prestation'?`<button class="btn btn-ghost btn-sm" onclick="_telechargerContratArchive('${c.id}')"><i class="fas fa-file-pdf"></i> PDF</button>`:''}
-        ${c.emailClient||c.emailSalarie?`<button class="btn btn-primary btn-sm" onclick="envoyerContratEmailId('${c.id}')"><i class="fas fa-envelope"></i> Email</button>`:''}
-        <button class="btn btn-ghost btn-sm" onclick="restaurerContrat('${c.id}')" style="color:var(--green);border-color:rgba(18,184,122,.3);"><i class="fas fa-undo"></i> Restaurer</button>
-        <button class="btn btn-danger btn-sm" onclick="supprimerContratArchive('${c.id}')"><i class="fas fa-trash"></i></button>
-      </div>
-    </div>`;
-  }).join('');
+        <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:6px;border-top:1px dashed var(--border);">
+          ${c.type==='prestation'?`<button class="btn btn-ghost btn-sm" onclick="_telechargerContratArchive('${c.id}')"><i class="fas fa-file-pdf"></i> PDF</button>`:''}
+          ${c.emailClient||c.emailSalarie?`<button class="btn btn-primary btn-sm" onclick="envoyerContratEmailId('${c.id}')"><i class="fas fa-envelope"></i> Email</button>`:''}
+          <button class="btn btn-ghost btn-sm" onclick="restaurerContrat('${c.id}')" style="color:var(--green);border-color:rgba(18,184,122,.3);"><i class="fas fa-undo"></i> Restaurer</button>
+          <button class="btn btn-danger btn-sm" onclick="supprimerContratArchive('${c.id}')"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>`;
+    }).join('');
+  } else if(tab==='factures'){
+    setEl('archivesTitre','Factures archivées');
+    let data=facturesData.slice().reverse().filter(f=>f.type!=='avoir'&&f.statut==='archivee');
+    if(filtreClient) data=data.filter(f=>(f.client||'').toLowerCase().includes(filtreClient));
+    setEl('archivesCount',data.length);
+    if(!data.length){cont.innerHTML='<p style="color:var(--text3);font-size:12px;padding:10px;">Aucune facture archivée'+(filtreClient?' pour ce filtre':'')+'.</p>';return;}
+    cont.innerHTML=data.map(f=>`
+      <div class="finance-item" style="flex-direction:column;align-items:stretch;gap:8px;opacity:.92;">
+        <div style="display:flex;align-items:center;gap:9px;">
+          <div style="width:32px;height:32px;border-radius:7px;background:rgba(29,78,216,.1);color:#1d4ed8;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;"><i class="fas fa-file-invoice"></i></div>
+          <div style="flex:1;">
+            <div style="font-weight:600;font-size:12px;">${f.numero} — ${f.client}</div>
+            <div style="font-size:10px;color:var(--text3);">${f.dateDisplay||f.date||'—'}${f.periode?' · '+f.periode:''} · ${(f.totalTTC||0).toFixed(2).replace('.',',')} € TTC${f.dateArchivage?' · Archivée le '+f.dateArchivage:''}</div>
+          </div>
+          <span style="font-size:10px;font-weight:600;color:var(--green);">● payée</span>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:6px;border-top:1px dashed var(--border);">
+          <button class="btn btn-ghost btn-sm" onclick="reediterFacture('${f.id}')"><i class="fas fa-file-pdf"></i> PDF</button>
+          <button class="btn btn-ghost btn-sm" onclick="restaurerFacture('${f.id}')" style="color:var(--green);border-color:rgba(18,184,122,.3);"><i class="fas fa-undo"></i> Restaurer</button>
+          <button class="btn btn-danger btn-sm" onclick="supprimerFactureArchivee('${f.id}')"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>`).join('');
+  } else if(tab==='devis'){
+    setEl('archivesTitre','Devis archivés');
+    let data=devisData.slice().reverse().filter(d=>d.statut==='archive');
+    if(filtreClient) data=data.filter(d=>(d.client||'').toLowerCase().includes(filtreClient));
+    setEl('archivesCount',data.length);
+    if(!data.length){cont.innerHTML='<p style="color:var(--text3);font-size:12px;padding:10px;">Aucun devis archivé'+(filtreClient?' pour ce filtre':'')+'.</p>';return;}
+    const sLabels={'en_attente':'En attente','accepte':'Accepté','refuse':'Refusé','converti':'Converti'};
+    cont.innerHTML=data.map(d=>`
+      <div class="finance-item" style="flex-direction:column;align-items:stretch;gap:8px;opacity:.92;">
+        <div style="display:flex;align-items:center;gap:9px;">
+          <div style="width:32px;height:32px;border-radius:7px;background:var(--accent-l);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;"><i class="fas fa-file-signature"></i></div>
+          <div style="flex:1;">
+            <div style="font-weight:600;font-size:12px;">${d.numero} — ${d.client}</div>
+            <div style="font-size:10px;color:var(--text3);">${d.date||'—'} · ${d.objet||'—'} · ${(d.totalTTC||0).toFixed(2).replace('.',',')} € TTC${d.dateArchivage?' · Archivé le '+d.dateArchivage:''}</div>
+          </div>
+          <span style="font-size:10px;font-weight:600;color:var(--text3);">● ${sLabels[d._statutAvantArchive]||d._statutAvantArchive||'archivé'}</span>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:6px;border-top:1px dashed var(--border);">
+          <button class="btn btn-ghost btn-sm" onclick="reimprimerDevis('${d.id}')"><i class="fas fa-file-pdf"></i> PDF</button>
+          <button class="btn btn-ghost btn-sm" onclick="restaurerDevis('${d.id}')" style="color:var(--green);border-color:rgba(18,184,122,.3);"><i class="fas fa-undo"></i> Restaurer</button>
+          <button class="btn btn-danger btn-sm" onclick="supprimerDevisArchive('${d.id}')"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>`).join('');
+  }
 }
 
 function _telechargerContratArchive(id){
@@ -11739,9 +12150,9 @@ function genererDevisPDF(){
 function renderHistoriqueDevis(){
   const cont=document.getElementById('devisHistorique'); if(!cont) return;
   const filtre=document.getElementById('filtreStatutDevis')?.value||'';
-  let data=devisData.slice().reverse();
+  let data=devisData.slice().reverse().filter(d=>d.statut!=='archive');
   if(filtre) data=data.filter(d=>d.statut===filtre);
-  setEl('devisCount',devisData.length);
+  setEl('devisCount',devisData.filter(d=>d.statut!=='archive').length);
   if(!data.length){cont.innerHTML='<p style="color:var(--text3);font-size:12px;padding:10px;">Aucun devis correspondant.</p>';return;}
   const statutColors={'en_attente':'var(--amber)','accepte':'var(--green)','refuse':'var(--red)','converti':'var(--accent)'};
   const statutLabels={'en_attente':'En attente','accepte':'Accepté','refuse':'Refusé','converti':'Converti en facture'};
@@ -11762,6 +12173,7 @@ function renderHistoriqueDevis(){
         <button class="btn btn-ghost btn-sm" onclick="reimprimerDevis('${d.id}')"><i class="fas fa-file-pdf"></i> PDF</button>
         ${d.statut==='en_attente'?`<button class="btn btn-success btn-sm" onclick="changerStatutDevis('${d.id}','accepte')"><i class="fas fa-check"></i> Accepté</button><button class="btn btn-danger btn-sm" onclick="changerStatutDevis('${d.id}','refuse')"><i class="fas fa-times"></i> Refusé</button>`:''}
         ${d.statut==='accepte'?`<button class="btn btn-purple btn-sm" onclick="creerContratDepuisDevis('${d.id}')"><i class="fas fa-file-contract"></i> Créer contrat</button><button class="btn btn-primary btn-sm" onclick="convertirDevisIdEnFacture('${d.id}')"><i class="fas fa-exchange-alt"></i> → Facture</button>`:''}
+        ${(d.statut==='refuse'||d.statut==='converti')?`<button class="btn btn-ghost btn-sm" onclick="archiverDevis('${d.id}')" style="color:var(--purple);border-color:rgba(124,108,240,.3);" title="Archiver ce devis"><i class="fas fa-archive"></i> Archiver</button>`:''}
         <button class="btn btn-danger btn-sm" onclick="supprimerDevis('${d.id}')"><i class="fas fa-trash"></i></button>
       </div>
     </div>`).join('');
@@ -12205,16 +12617,16 @@ function _chargerPlanningPrevJour(cont, deltaRecap, jourKey, jourNomJ, mois, ann
     var hPrev = _parseH(c.heures)||0;
     var entry = planningPrevData[c.id][jourKey];
     if(!entry){ entry={statut:'prevu',heuresReelles:hPrev,note:''}; planningPrevData[c.id][jourKey]=entry; }
-    var hReal = entry.statut==='absent'?0:(_parseH(entry.heuresReelles)||hPrev);
+    var hReal = (entry.statut==='absent'||entry.statut==='absent_essentia')?0:(_parseH(entry.heuresReelles)||hPrev);
     totalPrev+=hPrev;
     if(entry.statut==='confirme'||entry.statut==='partiel') totalReal+=hReal;
     var delta=hReal-hPrev;
     var deltaStr=delta===0?'±0h':(delta>0?'+'+delta.toFixed(2)+'h':delta.toFixed(2)+'h');
     var dcol=delta>0?'var(--green)':delta<0?'var(--red)':'var(--text3)';
-    var statOpts=['prevu','prevu_passe','confirme','partiel','absent'].map(function(s){
-      return '<option value="'+s+'"'+(entry.statut===s?' selected':'')+'>'+{prevu:'⧖ Prévu',prevu_passe:'? À confirmer',confirme:'✓ Confirmé',partiel:'~ Partiel',absent:'✗ Absent'}[s]+'</option>';
+    var statOpts=['prevu','prevu_passe','confirme','partiel','absent','absent_essentia'].map(function(s){
+      return '<option value="'+s+'"'+(entry.statut===s?' selected':'')+'>'+{prevu:'⧖ Prévu',prevu_passe:'? À confirmer',confirme:'✓ Confirmé',partiel:'~ Partiel',absent:'✗ Client absent',absent_essentia:'✗ Essentia indispo'}[s]+'</option>';
     }).join('');
-    var bgCard=entry.statut==='confirme'?'rgba(18,184,122,.04)':entry.statut==='absent'?'rgba(230,69,69,.04)':'';
+    var bgCard=entry.statut==='confirme'?'rgba(18,184,122,.04)':entry.statut==='absent'?'rgba(230,69,69,.04)':entry.statut==='absent_essentia'?'rgba(194,65,12,.04)':'';
     html+='<div style="'+bgCard+'border:1px solid var(--border);border-radius:11px;padding:12px 14px;margin-bottom:8px;display:grid;grid-template-columns:1fr 1fr 70px 70px 60px 1fr;gap:8px;align-items:center;">'
       +'<div><div style="font-weight:700;font-size:13px;">'+c.nom+'</div>'
       +'<div style="font-size:10px;color:var(--text3);">'+(c.commune||'—')+(c.heureDebut?' · <strong style="color:var(--accent);">'+c.heureDebut+'</strong>':'')+'</div></div>'
@@ -12427,7 +12839,7 @@ function chargerPlanningPrevisionnel(){
 
       clientPrev += hPrev;
       totalPrevuMois += hPrev;
-      var hReal = entry.statut === 'absent' ? 0 : (_parseH(entry.heuresReelles) || hPrev);
+      var hReal = (entry.statut === 'absent' || entry.statut === 'absent_essentia') ? 0 : (_parseH(entry.heuresReelles) || hPrev);
       if(entry.statut === 'confirme' || entry.statut === 'partiel'){
         clientReal += hReal;
         totalRealiseMois += hReal;
@@ -12438,8 +12850,8 @@ function chargerPlanningPrevisionnel(){
       var deltaColor = delta > 0 ? 'var(--green)' : delta < 0 ? 'var(--red)' : 'var(--text3)';
 
 
-      var statutOpts = ['prevu','prevu_passe','confirme','partiel','absent'];
-      var statutLabels = {'prevu':'⧖ Prévu','prevu_passe':'? À confirmer','confirme':'✓ Confirmé','partiel':'~ Partiel','absent':'✗ Absent'};
+      var statutOpts = ['prevu','prevu_passe','confirme','partiel','absent','absent_essentia'];
+      var statutLabels = {'prevu':'⧖ Prévu','prevu_passe':'? À confirmer','confirme':'✓ Confirmé','partiel':'~ Partiel','absent':'✗ Client absent','absent_essentia':'✗ Essentia indispo'};
       var selectOpts = statutOpts.map(function(s){
         return '<option value="'+s+'"'+(entry.statut===s?' selected':'')+'>'+statutLabels[s]+'</option>';
       }).join('');
@@ -12669,7 +13081,7 @@ function _ppEnsureEntry(clientId, dateKey){
 function setPlanStatut(clientId, dateKey, statut){
   _ppEnsureEntry(clientId, dateKey);
   planningPrevData[clientId][dateKey].statut = statut;
-  if(statut === 'absent') planningPrevData[clientId][dateKey].heuresReelles = 0;
+  if(statut === 'absent' || statut === 'absent_essentia') planningPrevData[clientId][dateKey].heuresReelles = 0;
   sauvegarderTout(true);
   // FIX: mettre à jour uniquement la ligne concernée sans reconstruire tout le DOM
   // Évite la perte des valeurs saisies dans les autres inputs
@@ -12706,7 +13118,7 @@ function _ppRafraichirLigne(clientId, dateKey){
   var entry = planningPrevData[clientId] && planningPrevData[clientId][dateKey];
   if(!entry) return;
   var hPrev = _parseH(client.heures) || 0;
-  var hReal = entry.statut === 'absent' ? 0 : (_parseH(entry.heuresReelles) || hPrev);
+  var hReal = (entry.statut === 'absent' || entry.statut === 'absent_essentia') ? 0 : (_parseH(entry.heuresReelles) || hPrev);
   var delta = hReal - hPrev;
   var deltaStr = delta === 0 ? '±0h' : (delta > 0 ? '+'+delta.toFixed(2)+'h' : delta.toFixed(2)+'h');
   var deltaColor = delta > 0 ? 'var(--green)' : delta < 0 ? 'var(--red)' : 'var(--text3)';
@@ -12906,8 +13318,8 @@ function exporterPlanningPrevPDF(){
   doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(180,200,240);
   doc.text(p.nomSociete || '', W-M, 13, {align:'right'});
   var y = 28;
-  var sLabels = {confirme:'Confirmé',absent:'Absent',partiel:'Partiel',prevu:'Prévu',prevu_passe:'À confirmer'};
-  var sColors = {confirme:[18,184,122],absent:[230,69,69],partiel:[240,153,31],prevu:[143,163,192],prevu_passe:[240,153,31]};
+  var sLabels = {confirme:'Confirmé',absent:'Client absent',absent_essentia:'Annulé Essentia',partiel:'Partiel',prevu:'Prévu',prevu_passe:'À confirmer'};
+  var sColors = {confirme:[18,184,122],absent:[230,69,69],absent_essentia:[194,65,12],partiel:[240,153,31],prevu:[143,163,192],prevu_passe:[240,153,31]};
   clientsData.forEach(function(client){
     if(!client.jours || !client.jours.length || !client.heures) return;
     var data = planningPrevData[client.id] || {};
@@ -16095,6 +16507,51 @@ function assignerActivite(clientId, jour, activite){
 </div>
 
 <!-- ═══ MODAL MOTIF ANNULATION INTERVENTION ═══ -->
+<div id="modalAvoir" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+  <div style="background:var(--bg);border-radius:16px;padding:24px;width:min(440px,95vw);box-shadow:var(--shadow);">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(99,102,241,.12);display:flex;align-items:center;justify-content:center;color:#6366f1;font-size:16px;"><i class="fas fa-file-minus"></i></div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:var(--text);">Créer un avoir</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:1px;">Réf. facture : <strong id="avoirFactureRef">—</strong></div>
+      </div>
+      <button onclick="fermerModalAvoir()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--text3);font-size:20px;">&#x2715;</button>
+    </div>
+    <input type="hidden" id="avoirFactureId">
+    <input type="hidden" id="avoirTaux">
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="form-group">
+        <label>Motif de l'avoir</label>
+        <input type="text" id="avoirMotif" placeholder="Ex: erreur de facturation, prestation annulée..." style="width:100%;">
+      </div>
+      <div class="form-group">
+        <label>Date de l'avoir</label>
+        <input type="date" id="avoirDate" style="width:100%;">
+      </div>
+      <div class="form-group">
+        <label>Type d'avoir</label>
+        <select id="avoirTypeSelect" onchange="_avoirTogglePartiel()" style="width:100%;font-weight:600;">
+          <option value="total">Avoir total (annulation complète)</option>
+          <option value="partiel">Avoir partiel (montant partiel)</option>
+        </select>
+      </div>
+      <div style="background:var(--bg3);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--text3);">
+        Montant TTC de la facture : <strong id="avoirMontantTTC" style="color:var(--text);">—</strong>
+      </div>
+      <div id="avoirPartielFields" style="display:none;">
+        <div class="form-group">
+          <label>Montant HT à créditer (€)</label>
+          <input type="number" id="avoirMontantHTSaisie" step="0.01" min="0.01" placeholder="0.00" style="width:100%;">
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end;">
+      <button onclick="fermerModalAvoir()" class="btn btn-ghost btn-sm">Annuler</button>
+      <button onclick="confirmerAvoir()" class="btn btn-sm" style="background:#6366f1;color:#fff;"><i class="fas fa-check"></i> Créer l'avoir</button>
+    </div>
+  </div>
+</div>
+
 <div id="modalMotifAnnulation" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
   <div style="background:var(--bg);border-radius:16px;padding:24px;width:min(420px,95vw);box-shadow:var(--shadow);">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
@@ -16110,8 +16567,10 @@ function assignerActivite(clientId, jour, activite){
       <div class="form-group">
         <label>Motif d'annulation</label>
         <select id="annulMotifSelect" style="width:100%;font-weight:600;">
-          <option value="replanifier">🔄 À replanifier — date inconnue</option>
-          <option value="client_annule">✗ Client a annulé</option>
+          <option value="replanifier">🔄 Client replanifie — date inconnue</option>
+          <option value="client_annule">✗ Client a annulé (définitif)</option>
+          <option value="replanifier_essentia">🔄 Je replanifie — date inconnue</option>
+          <option value="essentia_annule">✗ J'annule (définitif)</option>
           <option value="autre">Autre</option>
         </select>
       </div>
@@ -16120,8 +16579,8 @@ function assignerActivite(clientId, jour, activite){
         <input type="text" id="annulNote" placeholder="Ex: client en déplacement, maladie..." style="width:100%;">
       </div>
       <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:8px 12px;font-size:11px;color:#92400e;">
-        <strong>🔄 À replanifier</strong> : l'intervention reste visible dans la bande du calendrier pour ne pas l'oublier.<br>
-        <strong>✗ Client annulé</strong> : archivé silencieusement, disparaît du planning.
+        <strong>🔄 Replanifier</strong> : reste visible dans la bande du calendrier pour ne pas l'oublier.<br>
+        <strong>✗ Annulé (définitif)</strong> : archivé silencieusement, disparaît du planning.
       </div>
     </div>
 
