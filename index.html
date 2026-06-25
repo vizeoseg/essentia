@@ -4435,6 +4435,12 @@ function confirmerDeplacement(){
 }
 
 function annulerDeplacement(depId){
+  try {
+    var _delDeps = JSON.parse(localStorage.getItem('_deletedDeplacementIds')||'[]');
+    if(_delDeps.indexOf(depId)===-1) _delDeps.push(depId);
+    if(_delDeps.length>500) _delDeps=_delDeps.slice(-500);
+    localStorage.setItem('_deletedDeplacementIds', JSON.stringify(_delDeps));
+  } catch(e){}
   deplacementsData = deplacementsData.filter(d => d.id !== depId);
   sauvegarderTout(true);
   chargerTournees();
@@ -15501,7 +15507,17 @@ function lingeAjouterLigne(pfx,nbLits){
         contratsData = _restaurerPhotosLocales(d.contrats, contratsData, 'signature');
       }
       if (d.planningPrev)  planningPrevData  = d.planningPrev;
-      if (d.deplacements)  deplacementsData  = d.deplacements;
+      if (d.deplacements) {
+        var _delDepsSync = [];
+        try { _delDepsSync = JSON.parse(localStorage.getItem('_deletedDeplacementIds')||'[]'); } catch(e) {}
+        if (d.deletedDeplacementIds && d.deletedDeplacementIds.length) {
+          d.deletedDeplacementIds.forEach(function(id){ if(_delDepsSync.indexOf(id)===-1) _delDepsSync.push(id); });
+          try { localStorage.setItem('_deletedDeplacementIds', JSON.stringify(_delDepsSync.slice(-500))); } catch(e) {}
+        }
+        deplacementsData = (_delDepsSync.length > 0)
+          ? d.deplacements.filter(function(dep){ return _delDepsSync.indexOf(dep.id) === -1; })
+          : d.deplacements;
+      }
       if (d.fournisseurs) fournisseursData = d.fournisseurs;
       if (d.facNumeroAutoIncrement) facNumeroAutoIncrement = d.facNumeroAutoIncrement;
       if (d.devisAutoIncrement)     devisAutoIncrement     = d.devisAutoIncrement;
@@ -15620,6 +15636,7 @@ function lingeAjouterLigne(pfx,nbLits){
       // reçoivent la liste des notes supprimées — sans ça, les autres appareils continuent
       // de propager indéfiniment les notes supprimées car ils n'ont pas le tombstone local
       deletedFraisIds:        (function(){ try{ return JSON.parse(localStorage.getItem('_deletedFraisIds')||'[]'); }catch(e){ return []; } })(),
+      deletedDeplacementIds:  (function(){ try{ return JSON.parse(localStorage.getItem('_deletedDeplacementIds')||'[]'); }catch(e){ return []; } })(),
       params:                 (function(){ try{ return JSON.parse(localStorage.getItem('progestParams')||'{}'); }catch(e){ return {}; } })()
     };
     supabaseSave(snapshot);
