@@ -645,6 +645,74 @@ tr{transition:background .12s;}
 @media(max-width:360px){
   .stats-grid{grid-template-columns:1fr !important;}
 }
+
+/* ═══════════════════════════════════════════════
+   TABLETTE — 769px–1024px (iPad paysage, tablettes Android)
+   Sidebar icônes seules + layout optimisé tablette
+   ═══════════════════════════════════════════════ */
+@media(min-width:769px) and (max-width:1024px){
+  /* Sidebar icon-only, toujours visible */
+  .sidebar{width:62px !important;transform:translateX(0) !important;}
+  .sidebar .sidebar-logo .brand,.sidebar .sidebar-logo .sub,
+  .sidebar .nav-btn-text,.sidebar .nav-section,
+  .sidebar-footer .btn-save-label,.sidebar-footer .btn-json-label{display:none !important;}
+  .sidebar .nav-btn{justify-content:center !important;padding:10px 0 !important;border-left:none !important;}
+  .sidebar .nav-btn.active{border-left:3px solid #7eb3ff !important;padding-left:0 !important;}
+  .sidebar .nav-btn .ni{width:100%;text-align:center;font-size:16px;}
+  .sidebar .sidebar-logo{padding:14px 0;text-align:center;}
+  .sidebar-footer{flex-direction:column;align-items:center;padding:8px 6px;}
+  /* Tooltip survol */
+  .sidebar .nav-btn{position:relative;}
+  .sidebar .nav-btn:hover::after{content:attr(data-label);position:absolute;left:68px;top:50%;transform:translateY(-50%);background:#1a2e4a;color:#fff;font-size:12px;font-weight:600;padding:5px 10px;border-radius:7px;white-space:nowrap;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.4);pointer-events:none;}
+  /* Main layout — suit la sidebar 62px */
+  .main{margin-left:62px !important;}
+  /* Stats 4 colonnes */
+  .stats-grid{grid-template-columns:repeat(4,1fr) !important;}
+  /* Résultat 2 colonnes */
+  .resultat-grid{grid-template-columns:1fr 1fr !important;}
+  /* Tournées */
+  #tourneeGrid{grid-template-columns:repeat(3,1fr) !important;}
+  #empTourneeGrid{grid-template-columns:repeat(3,1fr) !important;}
+  /* Salariés 2 colonnes */
+  .sal-grid{grid-template-columns:repeat(2,1fr) !important;}
+  /* Stock 3 colonnes */
+  .stock-grid{grid-template-columns:repeat(3,1fr) !important;}
+  /* Page padding tablette */
+  .page-content{padding:14px 16px;}
+  /* Inputs taille normale (pas de zoom Safari sur tablette) */
+  #gerantMain input,#gerantMain select,#gerantMain textarea,
+  #empMain input,#empMain select,#empMain textarea{font-size:13px !important;}
+  /* Modal tablette */
+  .modal{padding:24px 16px;}
+  .modal-box{max-width:700px;padding:22px;}
+  /* Alertes topbar visibles */
+  #topbarAlertes{display:flex !important;}
+  /* Boutons touch-friendly */
+  .btn{min-height:40px;}
+  .icon-btn{min-width:34px;min-height:34px;}
+  /* Planning semaine employé — scroll horizontal */
+  #empPlanningGrid{grid-template-columns:repeat(7,minmax(100px,1fr)) !important;overflow-x:auto;}
+  /* Calendriers — pas de min-width fixe */
+  #empPlanningMoisCalendar,#planningMoisCalendar{min-width:auto;}
+  /* Drawer tournée */
+  #tourneeDayDrawer{width:380px !important;right:-380px !important;}
+}
+
+/* ═══════════════════════════════════════════════
+   TABLETTE PORTRAIT / GRAND TÉLÉPHONE — 601px–768px
+   Amélioration entre mobile pur et tablette paysage
+   ═══════════════════════════════════════════════ */
+@media(min-width:601px) and (max-width:768px){
+  /* Stats 3 colonnes au lieu de 2 */
+  .stats-grid{grid-template-columns:repeat(3,1fr) !important;}
+  /* Formulaires 2 colonnes au lieu de 1 */
+  .form-row{grid-template-columns:repeat(2,1fr) !important;}
+  /* Modal un peu plus large */
+  .modal-box{max-width:560px;padding:20px;}
+  /* Grilles rg-3 */
+  .rg-3{grid-template-columns:repeat(2,1fr);}
+}
+
 /* SELECT2 */
 .select2-container--default .select2-selection--single,.select2-container--default .select2-selection--multiple{background:var(--bg2)!important;border:1px solid var(--border)!important;border-radius:8px!important;}
 .select2-container--default .select2-selection--single{height:36px!important;display:flex;align-items:center;}

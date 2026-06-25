@@ -645,6 +645,74 @@ tr{transition:background .12s;}
 @media(max-width:360px){
   .stats-grid{grid-template-columns:1fr !important;}
 }
+
+/* ═══════════════════════════════════════════════
+   TABLETTE — 769px–1024px (iPad paysage, tablettes Android)
+   Sidebar icônes seules + layout optimisé tablette
+   ═══════════════════════════════════════════════ */
+@media(min-width:769px) and (max-width:1024px){
+  /* Sidebar icon-only, toujours visible */
+  .sidebar{width:62px !important;transform:translateX(0) !important;}
+  .sidebar .sidebar-logo .brand,.sidebar .sidebar-logo .sub,
+  .sidebar .nav-btn-text,.sidebar .nav-section,
+  .sidebar-footer .btn-save-label,.sidebar-footer .btn-json-label{display:none !important;}
+  .sidebar .nav-btn{justify-content:center !important;padding:10px 0 !important;border-left:none !important;}
+  .sidebar .nav-btn.active{border-left:3px solid #7eb3ff !important;padding-left:0 !important;}
+  .sidebar .nav-btn .ni{width:100%;text-align:center;font-size:16px;}
+  .sidebar .sidebar-logo{padding:14px 0;text-align:center;}
+  .sidebar-footer{flex-direction:column;align-items:center;padding:8px 6px;}
+  /* Tooltip survol */
+  .sidebar .nav-btn{position:relative;}
+  .sidebar .nav-btn:hover::after{content:attr(data-label);position:absolute;left:68px;top:50%;transform:translateY(-50%);background:#1a2e4a;color:#fff;font-size:12px;font-weight:600;padding:5px 10px;border-radius:7px;white-space:nowrap;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.4);pointer-events:none;}
+  /* Main layout — suit la sidebar 62px */
+  .main{margin-left:62px !important;}
+  /* Stats 4 colonnes */
+  .stats-grid{grid-template-columns:repeat(4,1fr) !important;}
+  /* Résultat 2 colonnes */
+  .resultat-grid{grid-template-columns:1fr 1fr !important;}
+  /* Tournées */
+  #tourneeGrid{grid-template-columns:repeat(3,1fr) !important;}
+  #empTourneeGrid{grid-template-columns:repeat(3,1fr) !important;}
+  /* Salariés 2 colonnes */
+  .sal-grid{grid-template-columns:repeat(2,1fr) !important;}
+  /* Stock 3 colonnes */
+  .stock-grid{grid-template-columns:repeat(3,1fr) !important;}
+  /* Page padding tablette */
+  .page-content{padding:14px 16px;}
+  /* Inputs taille normale (pas de zoom Safari sur tablette) */
+  #gerantMain input,#gerantMain select,#gerantMain textarea,
+  #empMain input,#empMain select,#empMain textarea{font-size:13px !important;}
+  /* Modal tablette */
+  .modal{padding:24px 16px;}
+  .modal-box{max-width:700px;padding:22px;}
+  /* Alertes topbar visibles */
+  #topbarAlertes{display:flex !important;}
+  /* Boutons touch-friendly */
+  .btn{min-height:40px;}
+  .icon-btn{min-width:34px;min-height:34px;}
+  /* Planning semaine employé — scroll horizontal */
+  #empPlanningGrid{grid-template-columns:repeat(7,minmax(100px,1fr)) !important;overflow-x:auto;}
+  /* Calendriers — pas de min-width fixe */
+  #empPlanningMoisCalendar,#planningMoisCalendar{min-width:auto;}
+  /* Drawer tournée */
+  #tourneeDayDrawer{width:380px !important;right:-380px !important;}
+}
+
+/* ═══════════════════════════════════════════════
+   TABLETTE PORTRAIT / GRAND TÉLÉPHONE — 601px–768px
+   Amélioration entre mobile pur et tablette paysage
+   ═══════════════════════════════════════════════ */
+@media(min-width:601px) and (max-width:768px){
+  /* Stats 3 colonnes au lieu de 2 */
+  .stats-grid{grid-template-columns:repeat(3,1fr) !important;}
+  /* Formulaires 2 colonnes au lieu de 1 */
+  .form-row{grid-template-columns:repeat(2,1fr) !important;}
+  /* Modal un peu plus large */
+  .modal-box{max-width:560px;padding:20px;}
+  /* Grilles rg-3 */
+  .rg-3{grid-template-columns:repeat(2,1fr);}
+}
+
 /* SELECT2 */
 .select2-container--default .select2-selection--single,.select2-container--default .select2-selection--multiple{background:var(--bg2)!important;border:1px solid var(--border)!important;border-radius:8px!important;}
 .select2-container--default .select2-selection--single{height:36px!important;display:flex;align-items:center;}
@@ -7549,6 +7617,7 @@ function renderHistoriqueFactures(){
           <div style="font-size:12px;font-weight:700;color:${isApplique?'var(--green)':'#6366f1'};">−${a.totalTTC.toFixed(2).replace('.',',')} € TTC</div>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="genererAvoirPDF(facturesData.find(x=>x.id==='${a.id}'))" title="Télécharger PDF avoir"><i class="fas fa-download"></i></button>
+        <button class="btn btn-primary btn-sm" onclick="envoyerAvoirEmail('${a.id}')" title="Envoyer par email"><i class="fas fa-envelope"></i></button>
         <button class="btn btn-danger btn-sm" onclick="supprimerFacture('${a.id}')" title="Supprimer l'avoir"><i class="fas fa-trash"></i></button>
       </div>`;
     }).join('');
@@ -8334,7 +8403,7 @@ function confirmerAvoir(){
 }
 window.confirmerAvoir=confirmerAvoir;
 
-function genererAvoirPDF(avoir){
+function genererAvoirPDF(avoir,opts){
   if(!avoir){toast('Avoir introuvable','error');return;}
   const {jsPDF}=window.jspdf;if(!jsPDF){toast('PDF non disponible','error');return;}
   const doc=new jsPDF({unit:'mm',format:'a4'});
@@ -8473,9 +8542,37 @@ function genererAvoirPDF(avoir){
   ];
   doc.text(footerLines,M,pageH-25,{lineHeightFactor:1.4,maxWidth:W-2*M});
 
-  doc.save('AVOIR_'+avoir.numero+'.pdf');
+  const fileName='AVOIR_'+avoir.numero+'.pdf';
+  if(opts&&opts.returnB64){
+    try{return{b64:_pdfB64(doc),fileName};}catch(e){console.warn('PDF avoir b64:',e);return null;}
+  }
+  doc.save(fileName);
 }
 window.genererAvoirPDF=genererAvoirPDF;
+
+async function envoyerAvoirEmail(id){
+  const a=facturesData.find(x=>x.id===id&&x.type==='avoir');
+  if(!a){toast('Avoir introuvable','error');return;}
+  const c=clientsData.find(x=>x.id===a.clientId)||{};
+  const dest=c.email||a.emailClient||'';
+  if(!dest){toast('Email client manquant pour cet avoir','warning');return;}
+  const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
+  const fmt2=v=>parseFloat(v||0).toFixed(2).replace('.',',');
+  const subject='Avoir '+a.numero+' — '+(p.nomSociete||'Essentia Services');
+  const text='Bonjour '+a.client+',\n\nVeuillez trouver ci-joint l\'avoir '+a.numero+' du '+a.dateDisplay+' établi en référence à la facture '+a.factureNumero+'.\n\nMontant TTC : −'+fmt2(a.totalTTC)+' €\nMotif : '+(a.motif||'—')+'\n\nCet avoir sera déduit de votre prochaine facture ou remboursé selon accord.\n\nCordialement,\n'+(p.nomSociete||'')+(p.tel?'\n'+p.tel:'');
+  let attachments=[];
+  try{
+    const pdfResult=genererAvoirPDF(a,{returnB64:true});
+    if(pdfResult&&pdfResult.b64) attachments=[{filename:pdfResult.fileName,content:pdfResult.b64}];
+    else toast('Attention : PDF non généré — l\'avoir sera envoyé sans pièce jointe','warning');
+  }catch(e){console.warn('PDF avoir email:',e);toast('Attention : PDF non généré','warning');}
+  toast('Envoi en cours…','info');
+  try{
+    await _envoyerEmailResend({to:dest,cc:p.email,subject,text,attachments});
+    toast('✉ Avoir '+a.numero+' envoyé à '+dest,'success');
+  }catch(err){toast('Erreur envoi : '+err.message,'error');}
+}
+window.envoyerAvoirEmail=envoyerAvoirEmail;
 
 function reediterFacture(id){
   const f=facturesData.find(x=>x.id===id);if(!f)return;
