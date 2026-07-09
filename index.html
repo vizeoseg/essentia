@@ -8087,10 +8087,10 @@ function _regenererContratPDFb64(contrat){
       ? 'Montant par intervention : '+fmt2(_montantInterv)+' € ('+fmtH(heures)+' × '+fmt2(tarif)+' €/h)'
       : 'Montant par intervention HT : '+fmt2(_montantInterv)+' € ('+fmtH(heures)+' × '+fmt2(tarif)+' €/h)\nMontant par intervention TTC : '+fmt2(_montantIntervTTC)+' €';
     var _ligneCalendrier = _freqHebdo
-      ? 'Le montant mensuel varie selon le calendrier :\n'
+      ? 'Le montant mensuel peut varier selon le calendrier, par exemple :\n'
         +'  • Mois à '+(freq*4)+' intervention'+(freq*4>1?'s':'')+' : '+fmt2(_min4HT)+' €'+(_isExonere?'':' HT — '+fmt2(_min4TTC)+' € TTC')+'\n'
         +'  • Mois à '+(freq*5)+' intervention'+(freq*5>1?'s':'')+' : '+fmt2(_max5HT)+' €'+(_isExonere?'':' HT — '+fmt2(_max5TTC)+' € TTC')+'\n'
-        +'Une majoration ou minoration peut s\'appliquer selon le calendrier, les jours fériés ou toute modification convenue entre les parties.'
+        +'Une facture sera établie en fin de chaque mois sur la base du temps passé et du nombre de prestations convenues entre les parties.'
       : 'Facturation à l\'acte selon les interventions réalisées.';
     var _creditImpot = (!_isEntreprise)
       ? 'Avantage fiscal : Le Client peut bénéficier d\'un crédit d\'impôt de 50 % des sommes versées pour des services à domicile (plafonds légaux en vigueur — Art. 199 sexdecies du CGI).'
@@ -10977,10 +10977,10 @@ function genererContratPrestation(){
     tarifDesc += `TVA applicable : ${tva}% (${_isEnt3?'régime général':'services à domicile — Art. 279 du CGI'})\n`;
   }
   if(_freq3>0){
-    tarifDesc += `\nLe montant mensuel varie selon le calendrier :\n`;
+    tarifDesc += `\nLe montant mensuel peut varier selon le calendrier, par exemple :\n`;
     tarifDesc += `  • Mois à ${_freq3*4} interventions : ${fmt2(_min4HT3)} €${_isExo3?'':' HT — '+fmt2(_min4TTC3)+' € TTC'}\n`;
     tarifDesc += `  • Mois à ${_freq3*5} interventions : ${fmt2(_max5HT3)} €${_isExo3?'':' HT — '+fmt2(_max5TTC3)+' € TTC'}\n`;
-    tarifDesc += `Une majoration ou minoration peut s'appliquer selon le calendrier, les jours fériés ou toute modification convenue entre les parties.\n`;
+    tarifDesc += `Une facture sera établie en fin de chaque mois sur la base du temps passé et du nombre de prestations convenues entre les parties.\n`;
   } else {
     tarifDesc += `Facturation à l'acte selon les interventions réalisées.\n`;
   }
