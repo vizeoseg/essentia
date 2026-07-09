@@ -7191,16 +7191,23 @@ function _refDoc(type, c, annee){
   const y=annee||new Date().getFullYear(); const n=_numCli(c);
   if(type==='contrat') return `CONT-${y}-${n}`;
   if(type==='devis'){
-    const cnt=(devisData||[]).filter(function(d){return d.clientId===c?.id;}).length+1;
-    return `DEV-${y}-${n}-${String(cnt).padStart(2,'0')}`;
+    const existingDev=(devisData||[]).filter(function(d){return d.clientId===c?.id&&(d.dateRaw||d.date||'').includes(String(y));});
+    let maxSeqDev=0; existingDev.forEach(function(d){const p=(d.numero||'').split('-');const s=parseInt(p[p.length-1]||'0');if(s>maxSeqDev)maxSeqDev=s;});
+    return `DEV-${y}-${n}-${String(maxSeqDev+1).padStart(2,'0')}`;
   }
   if(type==='facture'){
-    const cnt=(facturesData||[]).filter(function(f){return f.type!=='avoir'&&f.clientId===c?.id&&(f.dateRaw||f.date||'').includes(String(y));}).length+1;
-    return `FAC-${y}-${n}-${String(cnt).padStart(2,'0')}`;
+    const existing=(facturesData||[]).filter(function(f){return f.type!=='avoir'&&f.clientId===c?.id&&(f.dateRaw||f.date||'').includes(String(y));});
+    let maxSeq=0; existing.forEach(function(f){const p=(f.numero||'').split('-');const s=parseInt(p[p.length-1]||'0');if(s>maxSeq)maxSeq=s;});
+    let seq=maxSeq+1,candidate;
+    do{candidate=`FAC-${y}-${n}-${String(seq).padStart(2,'0')}`;seq++;}while(existing.some(function(f){return f.numero===candidate;}));
+    return candidate;
   }
   if(type==='avoir'){
-    const cnt=(facturesData||[]).filter(function(f){return f.type==='avoir'&&f.clientId===c?.id&&(f.dateRaw||f.date||'').includes(String(y));}).length+1;
-    return `AVO-${y}-${n}-${String(cnt).padStart(2,'0')}`;
+    const existing=(facturesData||[]).filter(function(f){return f.type==='avoir'&&f.clientId===c?.id&&(f.dateRaw||f.date||'').includes(String(y));});
+    let maxSeq=0; existing.forEach(function(f){const p=(f.numero||'').split('-');const s=parseInt(p[p.length-1]||'0');if(s>maxSeq)maxSeq=s;});
+    let seq=maxSeq+1,candidate;
+    do{candidate=`AVO-${y}-${n}-${String(seq).padStart(2,'0')}`;seq++;}while(existing.some(function(f){return f.numero===candidate;}));
+    return candidate;
   }
   if(type==='planning'){
     const m=String(new Date().getMonth()+1).padStart(2,'0');
@@ -7229,6 +7236,10 @@ function genererFacturePDF(opts){
   const clientNom=c.nom||'—';
   const tauxTVA=parseFloat(gv('facTauxTVA')||'10');
   const numFac=gv('facNumero')||`FAC-${new Date().getFullYear()}-001`;
+  if((facturesData||[]).some(function(f){return f.numero===numFac;})){
+    toast(`⚠️ Le numéro ${numFac} est déjà utilisé — veuillez le modifier avant de continuer`,'error');
+    return;
+  }
   const dateFacRaw=gv('facDate');
   const dateFac=dateFacRaw?new Date(dateFacRaw).toLocaleDateString('fr-FR'):new Date().toLocaleDateString('fr-FR');
   const periode=gv('facPeriode')||'';
@@ -7513,8 +7524,17 @@ function genererFacturePDF(opts){
   // ── Bloc signature ────────────────────────────────────────
   y=_blocSignaturePDF(doc,y+4,W,M,clientNom,'du client',_signatureData);
 
-  // ── Pied de page ──────────────────────────────────────────
+  // ── Mentions légales de paiement ──────────────────────────
   const pageH=doc.internal.pageSize.getHeight();
+  doc.setDrawColor(180,195,225);doc.setLineWidth(0.2);
+  doc.line(M,pageH-52,W-M,pageH-52);
+  doc.setTextColor(50,65,90);doc.setFontSize(7);doc.setFont('times','italic');
+  doc.text([
+    'Le règlement doit intervenir au comptant, à la date sus indiquée.',
+    'Les pénalités de retard, calculées au taux de 10% l\'an, seront payables à réception de l\'avis vous informant de leur inscription à votre débit dans nos livres comptables.',
+    'En cas de retard de paiement, une indemnité forfaitaire de recouvrement de 40 € sera appliquée.'
+  ],M,pageH-48,{lineHeightFactor:1.6,maxWidth:W-2*M});
+  // ── Pied de page ──────────────────────────────────────────
   doc.setDrawColor(200,215,240);doc.setLineWidth(0.3);
   doc.line(M,pageH-30,W-M,pageH-30);
   doc.setTextColor(120,140,170);doc.setFontSize(6);doc.setFont('helvetica','normal');
@@ -7522,7 +7542,6 @@ function genererFacturePDF(opts){
     `${nomSoc}${formeSoc?' — '+formeSoc:''}${siretSoc?' · SIRET : '+siretSoc:''}${p.numSAP?' · Agrément SAP : '+p.numSAP:''}`,
     ...(p.assurance?[`Assurance RCP : n° ${p.assurance}`]:[]),
     ...(tauxTVA===0?[mentionLeg||'Exonération de TVA — Art. 261 D 4° du CGI (services à la personne agréés)']:[]),
-    'Tout règlement doit intervenir à la date d\'échéance indiquée. Tout retard de paiement entraîne des pénalités égales à 3 fois le taux d\'intérêt légal, ainsi qu\'une indemnité forfaitaire pour frais de recouvrement de 40 €.',
     `En cas de litige, le tribunal compétent est le Tribunal de Commerce de Troyes (10000).${p.tvaIntra?' N° TVA : '+p.tvaIntra:''}`,
   ];
   doc.text(footerLines,M,pageH-25,{lineHeightFactor:1.4,maxWidth:W-2*M});
@@ -8156,7 +8175,7 @@ function _regenererContratPDFb64(contrat){
     const footerC=[
       nomSoc+(p.forme?' — '+p.forme:'')+(p.siret?' · SIRET : '+p.siret:'')+(p.tvaIntra?' · TVA : '+p.tvaIntra:''),
       ...(p.numSAP||p.assurance?[[p.numSAP?'Agrément SAP : '+p.numSAP:'',p.assurance?'Assurance RCP : n° '+p.assurance:''].filter(Boolean).join(' · ')]:[]),
-      p.mentionLegale||'Tout règlement doit intervenir à la date d\'échéance indiquée. Tout retard de paiement entraîne des pénalités égales à 3 fois le taux d\'intérêt légal, ainsi qu\'une indemnité forfaitaire pour frais de recouvrement de 40 €.',
+      'Le règlement doit intervenir au comptant, à la date sus indiquée. Les pénalités de retard, calculées au taux de 10% l\'an, seront payables à réception de l\'avis vous informant de leur inscription à votre débit. En cas de retard de paiement, une indemnité forfaitaire de recouvrement de 40 € sera appliquée.',
       `En cas de litige, le tribunal compétent est le Tribunal de Commerce de Troyes (10000). — Réf. ${ref}`
     ];
     doc.text(footerC,W/2,pH-19,{align:'center',lineHeightFactor:1.4,maxWidth:W-2*M});
@@ -11040,7 +11059,7 @@ function genererContratPrestation(){
   doc.text([
     `${nomSoc}${p.forme?' — '+p.forme:''}${p.siret?' · SIRET : '+p.siret:''} — Réf. ${ref}`,
     ...(p.numSAP||p.assurance?[[p.numSAP?'Agrément SAP : '+p.numSAP:'',p.assurance?'Assurance RCP : n° '+p.assurance:''].filter(Boolean).join(' · ')]:[]),
-    p.mentionLegale||'Tout règlement doit intervenir à la date d\'échéance indiquée. Tout retard de paiement entraîne des pénalités égales à 3 fois le taux d\'intérêt légal, ainsi qu\'une indemnité forfaitaire pour frais de recouvrement de 40 €.',
+    'Le règlement doit intervenir au comptant, à la date sus indiquée. Les pénalités de retard, calculées au taux de 10% l\'an, seront payables à réception de l\'avis vous informant de leur inscription à votre débit. En cas de retard de paiement, une indemnité forfaitaire de recouvrement de 40 € sera appliquée.',
     'En cas de litige, le tribunal compétent est le Tribunal de Commerce de Troyes (10000).'
   ],W/2,pH-19,{align:'center',lineHeightFactor:1.5,maxWidth:W-2*M});
 
@@ -12285,8 +12304,17 @@ function genererDevisPDF(){
   // ── Bloc signature ────────────────────────────────────────
   y=_blocSignaturePDF(doc,y+4,W,M,c.nom,'du client',_signatureData);
 
-  // Pied de page
+  // ── Mentions légales de paiement ──────────────────────────
   const pH=doc.internal.pageSize.getHeight();
+  doc.setDrawColor(180,180,180);doc.setLineWidth(0.2);
+  doc.line(M,pH-57,W-M,pH-57);
+  doc.setTextColor(50,65,90);doc.setFontSize(7);doc.setFont('times','italic');
+  doc.text([
+    'Le règlement doit intervenir au comptant, à la date sus indiquée.',
+    'Les pénalités de retard, calculées au taux de 10% l\'an, seront payables à réception de l\'avis vous informant de leur inscription à votre débit dans nos livres comptables.',
+    'En cas de retard de paiement, une indemnité forfaitaire de recouvrement de 40 € sera appliquée.'
+  ],M,pH-53,{lineHeightFactor:1.6,maxWidth:W-2*M});
+  // Pied de page
   doc.setDrawColor(0,0,0); doc.setLineWidth(0.3); doc.line(M,pH-34,W-M,pH-34);
   doc.setTextColor(80,80,80); doc.setFontSize(6); doc.setFont('helvetica','normal');
   doc.text([
@@ -12294,7 +12322,7 @@ function genererDevisPDF(){
     `Devis valable ${validite} jours — Bon pour accord avec signature et mention manuscrite "Bon pour accord"`,
     `Crédit d\'impôt de 50% des sommes versées (art. 199 sexdecies du CGI) — Attestation fiscale annuelle remise avant le 31/03 de chaque année`,
     `Droit de rétractation : 14 jours à compter de la signature du contrat (art. L.221-18 du Code de la consommation)`,
-    `Tout retard de paiement entraîne des pénalités égales à 3 fois le taux d\'intérêt légal, ainsi qu\'une indemnité forfaitaire pour frais de recouvrement de 40 €. En cas de litige, le tribunal compétent est le Tribunal de Commerce de Troyes (10000).`
+    `En cas de litige, le tribunal compétent est le Tribunal de Commerce de Troyes (10000).`
   ],M,pH-28,{lineHeightFactor:1.4,maxWidth:W-2*M});
   doc.save(`${numDev}_${(c.nom||'client').replace(/\s+/g,'_')}.pdf`);
   // Enregistrer
