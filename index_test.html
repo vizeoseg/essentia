@@ -7238,7 +7238,7 @@ function genererFacturePDF(opts){
   const clientNom=c.nom||'—';
   const tauxTVA=parseFloat(gv('facTauxTVA')||'10');
   const numFac=gv('facNumero')||`FAC-${new Date().getFullYear()}-001`;
-  if((facturesData||[]).some(function(f){return f.numero===numFac;})){
+  if(!(opts&&opts.returnB64)&&(facturesData||[]).some(function(f){return f.numero===numFac;})){
     toast(`⚠️ Le numéro ${numFac} est déjà utilisé — veuillez le modifier avant de continuer`,'error');
     return;
   }
