@@ -19,6 +19,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js" onerror="console.warn('jspdf CDN failed')"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onerror="console.warn('xlsx CDN failed')"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" onerror="console.warn('qrcode CDN failed')"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" onerror="console.warn('JSZip CDN failed')"></script>
 <style>
 :root{
   --bg:#edf0f9;--bg2:#fff;--bg3:#f6f8fe;--border:#dde3f0;
@@ -1635,6 +1636,7 @@ tr{transition:background .12s;}
               <option value="payee">Payées</option>
               <option value="attente">En attente</option>
             </select>
+            <button onclick="exporterFacturesZIP()" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--purple);color:#fff;cursor:pointer;" title="Exporter les factures du mois sélectionné en ZIP"><i class="fas fa-file-archive"></i> Export ZIP</button>
           </div>
         </div>
         <div id="facturesHistorique"><p style="color:var(--text3);font-size:12px;padding:10px;">Aucune facture.</p></div>
@@ -8081,7 +8083,7 @@ function _regenererContratPDFb64(contrat){
     var _min4TTC = _isExonere?_min4HT:_min4HT*(1+tva/100);
     var _max5TTC = _isExonere?_max5HT:_max5HT*(1+tva/100);
     var _tvaLigne = _isExonere
-      ? 'TVA : Non applicable — Art. 293 B du CGI'
+      ? 'TVA : Non applicable — Art. 261 D 4° du CGI (services à la personne agréés)'
       : 'TVA applicable : '+tva+'% ('+(_isEntreprise?'régime général':'services à domicile — Art. 279 du CGI')+')';
     var _ligneInterv = _isExonere
       ? 'Montant par intervention : '+fmt2(_montantInterv)+' € ('+fmtH(heures)+' × '+fmt2(tarif)+' €/h)'
@@ -8159,6 +8161,10 @@ function _regenererContratPDFb64(contrat){
       section('ARTICLE '+_artNumCI+' — CRÉDIT D\'IMPÔT SERVICES À LA PERSONNE',
         'Conformément à l\'article 199 sexdecies du CGI, les particuliers employant des services à domicile bénéficient d\'un crédit d\'impôt de 50% des sommes versées dans la limite des plafonds légaux. Une attestation fiscale annuelle sera remise au Client avant le 31 mars de chaque année.');
     }
+
+    var _artLitige=9+(snap.clauseConfidentialite?1:0)+(snap.clauseFournitures?1:0)+(snap.clauseAssurance?1:0)+(snap.clauseCreditImpot?1:0);
+    section('ARTICLE '+_artLitige+' — EN CAS DE LITIGE',
+      'Le tribunal compétent est celui du ressort d\'Essentia Services, à savoir le Tribunal de Commerce de Troyes (10000).');
 
     // ── Signatures ──
     y+=6;
@@ -8598,6 +8604,51 @@ async function envoyerAvoirEmail(id){
   }catch(err){toast('Erreur envoi : '+err.message,'error');}
 }
 window.envoyerAvoirEmail=envoyerAvoirEmail;
+
+async function exporterFacturesZIP(){
+  const moisKey=document.getElementById('filtreMoisFac')?.value||'';
+  if(!moisKey){toast('Sélectionne un mois dans le filtre d\'abord','warning');return;}
+  if(typeof JSZip==='undefined'){toast('JSZip non disponible','error');return;}
+  const factures=facturesData.filter(f=>f.type!=='avoir'&&f.statut!=='archivee'&&_facMoisKey(f)===moisKey);
+  if(!factures.length){toast('Aucune facture pour ce mois','warning');return;}
+  const [y,m]=moisKey.split('-');
+  const label=`${_moisNoms[parseInt(m)-1]}_${y}`;
+  toast(`Génération ZIP — ${factures.length} facture(s)…`,'info');
+  const zip=new JSZip();
+  let ok=0;
+  for(const f of factures){
+    const c=clientsData.find(x=>x.id===f.clientId||x.nom===f.client)||{};
+    const _set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
+    _set('facNumero',f.numero);
+    _set('facDate',f.dateRaw||'');
+    _set('facClient',f.clientId||'');
+    _set('facTauxTVA',String(f.tva));
+    if(f.typeOp) _set('facTypeOp',f.typeOp);
+    if(f.emailClient) _set('facEmailClient',f.emailClient);
+    if(f.condPaie!=null) _set('facCondPaiement',String(f.condPaie));
+    const pSel=document.getElementById('facPeriode');
+    if(pSel&&f.periode&&[...pSel.options].some(o=>o.value===f.periode)) pSel.value=f.periode;
+    const mSel=document.getElementById('facMoisSelect');
+    const mk=(f.dateRaw||'').slice(0,7);
+    if(mSel&&[...mSel.options].some(o=>o.value===mk)) mSel.value=mk;
+    lignesFactureData=f.lignes||[{desc:'Prestation',qte:1,unite:'forfait',prixUnit:f.totalHT}];
+    if(typeof renderLignesFacture==='function') renderLignesFacture();
+    if(typeof calculerTotauxFacture==='function') calculerTotauxFacture();
+    const result=genererFacturePDF({returnB64:true});
+    if(result&&result.b64){
+      const bin=atob(result.b64);const bytes=new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+      zip.file(result.fileName||`${f.numero}.pdf`,bytes);
+      ok++;
+    }
+  }
+  if(!ok){toast('Aucun PDF généré','error');return;}
+  const blob=await zip.generateAsync({type:'blob'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`Essentia_Factures_${label}.zip`;a.click();
+  URL.revokeObjectURL(url);
+  toast(`${ok} facture(s) exportée(s) → ${label}.zip ✓`,'success');
+}
 
 function reediterFacture(id){
   const f=facturesData.find(x=>x.id===id);if(!f)return;
@@ -9611,7 +9662,7 @@ function chargerDonnees(){
     toast('Données chargées','info');
   }catch(e){console.error(e);}
   // Charger paramètres (avec valeurs par défaut si absentes)
-  const _defaultParams={nomSociete:'Essentia Services',adresse:'8 Rue Du Théau, 10800, Les Bordes-Aumont',iban:'FR7616958000010773929618269',bic:'QNTOFRP1XXX'};
+  const _defaultParams={nomSociete:'Essentia Services',adresse:'8 Rue Du Théau, 10800, Les Bordes-Aumont',iban:'FR7616958000010773929618269',bic:'QNTOFRP1XXX',numSAP:'SAP101860997'};
   try{
     const _raw=JSON.parse(localStorage.getItem('progestParams')||'{}');
     const _filled=Object.assign({},_defaultParams,Object.fromEntries(Object.entries(_raw).filter(([k,v])=>v)));
@@ -10970,7 +11021,7 @@ function genererContratPrestation(){
   let tarifDesc = `Tarif horaire${_isExo3?'':' HT'} : ${fmt2(tarif)} €/h\n`;
   if(_isExo3){
     tarifDesc += `Montant par intervention : ${fmt2(_montantInterv3)} € (${fmtH(heures)} × ${fmt2(tarif)} €/h)\n`;
-    tarifDesc += `TVA : Non applicable — Art. 293 B du CGI\n`;
+    tarifDesc += `TVA : Non applicable — Art. 261 D 4° du CGI (services à la personne agréés)\n`;
   } else {
     tarifDesc += `Montant par intervention HT : ${fmt2(_montantInterv3)} € (${fmtH(heures)} × ${fmt2(tarif)} €/h)\n`;
     tarifDesc += `Montant par intervention TTC : ${fmt2(_montantInterv3TTC)} €\n`;
@@ -11001,33 +11052,59 @@ function genererContratPrestation(){
   dureeDesc+=`\nPréavis de résiliation : ${preavis} mois, par lettre recommandée avec accusé de réception.`;
   section('ARTICLE 4 — DURÉE ET RÉSILIATION', dureeDesc, [26,78,115]);
 
-  // Clauses optionnelles
+  section('ARTICLE 5 — OBLIGATIONS DU PRESTATAIRE',
+    nomSoc+' s\'engage à :\n'
+    +'• Réaliser les prestations avec soin et diligence, selon les règles de l\'art.\n'
+    +'• Respecter la confidentialité des informations du Client.\n'
+    +'• Fournir du personnel qualifié, assuré et déclaré.\n'
+    +'• Souscrire et maintenir en vigueur une assurance responsabilité civile professionnelle'+(p.assurance?' (police n° '+p.assurance+')':'')+'.'
+  );
+
+  section('ARTICLE 6 — OBLIGATIONS DU CLIENT',
+    'Le Client s\'engage à :\n'
+    +'• Mettre à disposition du Prestataire les accès et moyens nécessaires à l\'exécution des prestations.\n'
+    +'• Régler les factures dans les délais convenus.\n'
+    +'• Prévenir le Prestataire de toute absence au minimum 48h à l\'avance.'
+  );
+
+  section('ARTICLE 7 — DROIT DE RÉTRACTATION',
+    'Conformément aux articles L.221-18 et suivants du Code de la consommation, le Client dispose d\'un délai de 14 jours à compter de la signature du présent contrat pour exercer son droit de rétractation, sans avoir à justifier de motifs ni à payer de pénalités.'
+  );
+
+  section('ARTICLE 8 — PROTECTION DES DONNÉES PERSONNELLES (RGPD)',
+    'Conformément au Règlement (UE) 2016/679 (RGPD) et à la loi Informatique et Libertés, les données personnelles du Client collectées dans le cadre du présent contrat sont traitées par '+nomSoc+' en qualité de responsable de traitement, aux fins d\'exécution des prestations et de facturation.\n'
+    +'Les données ne sont pas transmises à des tiers sans consentement, sauf obligation légale. Le Client dispose des droits d\'accès, rectification, effacement, portabilité et opposition sur ses données, exercés par email à : '+(p.email||'contact@essentia-services.fr')+'.\n'
+    +'Les données sont conservées pendant la durée du contrat et 5 ans après sa résiliation (obligations comptables et légales).'
+  );
+
+  // Clauses optionnelles — numérotation dynamique à partir de 9
+  let _artOpt=9;
   if(document.getElementById('clauseConfidentialite')?.checked){
-    section('ARTICLE 5 — CONFIDENTIALITÉ',
+    section('ARTICLE '+_artOpt+' — CONFIDENTIALITÉ',
       'Le Prestataire s\'engage à garder confidentielles toutes les informations auxquelles il pourrait avoir accès lors de l\'exécution des prestations. Cette obligation de confidentialité se poursuit après la fin du contrat.',
       [80,60,160]
-    );
+    ); _artOpt++;
   }
 
   if(document.getElementById('clauseFournitures')?.checked){
-    section('ARTICLE 6 — FOURNITURES ET PRODUITS',
+    section('ARTICLE '+_artOpt+' — FOURNITURES ET PRODUITS',
       'Les produits de nettoyage, consommables et fournitures sont FOURNIS PAR LE CLIENT. Le Client fournit l\'eau, l\'électricité, les produits d\'entretien et toutes installations nécessaires à l\'exécution des prestations.',
       [5,100,80]
-    );
+    ); _artOpt++;
   }
 
   if(document.getElementById('clauseAssurance')?.checked){
-    section('ARTICLE 7 — RESPONSABILITÉ ET ASSURANCE',
+    section('ARTICLE '+_artOpt+' — RESPONSABILITÉ ET ASSURANCE',
       'Le Prestataire est assuré pour sa responsabilité civile professionnelle'+(p.assurance?' (police n° '+p.assurance+')'  :'')+'. Tout dommage constaté doit être signalé dans les 48 heures. Le Client est responsable de la mise à disposition des accès et de la sécurisation de ses biens.',
       [100,60,20]
-    );
+    ); _artOpt++;
   }
 
   if(document.getElementById('clauseCreditImpot')?.checked){
-    section('ARTICLE 8 — CRÉDIT D\'IMPÔT SERVICES À LA PERSONNE',
+    section('ARTICLE '+_artOpt+' — CRÉDIT D\'IMPÔT SERVICES À LA PERSONNE',
       'Conformément à l\'article 199 sexdecies du CGI, les particuliers employant des services à domicile bénéficient d\'un crédit d\'impôt de 50% des sommes versées dans la limite des plafonds légaux. Une attestation fiscale annuelle sera remise au Client avant le 31 mars de chaque année.',
       [14,80,80]
-    );
+    ); _artOpt++;
   }
 
   if(document.getElementById('clauseSupplementHeures')?.checked){
@@ -11043,8 +11120,8 @@ function genererContratPrestation(){
   const condLib=gv('contratConditions');
   if(condLib) section('CONDITIONS PARTICULIÈRES', condLib, [60,60,60]);
 
-  section('PROTECTION DES DONNÉES PERSONNELLES (RGPD)',
-    'Conformément au Règlement (UE) 2016/679 (RGPD) et à la loi Informatique et Libertés, les données personnelles du Client sont traitées par '+nomSoc+' aux fins d\'exécution des prestations et de facturation. Les données ne sont pas transmises à des tiers sans consentement, sauf obligation légale. Le Client dispose des droits d\'accès, rectification, effacement et opposition, exercés par email à : '+(p.email||'contact@essentia-services.fr')+'. Conservation : durée du contrat + 5 ans.'
+  section('ARTICLE '+_artOpt+' — EN CAS DE LITIGE',
+    'Le tribunal compétent est celui du ressort d\'Essentia Services, à savoir le Tribunal de Commerce de Troyes (10000).'
   );
 
   // ── Signatures ───────────────────────────────────────────
