@@ -929,9 +929,23 @@ tr{transition:background .12s;}
       </div>
       <!-- KPIs financiers accueil -->
       <div class="rg-4">
-        <div class="card" style="text-align:center;padding:16px;">
-          <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:6px;">CA mensuel HT</div>
-          <div style="font-size:24px;font-weight:800;font-family:'DM Mono',monospace;color:var(--green);" id="kpiCAMois">0 €</div>
+        <div class="card" style="padding:14px;">
+          <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:8px;text-align:center;">CA mensuel HT</div>
+          <div style="font-size:22px;font-weight:800;font-family:'DM Mono',monospace;color:var(--green);text-align:center;margin-bottom:10px;" id="kpiCAMois">0 €</div>
+          <div style="display:flex;flex-direction:column;gap:5px;border-top:1px solid var(--border);padding-top:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;">
+              <span style="color:var(--text3);">📋 Prévisionnel</span>
+              <span style="font-weight:700;color:var(--green);" id="kpiCAPrev">0 €</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;">
+              <span style="color:var(--text3);">🧾 Facturé</span>
+              <span style="font-weight:700;color:var(--accent);" id="kpiCAFact">0 €</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;">
+              <span style="color:var(--text3);">✅ Encaissé</span>
+              <span style="font-weight:700;color:#059669;" id="kpiCAEnc">0 €</span>
+            </div>
+          </div>
         </div>
         <div class="card" style="text-align:center;padding:16px;">
           <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:6px;">Masse salariale brute</div>
@@ -1424,6 +1438,12 @@ tr{transition:background .12s;}
         <div class="resultat-grid">
           <div class="resultat-card"><h4 style="color:var(--green);">Produits (Revenus)</h4>
             <div class="resultat-ligne"><span class="resultat-label">CA clients <small style="color:var(--text3);font-weight:400;">(projection)</small></span><span class="resultat-value" id="resultatCA">0 €</span><span class="resultat-pct" id="resultatCAPct">—</span></div>
+            <div class="resultat-ligne" style="background:rgba(74,124,247,.04);border-radius:6px;padding:5px 7px;margin-top:2px;">
+              <span class="resultat-label" style="font-size:10px;">🧾 Facturé à date</span><span class="resultat-value" style="font-size:11px;color:var(--accent);" id="resultatCAFact">0 €</span><span class="resultat-pct" id="resultatCAFactPct">—</span>
+            </div>
+            <div class="resultat-ligne" style="background:rgba(5,150,105,.04);border-radius:6px;padding:5px 7px;margin-top:2px;">
+              <span class="resultat-label" style="font-size:10px;">✅ Encaissé à date</span><span class="resultat-value" style="font-size:11px;color:#059669;" id="resultatCAEnc">0 €</span><span class="resultat-pct" id="resultatCAEncPct">—</span>
+            </div>
             <div class="resultat-ligne"><span class="resultat-label">Autres recettes <small style="color:var(--text3);font-weight:400;" id="resultatAnneeLabel"></small></span><span class="resultat-value" id="resultatAutresRecettes">0 €</span><span class="resultat-pct" id="resultatAutresRecettesPct">—</span></div>
             <div class="resultat-ligne" style="background:#ecfdf5;border-radius:7px;padding:7px;margin-top:3px;"><span class="resultat-label" style="font-weight:700;color:var(--green);">= Total Produits</span><span class="resultat-value" style="font-size:14px;color:var(--green);" id="resultatTotalCA">0 €</span><span class="resultat-pct">100%</span></div>
           </div>
@@ -3052,7 +3072,13 @@ tr{transition:background .12s;}
   </div>
   <p style="font-size:11px;color:var(--text3);margin-top:8px;"><i class="fas fa-info-circle"></i> PDF avec détail des clients/communes et distances par jour, totaux semaine et mois. Indemnité 0,697 €/km.</p>
 </div>
-<div style="display:flex;gap:9px;"><button class="btn btn-primary" style="flex:1;" onclick="genererNoteFraisMensuelPDF(parseInt(document.getElementById('nfMois').value),parseInt(document.getElementById('nfAnnee').value));document.getElementById('modalNoteFraisPDF').style.display='none';"><i class="fas fa-file-pdf"></i> Générer PDF</button><button class="btn btn-ghost" onclick="document.getElementById('modalNoteFraisPDF').style.display='none'">Annuler</button></div>
+<div style="display:flex;gap:9px;flex-direction:column;">
+  <div style="display:flex;gap:9px;">
+    <button class="btn btn-primary" style="flex:1;" onclick="genererNoteFraisMensuelPDF(parseInt(document.getElementById('nfMois').value),parseInt(document.getElementById('nfAnnee').value));document.getElementById('modalNoteFraisPDF').style.display='none';"><i class="fas fa-file-pdf"></i> Générer PDF</button>
+    <button class="btn btn-warning" style="flex:1;" onclick="injecterMoisEnFrais(parseInt(document.getElementById('nfMois').value),parseInt(document.getElementById('nfAnnee').value));document.getElementById('modalNoteFraisPDF').style.display='none';"><i class="fas fa-road"></i> Injecter en frais</button>
+  </div>
+  <button class="btn btn-ghost" onclick="document.getElementById('modalNoteFraisPDF').style.display='none'">Annuler</button>
+</div>
 </div></div>
 <div id="editSimpleModal" class="modal"><div class="modal-box modal-sm"><div class="modal-header"><span class="modal-title" id="editSimpleTitle">Modifier</span><button class="modal-close" onclick="this.closest('.modal').style.display='none'"><i class="fas fa-times"></i></button></div><div class="form-group"><label id="editSimpleLabel">Valeur</label><input type="number" id="editSimpleValue" step="0.01" style="margin-top:7px;"></div><div style="display:flex;gap:9px;margin-top:14px;"><button class="btn btn-primary" style="flex:1;" onclick="confirmerEditSimple()">Enregistrer</button><button class="btn btn-ghost" onclick="this.closest('.modal').style.display='none'">Annuler</button></div></div></div>
 
@@ -5164,16 +5190,18 @@ function injecterTourneesEnFrais(){
   const _pFI=JSON.parse(localStorage.getItem('progestParams')||'{}');
   const depotVal=_pFI.communeDepot||document.getElementById('depotTournees')?.value||'';
   const depotDist=depotVal?communesAube.find(c=>c.nom===depotVal)?.distance||0:0;
-  const jours=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+  const jours=['lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+  const toMinI=t=>{const s=String(t||'00:00');const p=s.includes(':')?s.split(':'):['0','0'];return (parseInt(p[0])||0)*60+(parseInt(p[1])||0);};
   let totalDist=0, totalCout=0, detailJours=[];
   jours.forEach(jour=>{
     const dateKeyI=_dateKeyJour2(jour,wOff);
     const cj=clientsData.filter(c=>_getJoursClientDate(c,dateKeyI).includes(jour)&&c.commune&&!((deplacementsData||[]).find(d=>d.clientId===c.id&&d.dateNouvelle===dateKeyI&&(d.statut==='absent'||d.statut==='absent_essentia'))));
-    if(!cj.length)return;
-    const avecDist=cj.map(c=>({...c,dd:Math.abs((communesAube.find(x=>x.nom===c.commune)?.distance||0)-depotDist)})).sort((a,b)=>a.dd-b.dd);
+    const airbnbsI=(deplacementsData||[]).filter(d=>d.airbnb&&d.dateNouvelle===dateKeyI).map(d=>{const c=clientsData.find(x=>x.id===d.clientId);return c?{...c,heureDebut:d.heureNouvelle||c.heureDebut}:null;}).filter(Boolean);
+    const avecDist=[...cj,...airbnbsI].filter(c=>c.commune).map(c=>({...c,_dkm:communesAube.find(x=>x.nom===c.commune)?.distance||0})).sort((a,b)=>toMinI(a.heureDebut)-toMinI(b.heureDebut));
+    if(!avecDist.length)return;
     let dist=0,last=depotDist;
-    avecDist.forEach(c=>{const d=communesAube.find(x=>x.nom===c.commune)?.distance||0;dist+=Math.abs(d-last);last=d;});
-    if(avecDist.length)dist+=Math.abs(depotDist-last);
+    avecDist.forEach(c=>{dist+=Math.abs(c._dkm-last);last=c._dkm;});
+    dist+=Math.abs(depotDist-last);
     const cout=(dist*IK);
     totalDist+=dist; totalCout+=cout;
     detailJours.push(`${jour}:${Math.round(dist)}km`);
@@ -5191,10 +5219,6 @@ function injecterTourneesEnFrais(){
     montant:Math.round(totalCout*100)/100,
     employe:'Gérant', entreprise:`Détail: ${detailJours.join(', ')}`,
     photo:null, source:'tournees_auto'
-  });
-  depensesData.push({
-    date:dateStr, libelle:`Indemnités kilométriques tournées (${Math.round(totalDist)}km)`,
-    montant:Math.round(totalCout*100)/100, categorie:'Déplacements'
   });
   chargerNotesFrais(); mettreAJourFinances(); sauvegarderTout(true);
   toast(`Frais injectés : ${totalCout.toFixed(2)} € pour ${Math.round(totalDist)} km ✓`,'success');
@@ -5593,6 +5617,67 @@ function ouvrirModalNoteFraisPDF(){
   if(selM) selM.value=String(now.getMonth()+1);
   if(selA) selA.value=String(now.getFullYear());
   document.getElementById('modalNoteFraisPDF').style.display='flex';
+}
+
+function injecterMoisEnFrais(mois, annee){
+  const IK=0.697;
+  const moisFr=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const _pFM=JSON.parse(localStorage.getItem('progestParams')||'{}');
+  const depotVal=_pFM.communeDepot||document.getElementById('depotTournees')?.value||'';
+  const depotDist=depotVal?communesAube.find(c=>c.nom===depotVal)?.distance||0:0;
+  const toMinM=t=>{const s=String(t||'00:00');const p=s.includes(':')?s.split(':'):['0','0'];return (parseInt(p[0])||0)*60+(parseInt(p[1])||0);};
+  const jours=['lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+  const JIDX={lundi:0,mardi:1,mercredi:2,jeudi:3,vendredi:4,samedi:5};
+
+  // Vérifier doublon
+  const moisKey=annee+'-'+String(mois).padStart(2,'0');
+  const doublon=notesFraisData.find(f=>f.source==='tournees_mois'&&(f.date||'').startsWith(moisKey));
+  if(doublon){
+    if(!confirm(`Une note de frais pour ${moisFr[mois-1]} ${annee} existe déjà (${doublon.montant.toFixed(2)} €). Remplacer ?`)) return;
+    notesFraisData=notesFraisData.filter(f=>f!==doublon);
+  }
+
+  // Semaines du mois
+  const firstDay=new Date(annee,mois-1,1);
+  const lastDay=new Date(annee,mois,0);
+  const firstDow=firstDay.getDay();
+  const firstMonday=new Date(firstDay); firstMonday.setDate(firstDay.getDate()-(firstDow===0?6:firstDow-1));
+  const weeks=[]; let wS=new Date(firstMonday);
+  while(wS<=lastDay){weeks.push(new Date(wS));wS=new Date(wS);wS.setDate(wS.getDate()+7);}
+
+  let monthTotalDist=0;
+  weeks.forEach(wMon=>{
+    jours.forEach(jour=>{
+      const d=new Date(wMon); d.setDate(wMon.getDate()+JIDX[jour]);
+      if(d.getMonth()!==mois-1||d.getFullYear()!==annee) return;
+      const dateKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      const cj=clientsData.filter(c=>_getJoursClientDate(c,dateKey).includes(jour)&&c.commune&&!((deplacementsData||[]).find(dep=>dep.clientId===c.id&&dep.dateNouvelle===dateKey&&(dep.statut==='absent'||dep.statut==='absent_essentia'))));
+      const airbnbsM=(deplacementsData||[]).filter(dep=>dep.airbnb&&dep.dateNouvelle===dateKey).map(dep=>{const c=clientsData.find(x=>x.id===dep.clientId);return c?{...c,heureDebut:dep.heureNouvelle||c.heureDebut}:null;}).filter(Boolean);
+      const avecDist=[...cj,...airbnbsM].filter(c=>c.commune).map(c=>({...c,_dkm:communesAube.find(x=>x.nom===c.commune)?.distance||0})).sort((a,b)=>toMinM(a.heureDebut)-toMinM(b.heureDebut));
+      if(!avecDist.length) return;
+      let dist=0,last=depotDist;
+      avecDist.forEach(c=>{dist+=Math.abs(c._dkm-last);last=c._dkm;});
+      dist+=Math.abs(depotDist-last);
+      monthTotalDist+=dist;
+    });
+  });
+
+  if(monthTotalDist===0){toast(`Aucune tournée trouvée pour ${moisFr[mois-1]} ${annee}`,'warning');return;}
+  const montant=Math.round(monthTotalDist*IK*100)/100;
+  const dateStr=moisKey+'-01';
+  notesFraisData.push({
+    id:'fr'+Date.now(),
+    date:dateStr,
+    libelle:`Indemnités kilométriques — ${moisFr[mois-1]} ${annee} (${Math.round(monthTotalDist)} km)`,
+    categorie:'Transport',
+    montant,
+    employe:'Gérant',
+    entreprise:`Barème SAS 0,697 €/km — ${moisFr[mois-1]} ${annee}`,
+    photo:null,
+    source:'tournees_mois'
+  });
+  chargerNotesFrais(); mettreAJourFinances(); calculerResultatNet(); sauvegarderTout(true);
+  toast(`${moisFr[mois-1]} ${annee} injecté : ${montant.toFixed(2)} € pour ${Math.round(monthTotalDist)} km ✓`,'success');
 }
 
 function genererNoteFraisMensuelPDF(mois, annee){
@@ -6010,7 +6095,9 @@ function mettreAJourFinances(){
   const soldeInitialVal=parseFloat(document.getElementById('soldeInitial')?.value)||0;
 
   // ── Agrégation automatique depuis les autres modules ──
-  const caClientsMois = clientsData.reduce((s,c)=>s+(c.totalMoisHT||0),0);
+  const _todayF=new Date();_todayF.setHours(0,0,0,0);
+  const _actifsF=clientsData.filter(c=>{if(!c.dateSortie)return true;const p=c.dateSortie.split('-');return new Date(p[0],p[1]-1,p[2])>=_todayF;});
+  const caClientsMois = _actifsF.reduce((s,c)=>s+(c.totalMoisHT||0),0);
   const masseSalMois  = salariesData.reduce((s,x)=>s+(x.coutTotal||0),0);
   const totalFrais    = notesFraisData.reduce((s,f)=>s+f.montant,0);
 
@@ -6348,7 +6435,7 @@ function supprimerFraisById(id){
   notesFraisData = notesFraisData.filter(x=>x.id!==id);
   try { localStorage.removeItem('_fraisPhoto:'+id); } catch(e){}
   if(typeof supaStorageDelete === 'function') supaStorageDelete(id);
-  chargerNotesFrais();
+  chargerNotesFrais(); mettreAJourFinances(); calculerResultatNet(); calculerStats();
   sauvegarderTout(true);
 }
 
@@ -6404,7 +6491,7 @@ function supprimerFrais(i){
       try { localStorage.removeItem('_fraisPhoto:'+f.id); } catch(e){}
     }
     notesFraisData.splice(i,1);
-    chargerNotesFrais();
+    chargerNotesFrais(); mettreAJourFinances(); calculerResultatNet(); calculerStats();
     sauvegarderTout(true);
   }
 }
@@ -6584,7 +6671,9 @@ function _initResultatAnnees(){
 function calculerResultatNet(){
   _initResultatAnnees();
   const anneeStr=String(document.getElementById('resultatAnneeSel')?.value||new Date().getFullYear());
-  const caClients=clientsData.reduce((s,c)=>s+(c.caAnneeHT||0),0);
+  const _todayR=new Date();_todayR.setHours(0,0,0,0);
+  const _actifsR=clientsData.filter(c=>{if(!c.dateSortie)return true;const p=c.dateSortie.split('-');return new Date(p[0],p[1]-1,p[2])>=_todayR;});
+  const caClients=_actifsR.reduce((s,c)=>s+(c.caAnneeHT||0),0);
   const autresR=recettesData.filter(r=>r.date&&r.date.startsWith(anneeStr)).reduce((s,r)=>s+r.montant,0);
   const totalCA=caClients+autresR;
   const coutV=parseFloat(document.getElementById('saisieCoutVentes')?.value)||0;
@@ -6609,6 +6698,12 @@ function calculerResultatNet(){
 
   setEl('resultatAnneeLabel','('+anneeStr+')');
   setEl('resultatCA',fmt(caClients)); setEl('resultatCAPct',pct(caClients));
+  // Réalisé facturé et encaissé à date (année sélectionnée)
+  const _facAn=facturesData.filter(f=>f.type!=='avoir'&&(f.dateRaw||f.date||'').startsWith(anneeStr));
+  const caFactAn=_facAn.reduce((s,f)=>s+(f.totalHT||0),0);
+  const caEncAn=_facAn.filter(f=>f.statut==='payee').reduce((s,f)=>s+(f.totalHT||0),0);
+  setEl('resultatCAFact',fmt(caFactAn)); setEl('resultatCAFactPct',pct(caFactAn));
+  setEl('resultatCAEnc',fmt(caEncAn)); setEl('resultatCAEncPct',pct(caEncAn));
   setEl('resultatAutresRecettes',fmt(autresR)); setEl('resultatAutresRecettesPct',pct(autresR));
   setEl('resultatTotalCA',fmt(totalCA));
   setEl('displayCoutVentes',fmt(coutV)); setEl('pctCoutVentes',pct(coutV));
@@ -6646,7 +6741,9 @@ function exporterResultatPDF(){
   doc.setTextColor(100,160,255);doc.setFontSize(14);doc.setFont('helvetica','bold');doc.text('COMPTE DE RÉSULTAT',W/2,15,{align:'center'});
   doc.setTextColor(180,200,240);doc.setFontSize(8);doc.text(new Date().toLocaleDateString('fr-FR'),W/2,21,{align:'center'});
   let y=30;
-  const caClients=clientsData.reduce((s,c)=>s+(c.caAnneeHT||0),0);
+  const _todayPdf=new Date();_todayPdf.setHours(0,0,0,0);
+  const _actifsPdf=clientsData.filter(c=>{if(!c.dateSortie)return true;const p=c.dateSortie.split('-');return new Date(p[0],p[1]-1,p[2])>=_todayPdf;});
+  const caClients=_actifsPdf.reduce((s,c)=>s+(c.caAnneeHT||0),0);
   const autresR=recettesData.reduce((s,r)=>s+r.montant,0);
   const masseSal=salariesData.reduce((s,x)=>s+x.brut,0)*12;
   const chargesPat=salariesData.reduce((s,x)=>s+x.chargesPatronales,0)*12;
@@ -8961,9 +9058,20 @@ function calculerStats(){
     var p=c.dateSortie.split('-');
     return new Date(p[0],p[1]-1,p[2]) > new Date();
   }).length);
-  const caMens=clientsData.reduce((s,c)=>s+(c.totalMoisHT||0),0);
+  const _today=new Date();_today.setHours(0,0,0,0);
+  const _actifs=clientsData.filter(c=>{if(!c.dateSortie)return true;const p=c.dateSortie.split('-');return new Date(p[0],p[1]-1,p[2])>=_today;});
+  const caMens=_actifs.reduce((s,c)=>s+(c.totalMoisHT||0),0);
   setEl('statsCAMensuel',caMens.toFixed(0)+' €');
   setEl('kpiCAMois',caMens.toFixed(2)+' €');
+  // Prévisionnel vs Réalisé — mois en cours
+  const _now=new Date();
+  const _moisKey=_now.getFullYear()+'-'+String(_now.getMonth()+1).padStart(2,'0');
+  const _facMois=facturesData.filter(f=>f.type!=='avoir'&&(f.dateRaw||f.date||'').startsWith(_moisKey));
+  const caFactMois=_facMois.reduce((s,f)=>s+(f.totalHT||0),0);
+  const caEncMois=_facMois.filter(f=>f.statut==='payee').reduce((s,f)=>s+(f.totalHT||0),0);
+  setEl('kpiCAPrev',caMens.toFixed(2)+' €');
+  setEl('kpiCAFact',caFactMois.toFixed(2)+' €');
+  setEl('kpiCAEnc',caEncMois.toFixed(2)+' €');
   const masseSal=salariesData.reduce((s,x)=>s+x.brut,0);
   setEl('statsSalaries',salariesData.length);
   setEl('statsMasseSalariale',masseSal.toFixed(0)+' €');
