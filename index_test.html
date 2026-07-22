@@ -5190,7 +5190,7 @@ function injecterTourneesEnFrais(){
   const _pFI=JSON.parse(localStorage.getItem('progestParams')||'{}');
   const depotVal=_pFI.communeDepot||document.getElementById('depotTournees')?.value||'';
   const depotDist=depotVal?communesAube.find(c=>c.nom===depotVal)?.distance||0:0;
-  const jours=['lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+  const jours=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
   const toMinI=t=>{const s=String(t||'00:00');const p=s.includes(':')?s.split(':'):['0','0'];return (parseInt(p[0])||0)*60+(parseInt(p[1])||0);};
   let totalDist=0, totalCout=0, detailJours=[];
   jours.forEach(jour=>{
@@ -5626,8 +5626,8 @@ function injecterMoisEnFrais(mois, annee){
   const depotVal=_pFM.communeDepot||document.getElementById('depotTournees')?.value||'';
   const depotDist=depotVal?communesAube.find(c=>c.nom===depotVal)?.distance||0:0;
   const toMinM=t=>{const s=String(t||'00:00');const p=s.includes(':')?s.split(':'):['0','0'];return (parseInt(p[0])||0)*60+(parseInt(p[1])||0);};
-  const jours=['lundi','mardi','mercredi','jeudi','vendredi','samedi'];
-  const JIDX={lundi:0,mardi:1,mercredi:2,jeudi:3,vendredi:4,samedi:5};
+  const jours=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+  const JIDX={lundi:0,mardi:1,mercredi:2,jeudi:3,vendredi:4,samedi:5,dimanche:6};
 
   // Vérifier doublon
   const moisKey=annee+'-'+String(mois).padStart(2,'0');
