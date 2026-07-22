@@ -1088,12 +1088,11 @@ tr{transition:background .12s;}
           </div>
         </div>
         <div class="form-row" style="max-width:600px;">
-          <div class="form-group"><label>Dépôt / Point de départ</label><select id="depotTournees" onchange="chargerTournees()"><option value="">— Toutes communes —</option></select></div>
-          <div class="form-group"><label>Carburant (€/L)</label><input type="number" id="prixCarburant" value="1.95" step="0.01" oninput="chargerTournees()"></div>
-          <div class="form-group"><label>Conso (L/100km)</label><input type="number" id="consommation" value="6.5" step="0.1" oninput="chargerTournees()"></div>
+          <div class="form-group"><label>Point de départ SAS</label><select id="depotTournees" style="display:none;"></select><div id="depotTourneesDisplay" style="background:rgba(74,124,247,.08);border:1px solid rgba(74,124,247,.25);border-radius:8px;padding:8px 12px;font-size:13px;font-weight:700;color:var(--accent);">—</div><div style="font-size:10px;color:var(--text3);margin-top:4px;"><i class="fas fa-lock"></i> Configurable dans <strong>Paramètres société</strong></div></div>
+          <div class="form-group"><label>Indemnité kilométrique</label><div style="background:rgba(18,184,122,.08);border:1px solid rgba(18,184,122,.2);border-radius:8px;padding:8px 12px;font-size:13px;font-weight:700;color:#059669;">0,697 €/km <span style="font-weight:400;font-size:11px;color:var(--text3);">— barème SAS 2026</span></div></div>
         </div>
         <div id="statsTournees" style="background:rgba(18,184,122,.06);border:1px solid rgba(18,184,122,.2);border-radius:9px;padding:11px;margin-top:4px;display:flex;gap:18px;flex-wrap:wrap;font-size:12px;align-items:center;">
-          <button class="btn btn-warning btn-sm" onclick="injecterTourneesEnFrais()" title="Envoyer les coûts carburant de cette semaine en notes de frais et dépenses"><i class="fas fa-gas-pump"></i> Injecter frais carburant</button>
+          <button class="btn btn-warning btn-sm" onclick="injecterTourneesEnFrais()" title="Injecter les indemnités kilométriques en notes de frais"><i class="fas fa-road"></i> Injecter en frais</button>
         </div>
       </div>
       <!-- Planning mensuel -->
@@ -1130,7 +1129,16 @@ tr{transition:background .12s;}
       </div>
       <!-- Vue semaine détaillée -->
       <div class="card" style="margin-top:14px;">
-        <div class="card-header"><div class="card-icon"><i class="fas fa-calendar-week"></i></div><h3>Vue semaine — tournées optimisées</h3></div>
+        <div class="card-header" style="flex-wrap:wrap;gap:8px;">
+          <div class="card-icon"><i class="fas fa-calendar-week"></i></div>
+          <h3>Vue semaine — tournées optimisées</h3>
+          <div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <button class="btn btn-sm" style="background:var(--bg3);border:1.5px solid var(--border);color:var(--text2);font-weight:700;min-width:34px;" onclick="navTourneesWeek(-1)" title="Semaine précédente"><i class="fas fa-chevron-left"></i></button>
+            <span id="tourneesWeekLabel" style="font-size:13px;font-weight:700;color:var(--accent);min-width:200px;text-align:center;"></span>
+            <button class="btn btn-sm" style="background:var(--bg3);border:1.5px solid var(--border);color:var(--text2);font-weight:700;min-width:34px;" onclick="navTourneesWeek(1)" title="Semaine suivante"><i class="fas fa-chevron-right"></i></button>
+            <button class="btn btn-sm" style="background:var(--accent-l);color:var(--accent);border:1.5px solid rgba(74,124,247,.3);font-weight:600;" onclick="navTourneesWeek(0)" title="Revenir à la semaine courante"><i class="fas fa-calendar-day"></i> Aujourd'hui</button>
+          </div>
+        </div>
         <div id="tourneeGrid" style="margin-top:4px;"></div>
       </div>
       <!-- Planning prévisionnel -->
@@ -1981,6 +1989,7 @@ tr{transition:background .12s;}
           <div class="form-group" style="margin-bottom:10px;"><label>Capital social (€)</label><input type="number" id="paramCapital" placeholder="1000" oninput="sauvegarderParametres()"></div>
           <div class="form-group" style="margin-bottom:10px;"><label>N° Agrément SAP</label><input type="text" id="paramNumSAP" placeholder="N° agrément Services à la Personne" oninput="sauvegarderParametres()"></div>
           <div class="form-group" style="margin-bottom:13px;"><label>Assurance RCP (n° police)</label><input type="text" id="paramAssurance" placeholder="Ex : 110044568 Q" oninput="sauvegarderParametres()"></div>
+          <div class="form-group" style="margin-bottom:13px;"><label>Commune de départ tournées <span style="font-size:10px;color:var(--text3);">(point fixe SAS)</span></label><select id="paramCommuneDepot" onchange="sauvegarderParametres()"><option value="">— Non configurée —</option></select></div>
           <div class="form-group" style="margin-bottom:13px;"><label>Mention légale factures</label><textarea id="paramMentionLegale" rows="2" placeholder="Exonération de TVA — Art. 261 D 4° du CGI (services à la personne agréés)" oninput="sauvegarderParametres()" style="resize:vertical;"></textarea></div>
           <div style="background:var(--green-l);border:1px solid var(--green);border-radius:8px;padding:9px 12px;font-size:11px;color:var(--green);"><i class="fas fa-check-circle"></i> Les informations sont sauvegardées automatiquement</div>
         </div>
@@ -3030,6 +3039,21 @@ tr{transition:background .12s;}
 <div id="editClientModal" class="modal"><div class="modal-box"><div class="modal-header"><span class="modal-title">Modifier le client</span><button class="modal-close" onclick="this.closest('.modal').style.display='none'"><i class="fas fa-times"></i></button></div><div id="editClientForm"></div><div style="display:flex;gap:8px;margin-top:14px;"><button class="btn btn-success" style="flex:1;" onclick="sauvegarderModificationClient()"><i class="fas fa-save"></i> Enregistrer</button><button class="btn btn-danger" onclick="supprimerClientDepuisModal()" style="background:#ef4444;color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600;"><i class="fas fa-trash"></i> Supprimer</button></div></div></div>
 <div id="salaryModal" class="modal"><div class="modal-box modal-sm"><div class="modal-header"><span class="modal-title" id="salaryModalTitle">Bulletin de salaire</span><button class="modal-close" onclick="this.closest('.modal').style.display='none'"><i class="fas fa-times"></i></button></div><div id="salaryModalContent"></div><div style="display:flex;gap:9px;margin-top:14px;"><button class="btn btn-primary" style="flex:1;" onclick="exporterBulletin(currentBulletinId)"><i class="fas fa-file-pdf"></i> PDF Bulletin</button><button class="btn btn-ghost" onclick="this.closest('.modal').style.display='none'">Fermer</button></div></div></div>
 <div id="photoModal" class="modal"><div class="modal-box modal-sm"><div class="modal-header"><span class="modal-title">Justificatif</span><button class="modal-close" onclick="this.closest('.modal').style.display='none';document.getElementById('photoModalImg').src='';document.querySelector('#photoModal .modal-title').textContent='Justificatif';"><i class="fas fa-times"></i></button></div><img id="photoModalImg" src="" style="width:100%;border-radius:9px;" alt="Justificatif"></div></div>
+<div id="modalNoteFraisPDF" class="modal" style="display:none;"><div class="modal-box modal-sm"><div class="modal-header"><span class="modal-title"><i class="fas fa-file-pdf" style="color:#e53e3e;margin-right:6px;"></i>Note de frais kilométrique</span><button class="modal-close" onclick="document.getElementById('modalNoteFraisPDF').style.display='none'"><i class="fas fa-times"></i></button></div>
+<div style="padding:4px 0 12px;">
+  <div class="form-row" style="margin-bottom:0;">
+    <div class="form-group"><label>Mois</label><select id="nfMois" style="margin-top:5px;">
+      <option value="1">Janvier</option><option value="2">Février</option><option value="3">Mars</option>
+      <option value="4">Avril</option><option value="5">Mai</option><option value="6">Juin</option>
+      <option value="7">Juillet</option><option value="8">Août</option><option value="9">Septembre</option>
+      <option value="10">Octobre</option><option value="11">Novembre</option><option value="12">Décembre</option>
+    </select></div>
+    <div class="form-group"><label>Année</label><input type="number" id="nfAnnee" value="2026" min="2024" max="2030" style="margin-top:5px;"></div>
+  </div>
+  <p style="font-size:11px;color:var(--text3);margin-top:8px;"><i class="fas fa-info-circle"></i> PDF avec détail des clients/communes et distances par jour, totaux semaine et mois. Indemnité 0,697 €/km.</p>
+</div>
+<div style="display:flex;gap:9px;"><button class="btn btn-primary" style="flex:1;" onclick="genererNoteFraisMensuelPDF(parseInt(document.getElementById('nfMois').value),parseInt(document.getElementById('nfAnnee').value));document.getElementById('modalNoteFraisPDF').style.display='none';"><i class="fas fa-file-pdf"></i> Générer PDF</button><button class="btn btn-ghost" onclick="document.getElementById('modalNoteFraisPDF').style.display='none'">Annuler</button></div>
+</div></div>
 <div id="editSimpleModal" class="modal"><div class="modal-box modal-sm"><div class="modal-header"><span class="modal-title" id="editSimpleTitle">Modifier</span><button class="modal-close" onclick="this.closest('.modal').style.display='none'"><i class="fas fa-times"></i></button></div><div class="form-group"><label id="editSimpleLabel">Valeur</label><input type="number" id="editSimpleValue" step="0.01" style="margin-top:7px;"></div><div style="display:flex;gap:9px;margin-top:14px;"><button class="btn btn-primary" style="flex:1;" onclick="confirmerEditSimple()">Enregistrer</button><button class="btn btn-ghost" onclick="this.closest('.modal').style.display='none'">Annuler</button></div></div></div>
 
 <script>
@@ -4958,9 +4982,22 @@ function chargerCommunes(){
     sel.innerHTML='<option value="">Choisir...</option>';
     sorted.forEach(c=>sel.innerHTML+=`<option value="${c.nom}" data-distance="${c.distance}">${c.nom} (${c.distance}km)</option>`);
   });
-  // Dépôt gérant
+  // Dépôt gérant — restauration automatique de la commune SAS
   const dep=document.getElementById('depotTournees');
-  if(dep){dep.innerHTML='<option value="">— Toutes communes —</option>';sorted.forEach(c=>dep.innerHTML+=`<option value="${c.nom}">${c.nom}</option>`);}
+  if(dep){
+    dep.innerHTML='<option value="">— Toutes communes —</option>';
+    sorted.forEach(c=>dep.innerHTML+=`<option value="${c.nom}">${c.nom}</option>`);
+    const _savedDepot=localStorage.getItem('depotTourneesVal')||'';
+    if(_savedDepot) dep.value=_savedDepot;
+  }
+  // Paramètres société — commune de départ fixe
+  const depParam=document.getElementById('paramCommuneDepot');
+  if(depParam){
+    const _curVal=depParam.value;
+    depParam.innerHTML='<option value="">— Non configurée —</option>';
+    sorted.forEach(c=>depParam.innerHTML+=`<option value="${c.nom}">${c.nom}</option>`);
+    if(_curVal) depParam.value=_curVal;
+  }
   // Dépôt employé
   const depEmp=document.getElementById('empDepotTournees');
   if(depEmp){depEmp.innerHTML='<option value="">— Toutes communes —</option>';sorted.forEach(c=>depEmp.innerHTML+=`<option value="${c.nom}">${c.nom}</option>`);}
@@ -5065,6 +5102,8 @@ function ajouterClient(){
   if(typeof chargerPlanningPrevisionnel==='function') chargerPlanningPrevisionnel();
   if(typeof chargerTournees==='function') chargerTournees();
   sauvegarderTout(true);
+  // Force sync Supabase immédiat — évite la perte si l'utilisateur recharge avant le debounce 2s
+  if(typeof window.supabaseForceSync==='function') window.supabaseForceSync();
 }
 
 function genererFactureDepuisClient(clientId){
@@ -5120,27 +5159,32 @@ function creerDevisDepuisClient(clientId){
 }
 
 function injecterTourneesEnFrais(){
-  const prix=parseFloat(document.getElementById('prixCarburant')?.value)||1.95;
-  const conso=parseFloat(document.getElementById('consommation')?.value)||6.5;
-  const depotVal=document.getElementById('depotTournees')?.value||'';
+  const IK=0.697; // indemnité kilométrique SAS 2026 (€/km)
+  const wOff=window._tourneesWeekOffset||0;
+  const _pFI=JSON.parse(localStorage.getItem('progestParams')||'{}');
+  const depotVal=_pFI.communeDepot||document.getElementById('depotTournees')?.value||'';
   const depotDist=depotVal?communesAube.find(c=>c.nom===depotVal)?.distance||0:0;
   const jours=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
   let totalDist=0, totalCout=0, detailJours=[];
   jours.forEach(jour=>{
-    const cj=clientsData.filter(c=>c.jours&&c.jours.includes(jour)&&c.commune);
+    const dateKeyI=_dateKeyJour2(jour,wOff);
+    const cj=clientsData.filter(c=>_getJoursClientDate(c,dateKeyI).includes(jour)&&c.commune&&!((deplacementsData||[]).find(d=>d.clientId===c.id&&d.dateNouvelle===dateKeyI&&(d.statut==='absent'||d.statut==='absent_essentia'))));
     if(!cj.length)return;
     const avecDist=cj.map(c=>({...c,dd:Math.abs((communesAube.find(x=>x.nom===c.commune)?.distance||0)-depotDist)})).sort((a,b)=>a.dd-b.dd);
     let dist=0,last=depotDist;
     avecDist.forEach(c=>{const d=communesAube.find(x=>x.nom===c.commune)?.distance||0;dist+=Math.abs(d-last);last=d;});
     if(avecDist.length)dist+=Math.abs(depotDist-last);
-    const cout=(dist*conso/100*prix);
+    const cout=(dist*IK);
     totalDist+=dist; totalCout+=cout;
     detailJours.push(`${jour}:${Math.round(dist)}km`);
   });
   if(totalDist===0){toast('Aucune tournée à injecter (aucun client avec commune assignée)','warning');return;}
-  const now=new Date();
-  const dateStr=now.toISOString().split('T')[0];
-  const libelle=`Carburant tournées — semaine du ${now.toLocaleDateString('fr-FR')} (${Math.round(totalDist)}km)`;
+  // Date du lundi de la semaine affichée (pas forcément aujourd'hui)
+  const _nowI=new Date(); _nowI.setHours(0,0,0,0);
+  const _dowI=_nowI.getDay(); const _loI=_dowI===0?-6:1-_dowI;
+  const _lunI=new Date(_nowI); _lunI.setDate(_nowI.getDate()+_loI+wOff*7);
+  const dateStr=_lunI.getFullYear()+'-'+String(_lunI.getMonth()+1).padStart(2,'0')+'-'+String(_lunI.getDate()).padStart(2,'0');
+  const libelle=`Indemnités kilométriques — semaine du ${_lunI.toLocaleDateString('fr-FR')} (${Math.round(totalDist)}km)`;
   notesFraisData.push({
     id:'fr'+Date.now(),
     date:dateStr, libelle, categorie:'Transport',
@@ -5149,8 +5193,8 @@ function injecterTourneesEnFrais(){
     photo:null, source:'tournees_auto'
   });
   depensesData.push({
-    date:dateStr, libelle:`Carburant tournées (${Math.round(totalDist)}km)`,
-    montant:Math.round(totalCout*100)/100, categorie:'Carburant'
+    date:dateStr, libelle:`Indemnités kilométriques tournées (${Math.round(totalDist)}km)`,
+    montant:Math.round(totalCout*100)/100, categorie:'Déplacements'
   });
   chargerNotesFrais(); mettreAJourFinances(); sauvegarderTout(true);
   toast(`Frais injectés : ${totalCout.toFixed(2)} € pour ${Math.round(totalDist)} km ✓`,'success');
@@ -5440,12 +5484,13 @@ function _toggleTG(uid){
 }
 
 // Date du jour de la semaine courante (utilisée pour filtrer _getJoursClientDate)
-function _dateKeyJour2(jourNom){
+// weekOffset : 0=semaine courante, -1=semaine précédente, +1=semaine suivante
+function _dateKeyJour2(jourNom, weekOffset){
   const JOURS={lundi:0,mardi:1,mercredi:2,jeudi:3,vendredi:4,samedi:5,dimanche:6};
   const now=new Date(); now.setHours(0,0,0,0);
   const dow=now.getDay(); // 0=dim
   const lundiOffset=dow===0?-6:1-dow;
-  const lundi=new Date(now); lundi.setDate(now.getDate()+lundiOffset);
+  const lundi=new Date(now); lundi.setDate(now.getDate()+lundiOffset+(weekOffset||0)*7);
   const d=new Date(lundi); d.setDate(lundi.getDate()+(JOURS[jourNom]||0));
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
@@ -5454,18 +5499,33 @@ function chargerTournees(){
   _renderFiltresSalaries();
   setTimeout(_renderFiltresSalaries, 2000); // Re-render après sync Supabase
   const jours=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+  const wOff = window._tourneesWeekOffset||0;
   const _todayKeyT=new Date().toISOString().split('T')[0];
-  const depotVal=document.getElementById('depotTournees')?.value||'';
+  const _pF=JSON.parse(localStorage.getItem('progestParams')||'{}');
+  const depotVal=_pF.communeDepot||document.getElementById('depotTournees')?.value||'';
   const depotDist=depotVal?communesAube.find(c=>c.nom===depotVal)?.distance||0:0;
-  const prix=parseFloat(document.getElementById('prixCarburant').value)||1.95;
-  const conso=parseFloat(document.getElementById('consommation').value)||6.5;
+  const IK=0.697; // indemnité kilométrique SAS 2026 (€/km)
+  // Afficher la commune active
+  const _depDisp=document.getElementById('depotTourneesDisplay');
+  if(_depDisp) _depDisp.textContent=depotVal||'⚠ Non configurée — aller dans Paramètres';
   let totalDist=0,totalCout=0;
   const todayJourNom = new Date().toLocaleDateString('fr-FR',{weekday:'long'}).toLowerCase();
   const joursFr = {lundi:'Lundi',mardi:'Mardi',mercredi:'Mercredi',jeudi:'Jeudi',vendredi:'Vendredi',samedi:'Samedi',dimanche:'Dimanche'};
+  // Calcul lundi/dimanche de la semaine affichée pour le label
+  (function(){
+    const now=new Date(); now.setHours(0,0,0,0);
+    const dow=now.getDay(); const lo=dow===0?-6:1-dow;
+    const lun=new Date(now); lun.setDate(now.getDate()+lo+wOff*7);
+    const dim=new Date(lun); dim.setDate(lun.getDate()+6);
+    const fmt=d=>d.toLocaleDateString('fr-FR',{day:'numeric',month:'long'});
+    const lbl=document.getElementById('tourneesWeekLabel');
+    if(lbl) lbl.textContent=(wOff===0?'Cette semaine — ':'')+'Sem. du '+fmt(lun)+' au '+fmt(dim);
+  })();
 
   document.getElementById('tourneeGrid').innerHTML = jours.map(jour=>{
-    const dateKey = _dateKeyJour2(jour);
-    const cj = clientsData.filter(c => _getJoursClientDate(c, dateKey).includes(jour) && c.commune);
+    const dateKey = _dateKeyJour2(jour, wOff);
+    const _isAbsent=(c,dk)=>{const dep=(deplacementsData||[]).find(d=>d.clientId===c.id&&d.dateNouvelle===dk);return dep&&(dep.statut==='absent'||dep.statut==='absent_essentia');};
+    const cj = clientsData.filter(c => _getJoursClientDate(c, dateKey).includes(jour) && c.commune && !_isAbsent(c,dateKey));
     const toMin = t=>{const s=String(t||'00:00');const p=s.includes(':')?s.split(':'):['0','0'];return (parseInt(p[0])||0)*60+(parseInt(p[1])||0);};
     // Interventions RBNB ponctuelles planifiées ce jour
     const airbnbsJour = (deplacementsData||[]).filter(d=>d.airbnb&&d.dateNouvelle===dateKey).map(d=>{const c=clientsData.find(x=>x.id===d.clientId);return c?{...c,heureDebut:d.heureNouvelle||c.heureDebut,_airbnb:true}:null;}).filter(Boolean);
@@ -5473,10 +5533,10 @@ function chargerTournees(){
     let dist=0,last=depotDist;
     avecDist.forEach(c=>{const d=communesAube.find(x=>x.nom===c.commune)?.distance||0;dist+=Math.abs(d-last);last=d;});
     if(avecDist.length) dist+=Math.abs(depotDist-last);
-    const cout=((dist*conso)/100*prix).toFixed(2);
+    const cout=(dist*IK).toFixed(2);
     totalDist+=dist; totalCout+=parseFloat(cout);
 
-    const isToday = jour === todayJourNom;
+    const isToday = wOff===0 && jour === todayJourNom;
     const isEmpty = avecDist.length === 0;
     const uid = 'tg-'+jour;
 
@@ -5511,8 +5571,185 @@ function chargerTournees(){
       </div>
     </div>`;
   }).join('');
-  const s=document.getElementById('statsTournees');if(s)s.innerHTML=`<span>Distance totale semaine : <strong>${Math.round(totalDist)} km</strong></span><span>Coût carburant estimé : <strong>${totalCout.toFixed(2)} €</strong></span><button class="btn btn-warning btn-sm" onclick="injecterTourneesEnFrais()" title="Envoyer le coût carburant en notes de frais et dépenses"><i class="fas fa-gas-pump"></i> Injecter en frais</button>`;
+  const s=document.getElementById('statsTournees');if(s)s.innerHTML=`<span>Distance totale semaine : <strong>${Math.round(totalDist)} km</strong></span><span>Indemnité semaine : <strong>${totalCout.toFixed(2)} €</strong> <span style="font-size:10px;color:var(--text3);">(0,697 €/km)</span></span><button class="btn btn-warning btn-sm" onclick="injecterTourneesEnFrais()" title="Injecter les indemnités kilométriques en notes de frais"><i class="fas fa-road"></i> Injecter en frais</button><button class="btn btn-sm" style="background:#e53e3e;color:#fff;font-weight:700;border:none;" onclick="ouvrirModalNoteFraisPDF()" title="Générer PDF note de frais mensuelle"><i class="fas fa-file-pdf"></i> PDF mensuel</button>`;
   renderPlanningMois('planningMoisCalendar', planningMoisOffset);
+}
+
+// ══════════════════════════════════════════════════════════
+// NAVIGATION SEMAINE TOURNÉES + PDF MENSUEL
+// ══════════════════════════════════════════════════════════
+window._tourneesWeekOffset = 0;
+
+function navTourneesWeek(delta){
+  if(delta===0) window._tourneesWeekOffset=0;
+  else window._tourneesWeekOffset=(window._tourneesWeekOffset||0)+delta;
+  chargerTournees();
+}
+
+function ouvrirModalNoteFraisPDF(){
+  const now=new Date();
+  const selM=document.getElementById('nfMois');
+  const selA=document.getElementById('nfAnnee');
+  if(selM) selM.value=String(now.getMonth()+1);
+  if(selA) selA.value=String(now.getFullYear());
+  document.getElementById('modalNoteFraisPDF').style.display='flex';
+}
+
+function genererNoteFraisMensuelPDF(mois, annee){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const W=210,M=15,IK=0.697;
+  const moisFr=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const jours=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+  const joursFr={lundi:'Lundi',mardi:'Mardi',mercredi:'Mercredi',jeudi:'Jeudi',vendredi:'Vendredi',samedi:'Samedi',dimanche:'Dimanche'};
+  const pF=JSON.parse(localStorage.getItem('progestParams')||'{}');
+  const logoF=localStorage.getItem('progestLogo');
+  const _pFPdf=JSON.parse(localStorage.getItem('progestParams')||'{}');
+  const depotVal=_pFPdf.communeDepot||document.getElementById('depotTournees')?.value||'';
+  const depotDist=depotVal?communesAube.find(c=>c.nom===depotVal)?.distance||0:0;
+
+  // ── En-tête ──
+  doc.setFillColor(14,32,64); doc.rect(0,0,W,24,'F');
+  if(logoF){try{doc.addImage(logoF,_logoFmt?_logoFmt(logoF):'PNG',M,3,18,18);}catch(e){}}
+  const txF=logoF?M+22:M;
+  doc.setTextColor(180,200,240); doc.setFontSize(8); doc.setFont('helvetica','normal');
+  doc.text(pF.nomSociete||'Essentia Services',txF,10);
+  if(pF.siret) doc.text('SIRET : '+pF.siret,txF,17);
+  doc.setTextColor(100,160,255); doc.setFontSize(13); doc.setFont('helvetica','bold');
+  doc.text('NOTE DE FRAIS KILOMÉTRIQUE',W-M,11,{align:'right'});
+  doc.setTextColor(180,200,240); doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text(moisFr[mois-1]+' '+annee,W-M,19,{align:'right'});
+
+  let y=30;
+
+  // ── Trouver les semaines couvrant le mois ──
+  const firstDay=new Date(annee,mois-1,1);
+  const lastDay=new Date(annee,mois,0);
+  const firstDow=firstDay.getDay();
+  const firstMonday=new Date(firstDay); firstMonday.setDate(firstDay.getDate()-(firstDow===0?6:firstDow-1));
+  const weeks=[]; let wS=new Date(firstMonday);
+  while(wS<=lastDay){weeks.push(new Date(wS));wS=new Date(wS);wS.setDate(wS.getDate()+7);}
+
+  let monthTotalDist=0;
+  const toMin=t=>{const s=String(t||'00:00');const p=s.includes(':')?s.split(':'):['0','0'];return (parseInt(p[0])||0)*60+(parseInt(p[1])||0);};
+
+  weeks.forEach((wMon,wi)=>{
+    const wSun=new Date(wMon); wSun.setDate(wMon.getDate()+6);
+    const fmtD=d=>d.toLocaleDateString('fr-FR',{day:'numeric',month:'long'});
+    const wLabel=`Semaine ${wi+1} — du ${fmtD(wMon)} au ${fmtD(wSun)}`;
+
+    // En-tête semaine
+    if(y>262){doc.addPage();y=15;}
+    doc.setFillColor(14,32,64); doc.rect(M,y,W-2*M,7,'F');
+    doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont('helvetica','bold');
+    doc.text(wLabel,M+3,y+5.2);
+    y+=9;
+
+    let weekTotalDist=0;
+
+    jours.forEach(jour=>{
+      const JIDX={lundi:0,mardi:1,mercredi:2,jeudi:3,vendredi:4,samedi:5,dimanche:6};
+      const d=new Date(wMon); d.setDate(wMon.getDate()+JIDX[jour]);
+      if(d.getMonth()!==mois-1||d.getFullYear()!==annee) return;
+      const dateKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      const cj=clientsData.filter(c=>_getJoursClientDate(c,dateKey).includes(jour)&&c.commune&&!((deplacementsData||[]).find(d=>d.clientId===c.id&&d.dateNouvelle===dateKey&&(d.statut==='absent'||d.statut==='absent_essentia'))));
+      const airbnbs=(deplacementsData||[]).filter(dj=>dj.airbnb&&dj.dateNouvelle===dateKey).map(dj=>{const c=clientsData.find(x=>x.id===dj.clientId);return c?{...c,heureDebut:dj.heureNouvelle||c.heureDebut,_airbnb:true}:null;}).filter(Boolean);
+      const avecDist=[...cj,...airbnbs].map(c=>({...c,dkm:communesAube.find(x=>x.nom===c.commune)?.distance||0})).sort((a,b)=>toMin(a.heureDebut)-toMin(b.heureDebut));
+      if(!avecDist.length) return;
+      let dist=0,last=depotDist;
+      avecDist.forEach(c=>{dist+=Math.abs(c.dkm-last);last=c.dkm;});
+      if(avecDist.length) dist+=Math.abs(depotDist-last);
+      weekTotalDist+=dist;
+
+      // En-tête jour
+      if(y>262){doc.addPage();y=15;}
+      const dayLabel=`${joursFr[jour]} ${d.toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}`;
+      doc.setFillColor(235,242,255); doc.rect(M,y,W-2*M,6.5,'F');
+      doc.setDrawColor(210,220,245); doc.rect(M,y,W-2*M,6.5,'S');
+      doc.setTextColor(20,37,100); doc.setFontSize(9); doc.setFont('helvetica','bold');
+      doc.text(dayLabel,M+3,y+4.5);
+      doc.setTextColor(18,100,60);
+      doc.text(`${Math.round(dist)} km — ${(dist*IK).toFixed(2)} €`,W-M-3,y+4.5,{align:'right'});
+      y+=7.5;
+
+      // Lignes clients — distance réelle par tronçon (point précédent → ce client)
+      let legLast=depotDist;
+      avecDist.forEach((c,ci)=>{
+        const legDist=Math.round(Math.abs(c.dkm-legLast));
+        legLast=c.dkm;
+        const isLast=ci===avecDist.length-1;
+        const retourDist=isLast?Math.round(Math.abs(depotDist-c.dkm)):null;
+        const adresse=(c.adresse||'').replace(/\n/g,' ').trim();
+        const rowH=adresse?(isLast?13.5:9):(isLast?9:5.5);
+        if(y+rowH>265){doc.addPage();y=15;}
+        doc.setTextColor(50,70,120); doc.setFontSize(8); doc.setFont('helvetica','bold');
+        doc.text(`${c.heureDebut||'—'}  ${c.nom}`,M+6,y+3.5);
+        doc.setTextColor(110,130,170); doc.setFont('helvetica','normal');
+        doc.text(c.commune||'—',M+85,y+3.5);
+        doc.setTextColor(18,100,60);
+        doc.text(`${legDist} km`,W-M-3,y+3.5,{align:'right'});
+        if(adresse){
+          doc.setTextColor(140,150,170); doc.setFontSize(7);
+          doc.text(adresse,M+12,y+7.5,{maxWidth:W-2*M-40});
+        }
+        if(isLast&&retourDist!==null){
+          const retY=adresse?y+11:y+7;
+          doc.setTextColor(130,100,50); doc.setFontSize(7); doc.setFont('helvetica','italic');
+          doc.text(`↩ Retour dépôt`,M+12,retY);
+          doc.setTextColor(18,100,60); doc.setFont('helvetica','normal');
+          doc.text(`${retourDist} km`,W-M-3,retY,{align:'right'});
+        }
+        y+=rowH;
+      });
+      y+=1.5;
+    });
+
+    // Total semaine
+    if(y>265){doc.addPage();y=15;}
+    monthTotalDist+=weekTotalDist;
+    doc.setFillColor(220,240,228); doc.rect(M,y,W-2*M,6.5,'F');
+    doc.setDrawColor(160,210,180); doc.rect(M,y,W-2*M,6.5,'S');
+    doc.setTextColor(18,90,55); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+    doc.text(`Sous-total semaine ${wi+1}`,M+3,y+4.5);
+    doc.text(`${Math.round(weekTotalDist)} km — ${(weekTotalDist*IK).toFixed(2)} €`,W-M-3,y+4.5,{align:'right'});
+    y+=10;
+  });
+
+  // ── Note de méthode ──
+  if(y>270){doc.addPage();y=15;}
+  y+=2;
+  doc.setFillColor(250,248,235); doc.setDrawColor(200,180,100);
+  doc.roundedRect(M,y,W-2*M,12,2,2,'FD');
+  doc.setTextColor(120,90,30); doc.setFontSize(7); doc.setFont('helvetica','bold');
+  doc.text('Methode de calcul :',M+3,y+4.5);
+  doc.setFont('helvetica','normal');
+  doc.text('Distances intercommunales - referentiel Aube. Trajet : depot SAS -> client 1 -> client 2 -> retour depot.',M+3,y+9);
+  y+=16;
+
+  // ── Total mensuel ──
+  if(y>258){doc.addPage();y=15;}
+  y+=2;
+  doc.setFillColor(14,32,64); doc.rect(M,y,W-2*M,14,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+  doc.text(`TOTAL ${moisFr[mois-1].toUpperCase()} ${annee}`,M+4,y+6);
+  doc.text(`${Math.round(monthTotalDist)} km`,W-M-55,y+6,{align:'right'});
+  doc.setTextColor(100,220,160); doc.setFontSize(13);
+  doc.text(`${(monthTotalDist*IK).toFixed(2)} €`,W-M-3,y+10,{align:'right'});
+  doc.setTextColor(160,180,220); doc.setFontSize(7); doc.setFont('helvetica','normal');
+  doc.text('Indemnité kilométrique SAS : 0,697 €/km — Barème 2026',M+4,y+12);
+  y+=19;
+
+  // ── Pied de page ──
+  const pgN=doc.getNumberOfPages();
+  for(let i=1;i<=pgN;i++){
+    doc.setPage(i);
+    doc.setDrawColor(200,210,230); doc.line(M,290,W-M,290);
+    doc.setFontSize(7); doc.setTextColor(160,170,190); doc.setFont('helvetica','normal');
+    doc.text(`${pF.nomSociete||'Essentia Services'} — SIRET ${pF.siret||'—'} — Note de frais ${moisFr[mois-1]} ${annee} — p.${i}/${pgN}`,W/2,294,{align:'center'});
+  }
+
+  doc.save(`Note-Frais-KM-${moisFr[mois-1]}-${annee}.pdf`);
+  toast(`Note de frais ${moisFr[mois-1]} ${annee} générée ✓`,'success');
 }
 
 // ══════════════════════════════════════════════════════════
@@ -7526,16 +7763,16 @@ function genererFacturePDF(opts){
   // ── Bloc signature ────────────────────────────────────────
   y=_blocSignaturePDF(doc,y+4,W,M,clientNom,'du client',_signatureData);
 
-  // ── Mentions légales de paiement ──────────────────────────
+  // ── Mentions légales de paiement (conformes recommandations Patrick DURAND / Phoenix Conseil) ──
   const pageH=doc.internal.pageSize.getHeight();
+  doc.setFontSize(6.5);doc.setFont('times','italic');
+  const _mentTexte='Valeur en votre aimable règlement, à réception de la présente. Le règlement doit intervenir au comptant, à la date sus indiquée. Les pénalités de retard, calculées au taux de 10% l\'an TVA en sus, seront payables à réception de l\'avis vous informant de leur inscription à votre débit dans nos livres comptables. Pour tout règlement survenu au delà d\'un délai de 60 jours, une indemnité forfaitaire de recouvrement de 40 € sera appliquée.';
+  const _mentLines=doc.splitTextToSize(_mentTexte,W-2*M);
+  const _mentH=_mentLines.length*3.6+4;
   doc.setDrawColor(180,195,225);doc.setLineWidth(0.2);
-  doc.line(M,pageH-52,W-M,pageH-52);
-  doc.setTextColor(50,65,90);doc.setFontSize(7);doc.setFont('times','italic');
-  doc.text([
-    'Le règlement doit intervenir au comptant, à la date sus indiquée.',
-    'Les pénalités de retard, calculées au taux de 10% l\'an, seront payables à réception de l\'avis vous informant de leur inscription à votre débit dans nos livres comptables.',
-    'En cas de retard de paiement, une indemnité forfaitaire de recouvrement de 40 € sera appliquée.'
-  ],M,pageH-48,{lineHeightFactor:1.6,maxWidth:W-2*M});
+  doc.line(M,pageH-32-_mentH,W-M,pageH-32-_mentH);
+  doc.setTextColor(50,65,90);
+  doc.text(_mentLines,M,pageH-28-_mentH+3.6,{lineHeightFactor:1.5});
   // ── Pied de page ──────────────────────────────────────────
   doc.setDrawColor(200,215,240);doc.setLineWidth(0.3);
   doc.line(M,pageH-30,W-M,pageH-30);
@@ -7543,7 +7780,7 @@ function genererFacturePDF(opts){
   const footerLines=[
     `${nomSoc}${formeSoc?' — '+formeSoc:''}${siretSoc?' · SIRET : '+siretSoc:''}${p.numSAP?' · Agrément SAP : '+p.numSAP:''}`,
     ...(p.assurance?[`Assurance RCP : n° ${p.assurance}`]:[]),
-    ...(tauxTVA===0?[mentionLeg||'Exonération de TVA — Art. 261 D 4° du CGI (services à la personne agréés)']:[]),
+    ...(tauxTVA===0?[mentionLeg||'TVA non applicable — Art. 293 B du CGI']:[]),
     `En cas de litige, le tribunal compétent est le Tribunal de Commerce de Troyes (10000).${p.tvaIntra?' N° TVA : '+p.tvaIntra:''}`,
   ];
   doc.text(footerLines,M,pageH-25,{lineHeightFactor:1.4,maxWidth:W-2*M});
@@ -7645,7 +7882,7 @@ function renderHistoriqueFactures(){
         </div>
         <button class="btn btn-ghost btn-sm" onclick="genererAvoirPDF(facturesData.find(x=>x.id==='${a.id}'))" title="Télécharger PDF avoir"><i class="fas fa-download"></i></button>
         <button class="btn btn-primary btn-sm" onclick="envoyerAvoirEmail('${a.id}')" title="Envoyer par email"><i class="fas fa-envelope"></i></button>
-        <button class="btn btn-danger btn-sm" onclick="supprimerFacture('${a.id}')" title="Supprimer l'avoir"><i class="fas fa-trash"></i></button>
+        <button class="btn btn-danger btn-sm" onclick="supprimerAvoir('${a.id}')" title="Supprimer l'avoir"><i class="fas fa-trash"></i></button>
       </div>`;
     }).join('');
     return `<div class="finance-item" style="flex-direction:column;align-items:stretch;gap:8px;">
@@ -8083,7 +8320,7 @@ function _regenererContratPDFb64(contrat){
     var _min4TTC = _isExonere?_min4HT:_min4HT*(1+tva/100);
     var _max5TTC = _isExonere?_max5HT:_max5HT*(1+tva/100);
     var _tvaLigne = _isExonere
-      ? 'TVA : Non applicable — Art. 261 D 4° du CGI (services à la personne agréés)'
+      ? 'TVA : Non applicable — Art. 293 B du CGI'
       : 'TVA applicable : '+tva+'% ('+(_isEntreprise?'régime général':'services à domicile — Art. 279 du CGI')+')';
     var _ligneInterv = _isExonere
       ? 'Montant par intervention : '+fmt2(_montantInterv)+' € ('+fmtH(heures)+' × '+fmt2(tarif)+' €/h)'
@@ -8300,6 +8537,12 @@ async function envoyerFactureEmailId(id){
   const _lignesSave=JSON.parse(JSON.stringify(lignesFactureData));
   // Pré-remplir le formulaire depuis les données stockées (sans changer d'onglet)
   const _setV=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v!=null?String(v):'';};
+  // S'assurer que le select client a bien l'option correspondante (peut être vide si l'onglet Facturation n'a jamais été ouvert)
+  if(typeof chargerSelectClients==='function') chargerSelectClients();
+  const _cSel=document.getElementById('facClient');
+  if(_cSel&&f.clientId&&![..._cSel.options].some(o=>o.value===f.clientId)){
+    const _opt=document.createElement('option');_opt.value=f.clientId;_opt.textContent=f.client||f.clientId;_cSel.appendChild(_opt);
+  }
   _setV('facNumero',f.numero);
   _setV('facDate',f.dateRaw||f.date||'');
   _setV('facClient',f.clientId||'');
@@ -8331,12 +8574,15 @@ async function envoyerFactureEmailId(id){
 
 function marquerPayee(id){
   const f=facturesData.find(x=>x.id===id);if(!f)return;
-  if(!confirm(`Marquer la facture ${f.numero||id} comme payée ? Cette action est irréversible.`))return;
-  f.statut='payee';
+  if(!confirm(`Marquer la facture ${f.numero||id} comme payée ?\nElle sera automatiquement archivée et accessible dans la section Archives.`))return;
+  f.statut='archivee';
+  f.dateArchivage=new Date().toLocaleDateString('fr-FR');
+  _archiveTab='factures';
   sauvegarderTout(true);
   renderHistoriqueFactures();
+  renderArchives();
   calculerStats();
-  toast(`Facture ${f.numero} marquée payée ✓`,'success');
+  toast(`Facture ${f.numero} payée et archivée ✓`,'success');
 }
 
 function supprimerFacture(id){
@@ -8346,6 +8592,21 @@ function supprimerFacture(id){
   renderHistoriqueFactures();
   calculerStats();
   toastConfirm('Facture supprimée');
+}
+
+function supprimerAvoir(id){
+  const a=facturesData.find(x=>x.id===id&&x.type==='avoir');
+  if(!a)return;
+  if(a.statut==='applique'){
+    if(!confirm('Cet avoir a déjà été appliqué à une facture.\nLa déduction restera dans la facture concernée.\nSupprimer quand même ?'))return;
+  } else {
+    if(!confirm(`Supprimer l'avoir ${a.numero} ?\nMontant : −${(a.totalTTC||0).toFixed(2)} € TTC`))return;
+  }
+  facturesData=facturesData.filter(f=>f.id!==id);
+  sauvegarderTout(true);
+  renderHistoriqueFactures();
+  calculerStats();
+  toast('Avoir supprimé','success');
 }
 
 function appliquerAvoir(avoirId){
@@ -8567,7 +8828,7 @@ function genererAvoirPDF(avoir,opts){
   const footerLines=[
     nomSoc+(formeSoc?' — '+formeSoc:'')+(siretSoc?' · SIRET : '+siretSoc:'')+(p.numSAP?' · Agr\xe9ment SAP : '+p.numSAP:''),
     ...(p.assurance?['Assurance RCP : n\xb0 '+p.assurance]:[]),
-    ...(tva===0?[mentionLeg||'Exon\xe9ration de TVA — Art. 261 D 4\xb0 du CGI (services \xe0 la personne agr\xe9\xe9s)']:[]),
+    ...(tva===0?[mentionLeg||'TVA non applicable — Art. 293 B du CGI']:[]),
     'Avoir \xe9mis conform\xe9ment \xe0 l\'article 289 du CGI. Document tenant lieu de facture rectificative.',
     'En cas de litige, le tribunal comp\xe9tent est le Tribunal de Commerce de Troyes (10000).'+(tvaSoc?' N\xb0 TVA : '+tvaSoc:''),
   ];
@@ -8616,9 +8877,15 @@ async function exporterFacturesZIP(){
   toast(`Génération ZIP — ${factures.length} facture(s)…`,'info');
   const zip=new JSZip();
   let ok=0;
+  if(typeof chargerSelectClients==='function') chargerSelectClients();
   for(const f of factures){
     const c=clientsData.find(x=>x.id===f.clientId||x.nom===f.client)||{};
     const _set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
+    // S'assurer que l'option client existe dans le select
+    const _cSelZ=document.getElementById('facClient');
+    if(_cSelZ&&f.clientId&&![..._cSelZ.options].some(o=>o.value===f.clientId)){
+      const _optZ=document.createElement('option');_optZ.value=f.clientId;_optZ.textContent=c.nom||f.client||f.clientId;_cSelZ.appendChild(_optZ);
+    }
     _set('facNumero',f.numero);
     _set('facDate',f.dateRaw||'');
     _set('facClient',f.clientId||'');
@@ -9261,6 +9528,7 @@ function sauvegarderParametres(){
     mentionLegale:document.getElementById('paramMentionLegale')?.value||'',
     numSAP:document.getElementById('paramNumSAP')?.value||'',
     assurance:document.getElementById('paramAssurance')?.value||'',
+    communeDepot:document.getElementById('paramCommuneDepot')?.value||'',
     clientRefCounter:existing.clientRefCounter,
     contratCONTCounter:existing.contratCONTCounter,
     contratCDICounter:existing.contratCDICounter,
@@ -9679,6 +9947,7 @@ function chargerDonnees(){
       sv('paramMentionLegale',p.mentionLegale);sv('paramTarifKm',p.tarifKm||0.30);
       sv('paramNumSAP',p.numSAP);sv('paramAssurance',p.assurance);
       const formeEl=document.getElementById('paramForme');if(formeEl&&p.forme)formeEl.value=p.forme;
+      const depEl=document.getElementById('paramCommuneDepot');if(depEl&&p.communeDepot)depEl.value=p.communeDepot;
       // Mettre à jour la sidebar avec nom société
       if(p.nomSociete){const sub=document.getElementById('sidebarSub');if(sub)sub.textContent=p.nomSociete;}
     }catch(e){}
@@ -9771,6 +10040,8 @@ function importerJSON(input){
         sv('paramAssurance',  d.params.assurance);
         const formeEl = document.getElementById('paramForme');
         if(formeEl && d.params.forme) formeEl.value = d.params.forme;
+        const depElR = document.getElementById('paramCommuneDepot');
+        if(depElR && d.params.communeDepot) depElR.value = d.params.communeDepot;
         // Sidebar
         if(d.params.nomSociete) {
           const sub = document.getElementById('sidebarSub'); if(sub) sub.textContent = d.params.nomSociete;
@@ -9894,7 +10165,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       siteWeb: '',
       iban: '',
       bic: '',
-      mentionLegale: 'Exonération de TVA — Art. 261 D 4° du CGI (services à la personne agréés)',
+      mentionLegale: 'TVA non applicable — Art. 293 B du CGI',
       geranteName: 'Amandine Sautière'
     };
     const existing = JSON.parse(localStorage.getItem('progestParams')||'{}');
@@ -11021,7 +11292,7 @@ function genererContratPrestation(){
   let tarifDesc = `Tarif horaire${_isExo3?'':' HT'} : ${fmt2(tarif)} €/h\n`;
   if(_isExo3){
     tarifDesc += `Montant par intervention : ${fmt2(_montantInterv3)} € (${fmtH(heures)} × ${fmt2(tarif)} €/h)\n`;
-    tarifDesc += `TVA : Non applicable — Art. 261 D 4° du CGI (services à la personne agréés)\n`;
+    tarifDesc += `TVA : Non applicable — Art. 293 B du CGI\n`;
   } else {
     tarifDesc += `Montant par intervention HT : ${fmt2(_montantInterv3)} € (${fmtH(heures)} × ${fmt2(tarif)} €/h)\n`;
     tarifDesc += `Montant par intervention TTC : ${fmt2(_montantInterv3TTC)} €\n`;
@@ -11871,6 +12142,48 @@ function supprimerFactureArchivee(id){
 }
 window.supprimerFactureArchivee=supprimerFactureArchivee;
 
+function telechargerFactureArchivee(id){
+  const f=facturesData.find(x=>x.id===id);if(!f)return;
+  const _gv=elId=>{const el=document.getElementById(elId);return el?el.value:'';};
+  const _formSave={num:_gv('facNumero'),date:_gv('facDate'),client:_gv('facClient'),tva:_gv('facTauxTVA'),cond:_gv('facCondPaiement'),periode:_gv('facPeriode'),email:_gv('facEmailClient'),typeOp:_gv('facTypeOp')};
+  const _lignesSave=JSON.parse(JSON.stringify(lignesFactureData));
+  const _setV=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v!=null?String(v):'';};
+  if(typeof chargerSelectClients==='function') chargerSelectClients();
+  const _cSel=document.getElementById('facClient');
+  if(_cSel&&f.clientId&&![..._cSel.options].some(o=>o.value===f.clientId)){
+    const _opt=document.createElement('option');_opt.value=f.clientId;_opt.textContent=f.client||f.clientId;_cSel.appendChild(_opt);
+  }
+  _setV('facNumero',f.numero);_setV('facDate',f.dateRaw||f.date||'');_setV('facClient',f.clientId||'');
+  _setV('facTauxTVA',f.tva);_setV('facCondPaiement',f.condPaie!=null?f.condPaie:30);
+  // Injecter la période dans le select si l'option n'existe pas encore
+  const _pSel=document.getElementById('facPeriode');
+  if(_pSel&&f.periode){
+    if(![..._pSel.options].some(o=>o.value===f.periode)){
+      const _pOpt=document.createElement('option');_pOpt.value=f.periode;_pOpt.textContent=f.periode;_pSel.appendChild(_pOpt);
+    }
+    _pSel.value=f.periode;
+  }
+  _setV('facEmailClient',f.emailClient||'');_setV('facTypeOp',f.typeOp||'b2c');
+  lignesFactureData=f.lignes||[{desc:'Prestation',qte:1,unite:'forfait',prixUnit:f.totalHT}];
+  try{
+    const result=genererFacturePDF({returnB64:true});
+    if(result&&result.b64){
+      const bin=atob(result.b64);const bytes=new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+      const blob=new Blob([bytes],{type:'application/pdf'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');a.href=url;a.download=result.fileName||f.numero+'.pdf';a.click();
+      URL.revokeObjectURL(url);
+      toast('PDF téléchargé ✓','success');
+    } else {toast('Erreur : PDF non généré','error');}
+  }catch(e){toast('Erreur PDF : '+e.message,'error');}
+  _setV('facNumero',_formSave.num);_setV('facDate',_formSave.date);_setV('facClient',_formSave.client);
+  _setV('facTauxTVA',_formSave.tva);_setV('facCondPaiement',_formSave.cond);_setV('facPeriode',_formSave.periode);
+  _setV('facEmailClient',_formSave.email);_setV('facTypeOp',_formSave.typeOp);
+  lignesFactureData=_lignesSave;if(typeof renderLignesFacture==='function'){renderLignesFacture();calculerTotauxFacture();}
+}
+window.telechargerFactureArchivee=telechargerFactureArchivee;
+
 function archiverDevis(id){
   const d=devisData.find(x=>x.id===id);if(!d)return;
   if(!confirm('Archiver le devis '+d.numero+' ?\nIl sera accessible dans la section Archives.'))return;
@@ -12000,8 +12313,7 @@ function renderArchives(){
           <span style="font-size:10px;font-weight:600;color:var(--green);">● payée</span>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:6px;border-top:1px dashed var(--border);">
-          <button class="btn btn-ghost btn-sm" onclick="reediterFacture('${f.id}')"><i class="fas fa-file-pdf"></i> PDF</button>
-          <button class="btn btn-ghost btn-sm" onclick="restaurerFacture('${f.id}')" style="color:var(--green);border-color:rgba(18,184,122,.3);"><i class="fas fa-undo"></i> Restaurer</button>
+          <button class="btn btn-ghost btn-sm" onclick="telechargerFactureArchivee('${f.id}')"><i class="fas fa-download"></i> PDF</button>
           <button class="btn btn-danger btn-sm" onclick="supprimerFactureArchivee('${f.id}')"><i class="fas fa-trash"></i></button>
         </div>
       </div>`).join('');
@@ -12864,11 +13176,12 @@ function _chargerPlanningPrevJour(cont, deltaRecap, jourKey, jourNomJ, mois, ann
   var html='';
   var totalPrev=0, totalReal=0;
 
-  // Clients intervenant ce jour
+  // Clients intervenant ce jour — triés par heureDebut
+  var _toMinJ=function(t){var s=String(t||'00:00');var p=s.includes(':')?s.split(':'):['0','0'];return (parseInt(p[0])||0)*60+(parseInt(p[1])||0);};
   var clientsJour = clientsData.filter(function(c){
     if(_getJoursClientDate(c,jourKey).includes(jourNomJ)) return true;
     return deplacementsData.some(function(d){ return d.clientId===c.id && d.dateNouvelle===jourKey; });
-  });
+  }).sort(function(a,b){ return _toMinJ(a.heureDebut)-_toMinJ(b.heureDebut); });
 
   if(!clientsJour.length){
     cont.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text3);">'
@@ -12902,7 +13215,7 @@ function _chargerPlanningPrevJour(cont, deltaRecap, jourKey, jourNomJ, mois, ann
       +'<div><div style="font-size:10px;color:var(--text3);margin-bottom:2px;">Réel</div>'
       +'<div style="display:flex;align-items:center;gap:3px;"><input class="pp-heures" data-cid="'+c.id+'" data-key="'+jourKey+'" type="number" value="'+hReal.toFixed(2)+'" step="0.25" min="0" style="width:55px;font-size:12px;padding:3px 5px;border:1px solid var(--border);border-radius:6px;text-align:center;font-family:\'DM Mono\',monospace;">h</div></div>'
       +'<div style="text-align:center;"><div style="font-size:10px;color:var(--text3);margin-bottom:2px;">Δ</div><div style="font-weight:700;font-family:\'DM Mono\',monospace;font-size:12px;display:inline-block;padding:2px 7px;border-radius:20px;background:'+(delta===0?'rgba(0,0,0,.06)':delta>0?'rgba(18,184,122,.15)':'rgba(230,69,69,.15)')+';color:'+dcol+';">'+deltaStr+'</div></div>'
-      +'<div><input class="pp-note" data-cid="'+c.id+'" data-key="'+jourKey+'" type="text" value="'+(entry.note||'')+'" placeholder="Note…" style="width:100%;font-size:11px;padding:4px 7px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);"></div>'
+      +'<div><input class="pp-note" data-cid="'+c.id+'" data-key="'+jourKey+'" type="text" value="'+(entry.note||'').replace(/"/g,'&quot;')+'" placeholder="Note…" style="width:100%;font-size:11px;padding:4px 7px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);"></div>'
       +'</div>';
   });
 
@@ -13007,7 +13320,9 @@ function chargerPlanningPrevisionnel(){
   var totalPrevuMois = 0, totalRealiseMois = 0;
   var html = '';
 
-  clientsData.forEach(function(client){
+  var _toMinPP = function(t){ var s=String(t||'00:00'); var p=s.includes(':')?s.split(':'):['0','0']; return (parseInt(p[0])||0)*60+(parseInt(p[1])||0); };
+  var clientsTriesHeure = clientsData.slice().sort(function(a,b){ return _toMinPP(a.heureDebut)-_toMinPP(b.heureDebut); });
+  clientsTriesHeure.forEach(function(client){
     var hPrev = _parseH(client.heures) || 0;
 
     // Vérifier si ce client a des déplacements VERS ce mois (même sans jours réguliers)
@@ -13143,7 +13458,7 @@ function chargerPlanningPrevisionnel(){
         + '</td>'
         + '<td style="padding:5px 8px;text-align:center;font-size:11px;font-weight:700;color:'+deltaColor+';">'+deltaStr+'</td>'
         + '<td style="padding:5px 8px;">'
-          + '<input class="pp-note" data-cid="'+client.id+'" data-key="'+key+'" type="text" value="'+(entry.note||'')+'" placeholder="Note…" '
+          + '<input class="pp-note" data-cid="'+client.id+'" data-key="'+key+'" type="text" value="'+(entry.note||'').replace(/"/g,'&quot;')+'" placeholder="Note…" '
           + 'style="width:110px;font-size:10px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;background:var(--bg3);">'
         + '</td>'
         + '</tr>';
@@ -13395,7 +13710,7 @@ function _ppRafraichirLigne(clientId, dateKey){
   // Trouver l'input heures de cette ligne pour sync
   var inputH = cont.querySelector('.pp-heures[data-cid="'+clientId+'"][data-key="'+dateKey+'"]');
   // Ne pas écraser la valeur si l'utilisateur est en train de taper dedans
-  if(inputH && entry.statut !== 'absent' && document.activeElement !== inputH) inputH.value = hReal.toFixed(2);
+  if(inputH && entry.statut !== 'absent' && entry.statut !== 'absent_essentia' && document.activeElement !== inputH) inputH.value = hReal.toFixed(2);
   // Trouver la cellule delta :
   // Vue Mois (tableau) → td suivant ; Vue Jour (grille CSS) → parentElement x2 → nextSibling
   if(inputH) {
@@ -13441,6 +13756,7 @@ function _ppRafraichirTotauxClient(clientId){
     var parts=dateKey.split('-').map(Number);
     if(parts[0]!==anneeAff||parts[1]!==moisAff) return;
     var entry=data[dateKey];
+    if(entry.statut === 'absent' || entry.statut === 'absent_essentia') return; // session déplacée/absente : ne pas compter
     clientPrev += hPrev;
     if(entry.statut === 'confirme' || entry.statut === 'partiel'){
       clientReal += (parseFloat(entry.heuresReelles) || hPrev);
@@ -15365,6 +15681,11 @@ function lingeAjouterLigne(pfx,nbLits){
               record = msg.payload.record;
             }
             if (record && record.data) {
+              var _wsLocalSave = parseInt(localStorage.getItem('_lastSaveTs')||'0');
+              if (Date.now() - _wsLocalSave < 300000) {
+                console.log('[Supabase WS] Skip — sauvegarde locale récente (<5min), merge protection actif');
+                return;
+              }
               appliquerDonneesDistantes(record.data);
               toast('🔄 Données mises à jour depuis un autre appareil', 'info');
             }
@@ -15491,6 +15812,23 @@ function lingeAjouterLigne(pfx,nbLits){
           }
           return c;
         });
+        // ── Merge défensif : récupérer les clients locaux non encore sync vers Supabase ──
+        // Cas : client créé depuis < 2s (debounce), ou save Supabase échoué
+        // Sans ce merge, appliquerDonneesDistantes écrase clientsData avec des données
+        // anciennes (sans le nouveau client), et le client disparaît de l'interface.
+        try {
+          var _localStrADD = localStorage.getItem('progestV10');
+          if (_localStrADD) {
+            var _localParsedADD = JSON.parse(_localStrADD);
+            (_localParsedADD.clients || []).forEach(function(lc) {
+              if (_delClients.indexOf(lc.id) !== -1) return; // tombstone
+              if (!_clientsFiltres.find(function(rc) { return rc.id === lc.id; })) {
+                _clientsFiltres.push(lc);
+                console.log('[Sync] Client local non-sync préservé :', lc.nom);
+              }
+            });
+          }
+        } catch(e) {}
         clientsData = _clientsFiltres.map(normaliserClient);
         _migrerRefClients(); _migrerContrats(); // Migration après sync Supabase
         // Si des TVA étaient corrompues, re-pousser immédiatement le snapshot propre vers Supabase
@@ -15665,6 +16003,7 @@ function lingeAjouterLigne(pfx,nbLits){
           _svP('paramTel', _mergedP.tel);               _svP('paramEmail', _mergedP.email);
           _svP('paramIBAN', _mergedP.iban);             _svP('paramBIC', _mergedP.bic);
           _svP('paramNumSAP', _mergedP.numSAP);         _svP('paramAssurance', _mergedP.assurance);
+          _svP('paramCommuneDepot', _mergedP.communeDepot);
           if(_mergedP.nomSociete){var _sub=document.getElementById('sidebarSub');if(_sub)_sub.textContent=_mergedP.nomSociete;}
         } catch(e) {}
       }
@@ -15682,6 +16021,7 @@ function lingeAjouterLigne(pfx,nbLits){
       if (currentMode === 'gerant') {
         if (typeof chargerAccueil === 'function')           chargerAccueil();
         if (typeof chargerTournees === 'function')          chargerTournees();
+        if (typeof chargerPlanningPrevisionnel === 'function') chargerPlanningPrevisionnel();
       }
       if (currentMode === 'employe') {
         if (typeof chargerAccueilEmp === 'function')        chargerAccueilEmp();
@@ -15770,29 +16110,54 @@ function lingeAjouterLigne(pfx,nbLits){
       if (typeof _origCharger === "function") _origCharger();
       supabaseLoad().then(function(remoteData) {
         if (remoteData) {
-          // Si une sauvegarde locale est très récente (< 30s), fusionner les déplacements
-          // locaux absents du cloud (ex : RBNB ajouté juste avant fermeture de l'onglet)
-          var lastLocalTs = parseInt(localStorage.getItem('_lastSaveTs')||'0');
-          if (Date.now() - lastLocalTs < 30000) {
-            try {
-              var localStr = localStorage.getItem('progestV10');
-              if (localStr) {
-                var localDeps = (JSON.parse(localStr).deplacements || []);
-                var remoteDeps = remoteData.deplacements || [];
-                localDeps.forEach(function(ld) {
-                  if (!remoteDeps.find(function(rd) { return rd.id === ld.id; })) {
-                    remoteDeps.push(ld);
-                  }
-                });
-                remoteData.deplacements = remoteDeps;
-              }
-            } catch(e) {}
-          }
+          // Fusionner TOUJOURS les données locales non encore sync vers Supabase
+          // (clients, factures, déplacements créés juste avant fermeture de l'onglet
+          //  ou quand la sauvegarde Supabase a échoué sur réseau instable)
+          try {
+            var localStr = localStorage.getItem('progestV10');
+            if (localStr) {
+              var localParsed = JSON.parse(localStr);
+              // Tombstones : clients supprimés localement
+              var _delCli = [];
+              try { _delCli = JSON.parse(localStorage.getItem('_deletedClientIds')||'[]'); } catch(e) {}
+              // Clients locaux absents de Supabase (pas encore sync ou save échoué)
+              var remoteClients = remoteData.clients || [];
+              (localParsed.clients || []).forEach(function(lc) {
+                if (_delCli.indexOf(lc.id) !== -1) return; // tombstone — ne pas ressusciter
+                if (!remoteClients.find(function(rc) { return rc.id === lc.id; })) {
+                  remoteClients.push(lc);
+                  console.log('[Sync] Client local non-sync récupéré :', lc.nom);
+                }
+              });
+              remoteData.clients = remoteClients;
+              // Déplacements locaux absents du cloud
+              var remoteDeps = remoteData.deplacements || [];
+              (localParsed.deplacements || []).forEach(function(ld) {
+                if (!remoteDeps.find(function(rd) { return rd.id === ld.id; })) {
+                  remoteDeps.push(ld);
+                }
+              });
+              remoteData.deplacements = remoteDeps;
+              // Factures locales absentes du cloud
+              var remoteFac = remoteData.factures || [];
+              (localParsed.factures || []).forEach(function(lf) {
+                if (!remoteFac.find(function(rf) { return rf.id === lf.id; })) {
+                  remoteFac.push(lf);
+                  console.log('[Sync] Facture locale non-sync récupérée :', lf.numero);
+                }
+              });
+              remoteData.factures = remoteFac;
+            }
+          } catch(e) { console.warn('[Sync] Fusion locale/cloud échouée :', e.message); }
           appliquerDonneesDistantes(remoteData);
           // Aussi écrire en localStorage (cache local)
           try { localStorage.setItem('progestV10', JSON.stringify(remoteData)); } catch(e) {}
           console.log('[Supabase] Données chargées depuis le cloud');
           toast('☁️ Données synchronisées depuis le cloud', 'info');
+          // Si des données locales ont été fusionnées, re-pousser vers Supabase dans 3s
+          setTimeout(function() {
+            if (typeof sauvegarderTout === 'function') sauvegarderTout(true);
+          }, 3000);
           // Démarrer le temps réel (sera ignoré si déjà actif grâce au guard realtimePollingTimer)
           supabaseRealtime();
         } else {
