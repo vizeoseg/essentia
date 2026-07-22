@@ -9540,6 +9540,8 @@ function sauvegarderParametres(){
   const sub=document.getElementById('sidebarSub');
   if(sub&&params.nomSociete)sub.textContent=params.nomSociete;
   actualiserApercuFacture();
+  // Sync Supabase (debounce 2s — déclenché sur chaque modification de paramètre)
+  if(typeof sauvegarderTout==='function') sauvegarderTout(true);
 }
 
 function _appliquerLogoTopbar(b64){
