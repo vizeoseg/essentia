@@ -9076,7 +9076,7 @@ function calculerStats(){
   setEl('statsSalaries',salariesData.length);
   setEl('statsMasseSalariale',masseSal.toFixed(0)+' €');
   setEl('kpiMasseSal',masseSal.toFixed(2)+' €');
-  const impayees=facturesData.filter(f=>f.type!=='avoir'&&f.statut!=='payee').length;
+  const impayees=facturesData.filter(f=>f.type!=='avoir'&&f.statut!=='payee'&&f.statut!=='archivee').length;
   setEl('statsImpayees',impayees);
   const tva10=clientsData.filter(c=>getTVAClient(c)===10).reduce((s,c)=>s+(c.totalMoisHT||0)*0.1,0);
   const tva20=clientsData.filter(c=>getTVAClient(c)===20).reduce((s,c)=>s+(c.totalMoisHT||0)*0.2,0);
@@ -10566,7 +10566,7 @@ function pfOuvrirPlateforme(){
   // Marquer la facture comme envoyée si depuis historique
   if(_pfFactureId){
     const f=facturesData.find(x=>x.id===_pfFactureId);
-    if(f&&f.statut!=='payee'){f.statut='envoyee';sauvegarderTout(true);renderHistoriqueFactures();}
+    if(f&&f.statut!=='payee'&&f.statut!=='archivee'){f.statut='envoyee';sauvegarderTout(true);renderHistoriqueFactures();}
   }
   toast(`${_pfSelectedPlateforme.nom} ouvert — déposez votre XML Factur-X`,'info');
 }
@@ -10739,7 +10739,7 @@ async function pfEnvoyerAutomatiquement(){
     const result=await envoyerFactureViaAPI(xmlContent,{numero:f?.numero||document.getElementById('facNumero')?.value,sirenClient:f?.sirenClient||document.getElementById('facSirenClient')?.value,objet:f?.objet||document.getElementById('facPeriode')?.value});
     if(statusEl){statusEl.style.display='block';statusEl.style.background='var(--green-l)';statusEl.style.color='var(--green)';statusEl.innerHTML=`<i class="fas fa-check-circle"></i> <strong>Facture transmise à ${cfg.plateforme||'Chorus Pro'} ✓</strong>`;}
     // Marquer comme envoyée
-    if(f && f.statut!=='payee'){f.statut='envoyee';sauvegarderTout(true);renderHistoriqueFactures();}
+    if(f && f.statut!=='payee'&&f.statut!=='archivee'){f.statut='envoyee';sauvegarderTout(true);renderHistoriqueFactures();}
     toast(`Facture transmise automatiquement via API ✓`,'success');
     if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-check"></i> Transmis ✓';}
   }catch(err){
@@ -16042,7 +16042,22 @@ function lingeAjouterLigne(pfx,nbLits){
           }, 1500);
         }
       }
-      if (d.factures)     facturesData     = d.factures;
+      if (d.factures) {
+        // Protection race condition : si Supabase sync arrive avant la sauvegarde,
+        // les factures localement archivées ne doivent pas être remises dans l'historique
+        // (couvre marquerPayee ET archiverFacture, quel que soit l'ancien statut Supabase)
+        var _localArchiveeStatut = {};
+        facturesData.forEach(function(f) {
+          if (f.statut === 'archivee') _localArchiveeStatut[f.id] = f.dateArchivage || '';
+        });
+        facturesData = d.factures;
+        facturesData.forEach(function(f) {
+          if ((f.id in _localArchiveeStatut) && f.statut !== 'archivee') {
+            f.statut = 'archivee';
+            if (_localArchiveeStatut[f.id]) f.dateArchivage = _localArchiveeStatut[f.id];
+          }
+        });
+      }
       if (d.stock)        stockData        = d.stock;
       if (d.devis)        devisData        = d.devis;
       if (d.pointage) {
