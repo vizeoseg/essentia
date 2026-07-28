@@ -6701,7 +6701,7 @@ function calculerResultatNet(){
   // Réalisé facturé et encaissé à date (année sélectionnée)
   const _facAn=facturesData.filter(f=>f.type!=='avoir'&&(f.dateRaw||f.date||'').startsWith(anneeStr));
   const caFactAn=_facAn.reduce((s,f)=>s+(f.totalHT||0),0);
-  const caEncAn=_facAn.filter(f=>f.statut==='payee').reduce((s,f)=>s+(f.totalHT||0),0);
+  const caEncAn=_facAn.filter(f=>f.statut==='payee'||f.statut==='archivee').reduce((s,f)=>s+(f.totalHT||0),0);
   setEl('resultatCAFact',fmt(caFactAn)); setEl('resultatCAFactPct',pct(caFactAn));
   setEl('resultatCAEnc',fmt(caEncAn)); setEl('resultatCAEncPct',pct(caEncAn));
   setEl('resultatAutresRecettes',fmt(autresR)); setEl('resultatAutresRecettesPct',pct(autresR));
@@ -8671,15 +8671,13 @@ async function envoyerFactureEmailId(id){
 
 function marquerPayee(id){
   const f=facturesData.find(x=>x.id===id);if(!f)return;
-  if(!confirm(`Marquer la facture ${f.numero||id} comme payée ?\nElle sera automatiquement archivée et accessible dans la section Archives.`))return;
-  f.statut='archivee';
-  f.dateArchivage=new Date().toLocaleDateString('fr-FR');
-  _archiveTab='factures';
+  if(!confirm(`Marquer la facture ${f.numero||id} comme payée ?`))return;
+  f.statut='payee';
+  delete f.dateArchivage;
   sauvegarderTout(true);
   renderHistoriqueFactures();
-  renderArchives();
   calculerStats();
-  toast(`Facture ${f.numero} payée et archivée ✓`,'success');
+  toast(`Facture ${f.numero} marquée payée ✓`,'success');
 }
 
 function supprimerFacture(id){
@@ -9068,7 +9066,7 @@ function calculerStats(){
   const _moisKey=_now.getFullYear()+'-'+String(_now.getMonth()+1).padStart(2,'0');
   const _facMois=facturesData.filter(f=>f.type!=='avoir'&&(f.dateRaw||f.date||'').startsWith(_moisKey));
   const caFactMois=_facMois.reduce((s,f)=>s+(f.totalHT||0),0);
-  const caEncMois=_facMois.filter(f=>f.statut==='payee').reduce((s,f)=>s+(f.totalHT||0),0);
+  const caEncMois=_facMois.filter(f=>f.statut==='payee'||f.statut==='archivee').reduce((s,f)=>s+(f.totalHT||0),0);
   setEl('kpiCAPrev',caMens.toFixed(2)+' €');
   setEl('kpiCAFact',caFactMois.toFixed(2)+' €');
   setEl('kpiCAEnc',caEncMois.toFixed(2)+' €');
@@ -16044,17 +16042,24 @@ function lingeAjouterLigne(pfx,nbLits){
       }
       if (d.factures) {
         // Protection race condition : si Supabase sync arrive avant la sauvegarde,
-        // les factures localement archivées ne doivent pas être remises dans l'historique
-        // (couvre marquerPayee ET archiverFacture, quel que soit l'ancien statut Supabase)
-        var _localArchiveeStatut = {};
+        // un statut local plus avancé ne doit pas être écrasé par un statut Supabase plus ancien.
+        // Hiérarchie : '' < 'envoyee' < 'payee' < 'archivee'
+        var _statutRank = {'':0,'envoyee':1,'payee':2,'archivee':3};
+        var _localStatutSave = {};
         facturesData.forEach(function(f) {
-          if (f.statut === 'archivee') _localArchiveeStatut[f.id] = f.dateArchivage || '';
+          if (f.statut === 'payee' || f.statut === 'archivee') {
+            _localStatutSave[f.id] = { statut: f.statut, dateArchivage: f.dateArchivage };
+          }
         });
         facturesData = d.factures;
         facturesData.forEach(function(f) {
-          if ((f.id in _localArchiveeStatut) && f.statut !== 'archivee') {
-            f.statut = 'archivee';
-            if (_localArchiveeStatut[f.id]) f.dateArchivage = _localArchiveeStatut[f.id];
+          var local = _localStatutSave[f.id];
+          if (!local) return;
+          var localRank = _statutRank[local.statut] || 0;
+          var supaRank  = _statutRank[f.statut || ''] || 0;
+          if (localRank > supaRank) {
+            f.statut = local.statut;
+            if (local.dateArchivage) f.dateArchivage = local.dateArchivage;
           }
         });
       }
