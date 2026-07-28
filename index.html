@@ -1589,6 +1589,7 @@ tr{transition:background .12s;}
           <div class="form-row" style="margin-bottom:0;">
             <div class="form-group"><label>Client <span style="color:var(--red);">*</span></label><select id="facClient" onchange="remplirInfosFacture()"><option value="">— Sélectionner —</option></select></div>
             <div id="facAvoirAlerte" style="display:none;"></div>
+            <div id="facTropPercuAlerte" style="display:none;"></div>
             <div class="form-group"><label>SIREN client</label><input type="text" id="facSirenClient" placeholder="123 456 789" maxlength="11" style="font-family:'DM Mono',monospace;"></div>
             <div class="form-group"><label>N° Facture <span style="color:var(--red);">*</span></label><input type="text" id="facNumero"></div>
             <div class="form-group"><label>Date d'émission <span style="color:var(--red);">*</span></label><input type="date" id="facDate" onchange="onFacDateChange()"></div>
@@ -5252,7 +5253,7 @@ function afficherClients(clients){
     return `<tr>
       <td style="text-align:center;"><span style="display:inline-block;font-size:10px;font-weight:800;color:var(--accent);background:rgba(74,124,247,.12);border:1px solid rgba(74,124,247,.25);border-radius:6px;padding:3px 7px;letter-spacing:.5px;white-space:nowrap;">${c.refClient||'—'}</span></td>
       <td style="text-align:center;"><span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:${_s.color};background:${_s.bg};border-radius:20px;padding:3px 9px;white-space:nowrap;">${_s.icon} ${_s.label}</span>${effStatut==='prospect'?`<br><button onclick="convertirProspectEnClient('${c.id}')" style="font-size:9px;margin-top:3px;border:none;background:rgba(16,185,129,.15);color:#059669;border-radius:4px;padding:2px 6px;cursor:pointer;font-weight:600;">✓ Convertir</button>`:''}</td>
-      <td><strong>${c.nom}</strong>${c.email?`<div style="font-size:10px;color:var(--text3);">${c.email}</div>`:''}</td>
+      <td><strong>${c.nom}</strong>${c.email?`<div style="font-size:10px;color:var(--text3);">${c.email}</div>`:''}${c.tropPercu>0?`<div style="margin-top:3px;"><span style="font-size:9px;font-weight:700;color:var(--teal);background:rgba(8,145,178,.12);border:1px solid rgba(8,145,178,.3);border-radius:20px;padding:2px 7px;">💰 Trop-perçu : ${c.tropPercu.toFixed(2)} € TTC</span></div>`:''}</td>
       <td style="font-size:11px;color:var(--text2);">${c.tel||c.entreprise||'—'}</td>
       <td>${typeBadge}</td>
       <td>${tvaBadge}</td>
@@ -5350,6 +5351,12 @@ function modifierClient(id){
         })()}
       </div>
     </div>
+    <div class="form-group" style="grid-column:1/-1;background:rgba(14,116,144,.07);border:1px solid rgba(14,116,144,.25);border-radius:10px;padding:10px 14px;">
+      <label style="color:var(--teal);font-weight:700;font-size:12px;">💰 Trop-perçu client (solde créditeur)</label>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Montant TTC reçu en trop — sera déduit automatiquement de la prochaine facture</div>
+      <input type="number" id="editTropPercu" min="0" step="0.01" placeholder="0.00" value="${c.tropPercu||0}" style="width:160px;border:1px solid rgba(14,116,144,.4);border-radius:7px;padding:6px 10px;font-size:13px;font-weight:700;color:var(--teal);background:#fff;">
+      <span style="font-size:12px;color:var(--text2);margin-left:6px;">€ TTC</span>
+    </div>
     <div class="form-group" id="editChangementJoursWrap" style="grid-column:1/-1;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:10px 12px;display:none;">
       <label style="color:var(--amber);font-weight:700;">⚠ Changement de jour permanent</label>
       <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">Anciens jours conservés dans l'historique. Nouveaux jours effectifs à partir de :</div>
@@ -5405,6 +5412,7 @@ function sauvegarderModificationClient(){
   c.dateArrivee=document.getElementById('editDateArrivee').value;
   c.dateSortie=document.getElementById('editDateSortie').value;
   c.commune=document.getElementById('editCommune').value;
+  c.tropPercu=Math.max(0,parseFloat(document.getElementById('editTropPercu')?.value)||0);
   const joursNouveaux = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].filter(j=>document.getElementById('jourBtn_'+j)?.classList.contains('jour-on'));
   const dateEffet = document.getElementById('editDateEffetJours')?.value;
   const joursAnciensAvantChangement = c.jours||[];
@@ -7127,6 +7135,19 @@ function remplirInfosFacture(){
   mettreAJourTypeOp();
   calculerTotauxFacture();
   remplirLignesAuto();
+  // ── Alerte trop-perçu ──
+  const alerteTP=document.getElementById('facTropPercuAlerte');
+  if(alerteTP){
+    if(c.tropPercu>0){
+      alerteTP.style.display='block';
+      alerteTP.innerHTML=`<div style="background:#ecfeff;border:1px solid #a5f3fc;border-left:4px solid var(--teal);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:11px;color:#0e7490;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+        <div><span style="font-weight:700;font-size:12px;">💰 Trop-perçu : ${c.tropPercu.toFixed(2)} € TTC</span><br><span style="color:#0891b2;">Ce montant sera déduit de la facture si vous l'appliquez.</span></div>
+        <button onclick="appliquerTropPercu('${id}')" style="background:var(--teal);color:#fff;border:none;border-radius:7px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;">✓ Appliquer</button>
+      </div>`;
+    } else {
+      alerteTP.style.display='none';alerteTP.innerHTML='';
+    }
+  }
   // ── Alerte avoirs en cours pour ce client (non appliqués) ──
   const avoirsClient=(facturesData||[]).filter(a=>a.type==='avoir'&&a.clientId===id&&a.statut!=='applique');
   const alerte=document.getElementById('facAvoirAlerte');
@@ -8682,6 +8703,7 @@ function marquerPayee(id){
 
 function supprimerFacture(id){
   if(!confirm('Supprimer cette facture ?'))return;
+  try{var _df=JSON.parse(localStorage.getItem('_deletedFactureIds')||'[]');if(_df.indexOf(id)===-1)_df.push(id);localStorage.setItem('_deletedFactureIds',JSON.stringify(_df.slice(-500)));localStorage.setItem('_lastSaveTs',Date.now().toString());}catch(e){}
   facturesData=facturesData.filter(f=>f.id!==id);
   sauvegarderTout(true);
   renderHistoriqueFactures();
@@ -8731,6 +8753,22 @@ function appliquerAvoir(avoirId){
   toast('Avoir '+a.numero+' appliqu\xe9 — ligne de d\xe9duction ajout\xe9e','success');
 }
 window.appliquerAvoir=appliquerAvoir;
+
+function appliquerTropPercu(clientId){
+  const c=clientsData.find(x=>x.id===clientId);if(!c||!c.tropPercu)return;
+  const tva=getTVAClient(c);
+  const montantHT=Math.round((c.tropPercu/(1+tva/100))*100)/100;
+  lignesFactureData.push({desc:'Déduction trop-perçu — avoir client',qte:1,unite:'forfait',prixUnit:-montantHT});
+  c.tropPercu=0;
+  sauvegarderTout(true);
+  chargerClients();
+  renderLignesFacture();
+  calculerTotauxFacture();
+  const alerteTP=document.getElementById('facTropPercuAlerte');
+  if(alerteTP){alerteTP.style.display='none';alerteTP.innerHTML='';}
+  toast('Trop-perçu appliqué — ligne de déduction ajoutée','success');
+}
+window.appliquerTropPercu=appliquerTropPercu;
 
 function creerAvoir(factureId){
   const f=facturesData.find(x=>x.id===factureId);if(!f)return;
@@ -9800,6 +9838,7 @@ function reinitialiserTout(){
   // pour bloquer tout polling résiduel pendant la réinitialisation
   localStorage.removeItem('_deletedClientIds');
   localStorage.removeItem('_deletedFraisIds');
+  localStorage.removeItem('_deletedFactureIds');
   localStorage.removeItem('_deletedRecetteIds');
   localStorage.removeItem('_deletedDepenseIds');
   try { localStorage.setItem('_lastSaveTs', Date.now().toString()); } catch(e) {}
@@ -12244,6 +12283,7 @@ window.restaurerFacture=restaurerFacture;
 
 function supprimerFactureArchivee(id){
   if(!confirm('Supprimer définitivement cette facture archivée ?'))return;
+  try{var _df=JSON.parse(localStorage.getItem('_deletedFactureIds')||'[]');if(_df.indexOf(id)===-1)_df.push(id);localStorage.setItem('_deletedFactureIds',JSON.stringify(_df.slice(-500)));localStorage.setItem('_lastSaveTs',Date.now().toString());}catch(e){}
   facturesData=facturesData.filter(x=>x.id!==id);
   sauvegarderTout(true);renderArchives();calculerStats();
   toast('Facture supprimée','info');
@@ -16041,9 +16081,15 @@ function lingeAjouterLigne(pfx,nbLits){
         }
       }
       if (d.factures) {
-        // Protection race condition : si Supabase sync arrive avant la sauvegarde,
-        // un statut local plus avancé ne doit pas être écrasé par un statut Supabase plus ancien.
-        // Hiérarchie : '' < 'envoyee' < 'payee' < 'archivee'
+        // Tombstone multi-utilisateur : fusionner les IDs supprimés cloud + local
+        var _delFact = [];
+        try { _delFact = JSON.parse(localStorage.getItem('_deletedFactureIds')||'[]'); } catch(e) {}
+        if (d.deletedFactureIds && d.deletedFactureIds.length) {
+          d.deletedFactureIds.forEach(function(id){ if(_delFact.indexOf(id)===-1) _delFact.push(id); });
+          try { localStorage.setItem('_deletedFactureIds', JSON.stringify(_delFact.slice(-500))); } catch(e) {}
+        }
+        d.factures = d.factures.filter(function(f){ return _delFact.indexOf(f.id) === -1; });
+        // Protection race condition statut : hiérarchie '' < 'envoyee' < 'payee' < 'archivee'
         var _statutRank = {'':0,'envoyee':1,'payee':2,'archivee':3};
         var _localStatutSave = {};
         facturesData.forEach(function(f) {
@@ -16212,6 +16258,7 @@ function lingeAjouterLigne(pfx,nbLits){
       // de propager indéfiniment les notes supprimées car ils n'ont pas le tombstone local
       deletedFraisIds:        (function(){ try{ return JSON.parse(localStorage.getItem('_deletedFraisIds')||'[]'); }catch(e){ return []; } })(),
       deletedDeplacementIds:  (function(){ try{ return JSON.parse(localStorage.getItem('_deletedDeplacementIds')||'[]'); }catch(e){ return []; } })(),
+      deletedFactureIds:      (function(){ try{ return JSON.parse(localStorage.getItem('_deletedFactureIds')||'[]'); }catch(e){ return []; } })(),
       params:                 (function(){ try{ return JSON.parse(localStorage.getItem('progestParams')||'{}'); }catch(e){ return {}; } })()
     };
     supabaseSave(snapshot);
