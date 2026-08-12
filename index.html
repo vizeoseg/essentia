@@ -1566,6 +1566,7 @@ tr{transition:background .12s;}
           <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn btn-success btn-sm" onclick="genererFacturePDF()"><i class="fas fa-file-pdf"></i> PDF</button>
             <button class="btn btn-sm" style="background:linear-gradient(135deg,#1d4ed8,#7c3aed);color:#fff;" onclick="genererFacturXML()"><i class="fas fa-code"></i> XML Factur-X</button>
+            <button class="btn btn-sm" style="background:linear-gradient(135deg,#1a3a8f,#1d4ed8);color:#fff;" onclick="envoyerFactureVersQonto()"><i class="fas fa-university"></i> Qonto (brouillon)</button>
             <button class="btn btn-primary btn-sm" onclick="envoyerFactureEmail()"><i class="fas fa-envelope"></i> Email</button>
             <button class="btn btn-sm" style="background:linear-gradient(135deg,#059669,#0891b2);color:#fff;" onclick="ouvrirModalPlateforme()"><i class="fas fa-upload"></i> Déposer sur plateforme</button>
           </div>
@@ -8372,6 +8373,53 @@ function genererFacturXML(){
   a.download=`${d.numero}_facturx.xml`;
   a.click();
   toast(`XML Factur-X ${d.numero} téléchargé ✓`,'success');
+}
+
+async function envoyerFactureVersQonto() {
+  const clientId = document.getElementById('facClient')?.value || '';
+  if (!clientId) { toast('Sélectionnez un client', 'warning'); return; }
+  if (!lignesFactureData.length) { toast('Ajoutez au moins une ligne', 'warning'); return; }
+  const d = _getFactureData();
+  const c = d.client;
+  const emailClient = d.emailClient || c.email || '';
+  const clientPayload = {
+    name: c.entreprise || c.nom || 'Client',
+    countryCode: 'FR',
+  };
+  if (emailClient) clientPayload.email = emailClient;
+  if (c.adresse) clientPayload.address = c.adresse;
+  if (c.commune) clientPayload.city = c.commune;
+  if (d.sirenClient) clientPayload.siren = d.sirenClient;
+
+  const payload = {
+    client: clientPayload,
+    items: d.lignes.map(function(l) {
+      return { title: l.desc, quantity: l.qte, unitPrice: l.prixUnit, vatRate: d.tauxTVA / 100 };
+    }),
+    issueDate: d.date,
+    dueDate: d.dateEch,
+    number: d.numero,
+    status: 'draft',
+  };
+
+  toast('Envoi vers Qonto…', 'info');
+  try {
+    var resp = await fetch('/.netlify/functions/qonto-invoice', {
+      method: 'POST',
+      headers: { 'X-App-Secret': APP_SECRET_FRONT, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    var data = await resp.json();
+    if (!resp.ok) {
+      toast('Erreur Qonto : ' + (data.error || ('HTTP ' + resp.status)), 'error');
+      console.error('[Qonto invoice]', data);
+      return;
+    }
+    var inv = data.invoice || {};
+    toast('Facture Qonto créée ✓ — n° ' + (inv.number || inv.id || d.numero), 'success');
+  } catch(e) {
+    toast('Erreur réseau Qonto : ' + e.message, 'error');
+  }
 }
 
 function telechargerXMLFacture(id){
