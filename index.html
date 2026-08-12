@@ -3060,6 +3060,7 @@ tr{transition:background .12s;}
 <div id="editClientModal" class="modal"><div class="modal-box"><div class="modal-header"><span class="modal-title">Modifier le client</span><button class="modal-close" onclick="this.closest('.modal').style.display='none'"><i class="fas fa-times"></i></button></div><div id="editClientForm"></div><div style="display:flex;gap:8px;margin-top:14px;"><button class="btn btn-success" style="flex:1;" onclick="sauvegarderModificationClient()"><i class="fas fa-save"></i> Enregistrer</button><button class="btn btn-danger" onclick="supprimerClientDepuisModal()" style="background:#ef4444;color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600;"><i class="fas fa-trash"></i> Supprimer</button></div></div></div>
 <div id="salaryModal" class="modal"><div class="modal-box modal-sm"><div class="modal-header"><span class="modal-title" id="salaryModalTitle">Bulletin de salaire</span><button class="modal-close" onclick="this.closest('.modal').style.display='none'"><i class="fas fa-times"></i></button></div><div id="salaryModalContent"></div><div style="display:flex;gap:9px;margin-top:14px;"><button class="btn btn-primary" style="flex:1;" onclick="exporterBulletin(currentBulletinId)"><i class="fas fa-file-pdf"></i> PDF Bulletin</button><button class="btn btn-ghost" onclick="this.closest('.modal').style.display='none'">Fermer</button></div></div></div>
 <div id="photoModal" class="modal"><div class="modal-box modal-sm"><div class="modal-header"><span class="modal-title">Justificatif</span><button class="modal-close" onclick="this.closest('.modal').style.display='none';document.getElementById('photoModalImg').src='';document.querySelector('#photoModal .modal-title').textContent='Justificatif';"><i class="fas fa-times"></i></button></div><img id="photoModalImg" src="" style="width:100%;border-radius:9px;" alt="Justificatif"></div></div>
+<div id="modalQontoTx" class="modal" style="display:none;"><div class="modal-box modal-sm"><div class="modal-header"><span class="modal-title"><i class="fas fa-university" style="color:#1a3a8f;margin-right:6px;"></i>Rattacher à une transaction Qonto</span><button class="modal-close" onclick="document.getElementById('modalQontoTx').style.display='none'"><i class="fas fa-times"></i></button></div><div id="modalQontoTxBody" style="max-height:400px;overflow-y:auto;"></div><div style="margin-top:12px;"><button class="btn btn-ghost" onclick="document.getElementById('modalQontoTx').style.display='none'">Fermer</button></div></div></div>
 <div id="modalNoteFraisPDF" class="modal" style="display:none;"><div class="modal-box modal-sm"><div class="modal-header"><span class="modal-title"><i class="fas fa-file-pdf" style="color:#e53e3e;margin-right:6px;"></i>Note de frais kilométrique</span><button class="modal-close" onclick="document.getElementById('modalNoteFraisPDF').style.display='none'"><i class="fas fa-times"></i></button></div>
 <div style="padding:4px 0 12px;">
   <div class="form-row" style="margin-bottom:0;">
@@ -6392,7 +6393,10 @@ function chargerNotesFrais(){
           : `<div class="frais-photo-placeholder"><i class="fas fa-image"></i></div>`);
     var _delCall = f.id ? `supprimerFraisById('${f.id}')` : `supprimerFrais(${idx})`;
     var _archiveBtn = f.id ? `<button class="btn btn-ghost btn-sm" onclick="archiverFrais('${f.id}')" title="Archiver"><i class="fas fa-archive"></i></button>` : '';
-    htmlFinal += `<div class="frais-item"><div style="display:flex;align-items:center;gap:10px;">${photoHtml}<div><span class="badge badge-orange">${f.date}</span> <span style="font-weight:500;">${f.libelle}</span><span class="frais-cat" style="background:rgba(240,153,31,.15);color:var(--amber);padding:2px 7px;border-radius:50px;font-size:10px;font-weight:600;margin-left:7px;">${f.categorie}</span><div style="font-size:10px;color:var(--text3);margin-top:2px;">${f.employe}${f.entreprise?' • '+f.entreprise:''}</div></div></div><div style="display:flex;align-items:center;gap:8px;"><span class="fi-amount">${f.montant.toFixed(2)} €</span>${_archiveBtn}<button class="icon-btn del" onclick="${_delCall}"><i class="fas fa-trash"></i></button></div></div>`;
+    var _qontoBadgeHtml = f.qontoAttachmentId
+      ? `<span style="background:rgba(18,184,122,.15);color:var(--green);padding:2px 8px;border-radius:50px;font-size:10px;font-weight:700;" title="Rattaché le ${(f.qontoSentAt||'').slice(0,10)}"><i class="fas fa-university" style="margin-right:3px;"></i>✓ Qonto</span>`
+      : (photoValide && f.id ? `<button class="btn btn-ghost btn-sm" onclick="envoyerFraisVersQonto('${f.id}')" title="Envoyer vers Qonto"><i class="fas fa-university"></i></button>` : '');
+    htmlFinal += `<div class="frais-item"><div style="display:flex;align-items:center;gap:10px;">${photoHtml}<div><span class="badge badge-orange">${f.date}</span> <span style="font-weight:500;">${f.libelle}</span><span class="frais-cat" style="background:rgba(240,153,31,.15);color:var(--amber);padding:2px 7px;border-radius:50px;font-size:10px;font-weight:600;margin-left:7px;">${f.categorie}</span><div style="font-size:10px;color:var(--text3);margin-top:2px;">${f.employe}${f.entreprise?' • '+f.entreprise:''}</div></div></div><div style="display:flex;align-items:center;gap:8px;"><span class="fi-amount">${f.montant.toFixed(2)} €</span>${_archiveBtn}${_qontoBadgeHtml}<button class="icon-btn del" onclick="${_delCall}"><i class="fas fa-trash"></i></button></div></div>`;
     }); // end items.forEach
   }); // end parMois forEach
   list.innerHTML = htmlFinal || '<p style="color:var(--text3);font-size:12px;">Aucune note de frais</p>';
@@ -6431,6 +6435,98 @@ function voirPhotoFrais(i){
   }
   _ouvrirModalPhoto(src, 'Justificatif');
 }
+async function envoyerFraisVersQonto(fraisId) {
+  const _esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  var f = notesFraisData.find(function(x){ return x.id === fraisId; });
+  if (!f) return;
+  var photoSrc = f.photo;
+  if (!photoSrc || photoSrc === '__photo_locale__') {
+    try { photoSrc = localStorage.getItem('_fraisPhoto:' + fraisId) || null; } catch(e) {}
+  }
+  if (!photoSrc) { toast('Aucune photo justificatif disponible', 'warning'); return; }
+
+  var body = document.getElementById('modalQontoTxBody');
+  body.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);"><i class="fas fa-spinner fa-spin" style="font-size:22px;"></i><div style="margin-top:10px;font-size:13px;">Chargement des transactions Qonto…</div></div>';
+  document.getElementById('modalQontoTx').style.display = 'flex';
+
+  try {
+    var resp = await fetch(_QONTO_TX_ENDPOINT, { method: 'GET', headers: { 'X-App-Secret': APP_SECRET_FRONT } });
+    var data = await resp.json();
+    if (!resp.ok) { body.innerHTML = '<p style="color:var(--red);padding:10px;">' + _esc(data.error || 'Erreur API Qonto') + '</p>'; return; }
+
+    var txs = data.transactions || [];
+    var fDate = f.date ? new Date(f.date) : null;
+    txs.sort(function(a, b) {
+      var da = Math.abs((a.amount || 0) - f.montant);
+      var db = Math.abs((b.amount || 0) - f.montant);
+      if (da !== db) return da - db;
+      if (fDate) {
+        var ta = new Date(a.settled_at || a.emitted_at || 0);
+        var tb = new Date(b.settled_at || b.emitted_at || 0);
+        return Math.abs(ta - fDate) - Math.abs(tb - fDate);
+      }
+      return 0;
+    });
+
+    if (!txs.length) { body.innerHTML = '<p style="color:var(--text3);padding:12px;">Aucune transaction sans justificatif trouvée.</p>'; return; }
+
+    window._qontoCurrentFraisId = fraisId;
+    window._qontoCurrentPhoto   = photoSrc;
+
+    body.innerHTML = txs.map(function(tx) {
+      var isMatch = Math.abs((tx.amount || 0) - f.montant) < 0.01;
+      var txDate  = (tx.settled_at || tx.emitted_at || '').slice(0, 10);
+      var label   = _esc(tx.label || tx.reference || tx.id || '—');
+      var contre  = tx.counterparty_name ? ' • ' + _esc(tx.counterparty_name) : '';
+      var matchBadge = isMatch ? '<span style="font-size:10px;font-weight:700;color:var(--green);margin-right:4px;">✓ Montant identique</span>' : '';
+      return '<div class="frais-item" style="cursor:pointer;margin-bottom:6px;' + (isMatch ? 'border-left:3px solid var(--green);background:rgba(18,184,122,.05);' : '') + '" onclick="_rattacherQontoTx(\'' + _esc(fraisId) + '\',\'' + _esc(tx.id) + '\')">'
+        + '<div style="flex:1;min-width:0;">'
+        + '<div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + label + '</div>'
+        + '<div style="font-size:11px;color:var(--text3);">' + _esc(txDate) + contre + '</div>'
+        + '</div>'
+        + '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">'
+        + matchBadge
+        + '<span style="font-weight:700;font-family:\'DM Mono\',monospace;color:var(--amber);">' + Math.abs(tx.amount || 0).toFixed(2) + ' €</span>'
+        + '<button class="btn btn-sm" style="background:#1a3a8f;color:#fff;border:none;padding:4px 10px;border-radius:7px;font-size:11px;cursor:pointer;white-space:nowrap;">Rattacher</button>'
+        + '</div></div>';
+    }).join('');
+  } catch(e) {
+    body.innerHTML = '<p style="color:var(--red);padding:10px;">Erreur réseau : ' + String(e.message||e).replace(/</g,'&lt;') + '</p>';
+  }
+}
+
+async function _rattacherQontoTx(fraisId, transactionId) {
+  var f = notesFraisData.find(function(x){ return x.id === fraisId; });
+  if (!f) return;
+  var photoSrc = window._qontoCurrentPhoto;
+  if (!photoSrc) return;
+  var fileBase64 = photoSrc.indexOf(',') !== -1 ? photoSrc.split(',')[1] : photoSrc;
+  var mimeType   = photoSrc.startsWith('data:') ? photoSrc.split(';')[0].split(':')[1] : 'image/jpeg';
+  var ext        = mimeType === 'image/png' ? 'png' : mimeType === 'image/gif' ? 'gif' : 'jpg';
+  var fileName   = 'justificatif_' + (f.date || 'sans_date').replace(/-/g,'') + '.' + ext;
+
+  var body = document.getElementById('modalQontoTxBody');
+  body.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);"><i class="fas fa-spinner fa-spin" style="font-size:22px;"></i><div style="margin-top:10px;font-size:13px;">Envoi vers Qonto…</div></div>';
+
+  try {
+    var resp = await fetch(_QONTO_ATTACH_ENDPOINT, {
+      method: 'POST',
+      headers: { 'X-App-Secret': APP_SECRET_FRONT, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileBase64: fileBase64, fileName: fileName, mimeType: mimeType, transactionId: transactionId })
+    });
+    var data = await resp.json();
+    if (!resp.ok) { body.innerHTML = '<p style="color:var(--red);padding:10px;">' + String(data.error||'Erreur Qonto').replace(/</g,'&lt;') + '</p>'; return; }
+    f.qontoAttachmentId = data.attachment_id || transactionId;
+    f.qontoSentAt = new Date().toISOString();
+    sauvegarderTout(true);
+    document.getElementById('modalQontoTx').style.display = 'none';
+    chargerNotesFrais();
+    toast('Justificatif envoyé vers Qonto ✓', 'success');
+  } catch(e) {
+    body.innerHTML = '<p style="color:var(--red);padding:10px;">Erreur réseau : ' + String(e.message||e).replace(/</g,'&lt;') + '</p>';
+  }
+}
+
 function voirPhotoKm(el) {
   var fraisId = el.getAttribute('data-fid');
   var sens = el.getAttribute('data-sens');
@@ -15530,6 +15626,11 @@ function lingeAjouterLigne(pfx,nbLits){
   };
 
   const SUPA_ENABLED = !!(SUPA_CONFIG.url && SUPA_CONFIG.key);
+
+  // ── QONTO — proxy Netlify sécurisé ──────────────────────────
+  window.APP_SECRET_FRONT      = 'ee9e5e2a96d617c60a5c01bda8cddf7dd7178c023b2e50cefef2cb465000d018';
+  window._QONTO_TX_ENDPOINT    = '/.netlify/functions/qonto-transactions';
+  window._QONTO_ATTACH_ENDPOINT = '/.netlify/functions/qonto-attachment';
 
   // ── CLIENT SUPABASE LÉGER ────────────────────────────────────
   // Sans AbortController (cause "object can not be cloned" sur iOS/Android WebView)
