@@ -8382,9 +8382,16 @@ async function envoyerFactureVersQonto() {
   const d = _getFactureData();
   const c = d.client;
   const emailClient = d.emailClient || c.email || '';
+  const cpMatch = (c.adresse || '').match(/\b\d{5}\b/);
+  const zipCode = cpMatch ? cpMatch[0] : '';
+  if (!zipCode) {
+    toast("Code postal introuvable dans l'adresse du client — ajoutez-le dans la fiche client avant d'envoyer vers Qonto", 'warning');
+    return;
+  }
   const clientPayload = {
     name: c.entreprise || c.nom || 'Client',
     countryCode: 'FR',
+    zipCode: zipCode,
   };
   if (emailClient) clientPayload.email = emailClient;
   if (c.adresse) clientPayload.address = c.adresse;
