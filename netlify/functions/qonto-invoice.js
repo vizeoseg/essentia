@@ -1,3 +1,15 @@
+// netlify/functions/qonto-invoice.js
+//
+// Reçoit les données d'une facture Essentia et la pousse vers Qonto
+// (Plateforme Agréée) :
+//   1. Cherche si le client existe déjà côté Qonto (par email)
+//   2. Le crée sinon (POST /v2/clients)
+//   3. Crée la facture (POST /v2/client_invoices), en statut "draft" par défaut
+//
+// Variables d'environnement Netlify requises :
+//   APP_SECRET, QONTO_ORG_SLUG, QONTO_SECRET_KEY (déjà configurées)
+//   QONTO_IBAN — IBAN du compte Qonto à afficher comme moyen de paiement
+
 const QONTO_BASE = 'https://thirdparty.qonto.com/v2';
 
 async function qontoFetch(path, authHeader, options = {}) {
@@ -16,6 +28,7 @@ async function qontoFetch(path, authHeader, options = {}) {
 }
 
 async function findOrCreateClient(authHeader, clientInfo) {
+  // 1) Recherche parmi les clients existants (pagination simple, jusqu'à 5 pages)
   if (clientInfo.email) {
     let page = 1;
     while (page <= 5) {
@@ -23,13 +36,37 @@ async function findOrCreateClient(authHeader, clientInfo) {
       if (!ok) break;
       const list = data.clients || [];
       const match = list.find((c) => (c.email || '').toLowerCase() === clientInfo.email.toLowerCase());
-      if (match) return { id: match.id, created: false };
+      if (match) {
+        // Client déjà connu de Qonto : on rafraîchit ses infos (adresse, SIREN...)
+        // à chaque appel, sinon une facture peut échouer si ces infos manquaient
+        // lors de sa toute première création.
+        const updatePayload = {
+          billing_address: {
+            street_address: clientInfo.address || undefined,
+            city: clientInfo.city || undefined,
+            zip_code: clientInfo.zipCode || undefined,
+            country_code: clientInfo.countryCode || 'FR',
+          },
+          tax_identification_number: clientInfo.siren || undefined,
+          vat_number: clientInfo.vatNumber || undefined,
+        };
+        Object.keys(updatePayload.billing_address).forEach(
+          (k) => updatePayload.billing_address[k] === undefined && delete updatePayload.billing_address[k]
+        );
+        Object.keys(updatePayload).forEach((k) => updatePayload[k] === undefined && delete updatePayload[k]);
+        await qontoFetch(`/clients/${match.id}`, authHeader, {
+          method: 'PATCH',
+          body: JSON.stringify(updatePayload),
+        });
+        return { id: match.id, created: false };
+      }
       const meta = data.meta || {};
       if (!meta.next_page) break;
       page++;
     }
   }
 
+  // 2) Création si non trouvé
   const payload = {
     kind: 'company',
     name: clientInfo.name || 'Client',
