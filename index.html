@@ -15637,7 +15637,7 @@ var _lingeConfig = (function(){
     var s=JSON.parse(localStorage.getItem('essentiaLingeConfig')||'{}');
     if(s.formule) return s.formule;
   }catch(e){}
-  return {base:12,increment:6,maxLits:5};
+  return {base:12,increment:6,maxLits:8};
 })();
 
 function lingeGetPrix(n){
@@ -15678,7 +15678,7 @@ function lingeInit(){
   var m=document.getElementById('lingeMax');
   if(b) b.value=_lingeConfig.base||10;
   if(i) i.value=_lingeConfig.increment||5;
-  if(m) m.value=_lingeConfig.maxLits||5;
+  if(m) m.value=_lingeConfig.maxLits||8;
   lingeCalculerApercu();
 }
 
@@ -15691,7 +15691,7 @@ function _lingeRafraichirBoutons(){
 }
 
 function _lingeHtmlBoutons(pfx){
-  var max=_lingeConfig.maxLits||5;
+  var max=_lingeConfig.maxLits||8;
   var html='<button type="button" onclick="lingeAjouterLigne(\''+pfx+'\',0)" style="padding:5px 12px;border:1.5px solid var(--border);border-radius:7px;background:transparent;color:var(--text2);font-size:12px;cursor:pointer;">Pas de linge</button>';
   for(var n=1;n<=max;n++){
     var p=lingeGetPrix(n);
