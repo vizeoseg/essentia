@@ -2146,11 +2146,14 @@ tr{transition:background .12s;}
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <select id="devisTypeLogement" onchange="appliquerTypeLogement()" style="font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:7px;background:white;color:var(--text);">
               <option value="">— Choisir un type (optionnel) —</option>
-              <option value="T1" data-surface="25" data-h="1">T1 / Studio (~25m²) → 1h</option>
-              <option value="T2" data-surface="45" data-h="1.5">T2 (~45m²) → 1h30</option>
-              <option value="T3" data-surface="65" data-h="2">T3 (~65m²) → 2h</option>
-              <option value="T4" data-surface="90" data-h="2.5">T4 (~90m²) → 2h30</option>
-              <option value="T5" data-surface="120" data-h="3">T5 / Grande maison (~120m²) → 3h</option>
+              <option value="T1" data-surface="25" data-h="1" data-forfait-ht="27.50">T1 / Studio (~25m²) → 1h</option>
+              <option value="T2" data-surface="45" data-h="1.5" data-forfait-ht="40.83">T2 (~45m²) → 1h30</option>
+              <option value="T3" data-surface="65" data-h="2" data-forfait-ht="54.17">T3 (~65m²) → 2h</option>
+              <option value="T4" data-surface="90" data-h="2.5" data-forfait-ht="67.50">T4 (~90m²) → 2h30</option>
+              <option value="T5" data-surface="120" data-h="3" data-forfait-ht="81.67">T5 / Grande maison (~120m²) → 3h</option>
+              <option value="T6" data-surface="140" data-h="3.5" data-forfait-ht="95.00">T6 (~140m²) → 3h30</option>
+              <option value="T7" data-surface="160" data-h="4" data-forfait-ht="108.33">T7 (~160m²) → 4h</option>
+              <option value="T8" data-surface="180" data-h="4.5" data-forfait-ht="121.67">T8 (~180m²) → 4h30</option>
               <option value="Bureau_S" data-surface="80" data-h="2">Bureaux petits (~80m²) → 2h</option>
               <option value="Bureau_M" data-surface="200" data-h="4">Bureaux moyens (~200m²) → 4h</option>
               <option value="Bureau_L" data-surface="500" data-h="8">Locaux grands (~500m²) → 8h</option>
@@ -2159,10 +2162,23 @@ tr{transition:background .12s;}
           </div>
         </div>
         <div style="margin-top:13px;">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
             <h4 style="font-size:13px;font-weight:600;">Prestations</h4>
             <button class="btn btn-ghost btn-sm" onclick="ajouterLigneDevis()"><i class="fas fa-plus"></i> Ligne</button>
             <button class="btn btn-ghost btn-sm" onclick="remplirLignesDevisAuto()"><i class="fas fa-magic"></i> Auto depuis client</button>
+            <button class="btn btn-ghost btn-sm" onclick="appliquerForfaitAirbnb()" style="color:#f97316;border-color:rgba(249,115,22,.4);"><i class="fas fa-home"></i> Forfait Airbnb</button>
+            <span style="display:inline-flex;align-items:center;gap:3px;">
+              <input type="number" id="kitBienvenueQte" value="2" min="1" max="20" title="Nombre de personnes" style="width:36px;padding:2px 4px;border:1px solid var(--border);border-radius:5px;font-size:11px;background:var(--bg2);color:var(--text);text-align:center;">
+              <button class="btn btn-ghost btn-sm" onclick="ajouterKitBienvenue()" title="Kit bienvenue (1,25 € HT/pers.)"><i class="fas fa-gift"></i> Bienvenue</button>
+            </span>
+            <span style="display:inline-flex;align-items:center;gap:3px;">
+              <input type="number" id="kitCuisineQte" value="1" min="1" max="10" title="Quantité" style="width:36px;padding:2px 4px;border:1px solid var(--border);border-radius:5px;font-size:11px;background:var(--bg2);color:var(--text);text-align:center;">
+              <button class="btn btn-ghost btn-sm" onclick="ajouterKitCuisine()" title="Kit cuisine (2,08 € HT)"><i class="fas fa-utensils"></i> Cuisine</button>
+            </span>
+            <span style="display:inline-flex;align-items:center;gap:3px;">
+              <input type="number" id="kitSdBQte" value="1" min="1" max="5" title="Nombre de salles de bain" style="width:36px;padding:2px 4px;border:1px solid var(--border);border-radius:5px;font-size:11px;background:var(--bg2);color:var(--text);text-align:center;">
+              <button class="btn btn-ghost btn-sm" onclick="ajouterKitSalleDeBain()" title="Kit salle de bain (4,58 € HT)"><i class="fas fa-shower"></i> SdB</button>
+            </span>
           </div>
           <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:8px;padding:8px 10px;background:var(--green-l);border-radius:9px;border:1px solid rgba(18,184,122,.2);">
             <span style="font-size:11px;font-weight:700;color:var(--green);white-space:nowrap;"><i class="fas fa-tshirt"></i> Linge :</span>
@@ -12742,6 +12758,7 @@ function _ajouterBoutonsProduit(){
 // DEVIS
 // ══════════════════════════════════════════════════════════
 function initDevis(){
+  window._devisModeConciergerie=false;
   chargerSelectClientsDevis();
   const annee=new Date().getFullYear();
   const numEl=document.getElementById('devisNumero');
@@ -12764,6 +12781,7 @@ function chargerSelectClientsDevis(){
 }
 
 function remplirInfosDevis(){
+  window._devisModeConciergerie=false;
   const id=document.getElementById('devisClient')?.value;
   if(id==='__prospect__'){ _ouvrirModalProspect(); return; }
   const c=clientsData.find(x=>x.id===id); if(!c) return;
@@ -12832,7 +12850,7 @@ function remplirLignesDevisAuto(){
   const hMois=Math.round((_parseH(c.heures)||0)*(c.frequence||1)*4.33*10)/10;
   lignesDevisData=hMois>0
     ?[{desc:`Prestations nettoyage – ${c.nom}`,qte:hMois,unite:'heures',prixUnit:c.tarif||20}]
-    :[{desc:`Prestation forfaitaire – ${c.nom}`,qte:1,unite:'forfait',prixUnit:c.totalMoisHT||0}];
+    :[];
   renderLignesDevis(); calculerTotauxDevis();
 }
 
@@ -12856,6 +12874,44 @@ function appliquerTypeLogement(){
   lignesDevisData=[{desc:'Nettoyage '+sel.value+' ('+surf+'m²) — '+h+'h/passage × '+freq+'×/sem',qte:hMois,unite:'heures',prixUnit:tarif}];
   renderLignesDevis(); calculerTotauxDevis();
   toast('Pré-rempli pour '+sel.value,'info');
+}
+
+function appliquerForfaitAirbnb(){
+  window._devisModeConciergerie=true;
+  const sel=document.getElementById('devisTypeLogement');
+  if(!sel||!sel.value){toast('Choisissez d\'abord un type de logement','warning');return;}
+  const opt=sel.options[sel.selectedIndex];
+  const forfaitHT=parseFloat(opt.getAttribute('data-forfait-ht'))||0;
+  if(!forfaitHT){toast('Aucun forfait Airbnb défini pour ce type','warning');return;}
+  const type=sel.value;
+  lignesDevisData.push({desc:'Ménage complet '+type+' (forfait Airbnb)',qte:1,unite:'forfait',prixUnit:forfaitHT});
+  renderLignesDevis();calculerTotauxDevis();
+  const ttc=(forfaitHT*1.20).toFixed(2).replace('.',',');
+  toast('Forfait Airbnb '+type+' ajouté — '+ttc+' € TTC','success');
+}
+
+function ajouterKitBienvenue(){
+  window._devisModeConciergerie=true;
+  const qte=Math.max(1,parseInt(document.getElementById('kitBienvenueQte')?.value)||2);
+  lignesDevisData.push({desc:'Kit bienvenue ('+qte+' pers.)',qte:qte,unite:'forfait',prixUnit:1.25});
+  renderLignesDevis();calculerTotauxDevis();
+  toast('Kit bienvenue × '+qte+' ajouté','success');
+}
+
+function ajouterKitCuisine(){
+  window._devisModeConciergerie=true;
+  const qte=Math.max(1,parseInt(document.getElementById('kitCuisineQte')?.value)||1);
+  lignesDevisData.push({desc:'Kit cuisine',qte:qte,unite:'forfait',prixUnit:2.08});
+  renderLignesDevis();calculerTotauxDevis();
+  toast('Kit cuisine ajouté','success');
+}
+
+function ajouterKitSalleDeBain(){
+  window._devisModeConciergerie=true;
+  const qte=Math.max(1,parseInt(document.getElementById('kitSdBQte')?.value)||1);
+  lignesDevisData.push({desc:'Kit salle de bain ('+qte+')',qte:qte,unite:'forfait',prixUnit:4.58});
+  renderLignesDevis();calculerTotauxDevis();
+  toast('Kit salle de bain × '+qte+' ajouté','success');
 }
 
 function renderLignesDevis(){
@@ -13011,11 +13067,19 @@ function genererDevisPDF(){
   doc.setDrawColor(180,180,180);doc.setLineWidth(0.2);
   doc.line(M,pH-57,W-M,pH-57);
   doc.setTextColor(50,65,90);doc.setFontSize(7);doc.setFont('times','italic');
-  doc.text([
-    'Le règlement doit intervenir au comptant, à la date sus indiquée.',
+  const _mentionPaiement=window._devisModeConciergerie
+    ?'Paiement à 30 jours fin de mois à compter de la date de facturation.'
+    :'Le règlement doit intervenir au comptant, à la date sus indiquée.';
+  const _mentionsLegales=[
+    _mentionPaiement,
     'Les pénalités de retard, calculées au taux de 10% l\'an, seront payables à réception de l\'avis vous informant de leur inscription à votre débit dans nos livres comptables.',
     'En cas de retard de paiement, une indemnité forfaitaire de recouvrement de 40 € sera appliquée.'
-  ],M,pH-53,{lineHeightFactor:1.6,maxWidth:W-2*M});
+  ];
+  if(window._devisModeConciergerie){
+    _mentionsLegales.push('Engagement minimum : 8 rotations par mois.');
+    _mentionsLegales.push('Intervention locale Troyes et environs — sans frais de déplacement.');
+  }
+  doc.text(_mentionsLegales,M,pH-53,{lineHeightFactor:1.6,maxWidth:W-2*M});
   // Pied de page
   doc.setDrawColor(0,0,0); doc.setLineWidth(0.3); doc.line(M,pH-34,W-M,pH-34);
   doc.setTextColor(80,80,80); doc.setFontSize(6); doc.setFont('helvetica','normal');
@@ -15573,13 +15637,13 @@ var _lingeConfig = (function(){
     var s=JSON.parse(localStorage.getItem('essentiaLingeConfig')||'{}');
     if(s.formule) return s.formule;
   }catch(e){}
-  return {base:10,increment:5,maxLits:5};
+  return {base:12,increment:6,maxLits:5};
 })();
 
 function lingeGetPrix(n){
   n=parseInt(n)||0;
   if(n<=0) return 0;
-  return (_lingeConfig.base||10)+(n-1)*(_lingeConfig.increment||5);
+  return (_lingeConfig.base||12)+(n-1)*(_lingeConfig.increment||6);
 }
 
 function lingeCalculerApercu(){
