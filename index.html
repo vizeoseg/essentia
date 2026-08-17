@@ -2124,6 +2124,7 @@ tr{transition:background .12s;}
           <h3>Nouveau devis</h3>
           <div style="margin-left:auto;display:flex;gap:8px;">
             <button class="btn btn-success btn-sm" onclick="genererDevisPDF()"><i class="fas fa-file-pdf"></i> Générer PDF</button>
+            <button class="btn btn-primary btn-sm" onclick="envoyerDevisEmail()"><i class="fas fa-envelope"></i> Envoyer</button>
             <button class="btn btn-sm" style="background:var(--purple);color:#fff;" onclick="creerContratDepuisDevisForm()"><i class="fas fa-file-contract"></i> Créer contrat</button>
             <button class="btn btn-primary btn-sm" onclick="convertirDevisEnFacture()"><i class="fas fa-exchange-alt"></i> → Facture</button>
           </div>
@@ -12955,7 +12956,7 @@ function _majRecapDevis(){
     : 'linear-gradient(135deg,var(--text3),#8fa3c0)';
 }
 
-function genererDevisPDF(){
+function genererDevisPDF(opts){
   const clientId=document.getElementById('devisClient')?.value||'';
   if(!clientId){toast('Sélectionnez un client','warning');return;}
   if(!lignesDevisData.length){toast('Ajoutez au moins une ligne','warning');return;}
@@ -13090,17 +13091,55 @@ function genererDevisPDF(){
     `Droit de rétractation : 14 jours à compter de la signature du contrat (art. L.221-18 du Code de la consommation)`,
     `En cas de litige, le tribunal compétent est le Tribunal de Commerce de Troyes (10000).`
   ],M,pH-28,{lineHeightFactor:1.4,maxWidth:W-2*M});
-  doc.save(`${numDev}_${(c.nom||'client').replace(/\s+/g,'_')}.pdf`);
+  const _devFileName=`${numDev}_${(c.nom||'client').replace(/\s+/g,'_')}.pdf`;
+  if(opts&&opts.returnB64){
+    try{return {b64:_pdfB64(doc),fileName:_devFileName};}catch(e){console.warn('PDF devis b64:',e);return null;}
+  }
+  doc.save(_devFileName);
   // Enregistrer
   devisData.push({id:'DEV'+Date.now(),numero:numDev,client:c.nom||'—',clientId,date:dateDev,objet:gv('devisObjet'),totalHT:st,totalTTC:ttc,tva:tauxTVA,statut:'en_attente',validite,lignes:JSON.parse(JSON.stringify(lignesDevisData))});
   // devisAutoIncrement obsolète (ref devis basée sur client) — retiré
-  
+
   // Passage automatique en Devis envoyé (sauf si déjà client actif)
   if(clientId){const _ci=clientsData.findIndex(x=>x.id===clientId);if(_ci>=0&&clientsData[_ci].workflowStatut!=='client_actif')clientsData[_ci].workflowStatut='devis_envoye';}
   const numEl=document.getElementById('devisNumero');
   if(numEl) numEl.placeholder=`DEV-${new Date().getFullYear()}-XXXX-01`;
   renderHistoriqueDevis(); chargerClients(); sauvegarderTout(true);
   toast(`Devis ${numDev} généré ✓`,'success');
+}
+
+async function envoyerDevisEmail(){
+  const clientId=document.getElementById('devisClient')?.value||'';
+  if(!clientId){toast('Sélectionnez un client','warning');return;}
+  if(!lignesDevisData.length){toast('Ajoutez au moins une ligne','warning');return;}
+  const c=clientsData.find(x=>x.id===clientId)||{};
+  const emailClient=c.email||'';
+  if(!emailClient){toast('Email client manquant — renseignez-le dans la fiche client','warning');return;}
+  const p=JSON.parse(localStorage.getItem('progestParams')||'{}');
+  const gv=id=>document.getElementById(id)?.value||'';
+  const numDev=gv('devisNumero');
+  const dateDev=new Date(gv('devisDate')||new Date()).toLocaleDateString('fr-FR');
+  const validite=parseInt(gv('devisValidite'))||30;
+  const dateExp=new Date(gv('devisDate')||new Date()); dateExp.setDate(dateExp.getDate()+validite);
+  const tauxTVA=parseFloat(gv('devisTauxTVA')||'10');
+  const st=lignesDevisData.reduce((s,l)=>s+(l.qte||0)*(l.prixUnit||0),0);
+  const tva=st*tauxTVA/100; const ttc=st+tva;
+  const fmt2=v=>v.toFixed(2).replace('.',',');
+  const subject='Devis '+numDev+' — '+(p.nomSociete||'Votre prestataire');
+  const text='Bonjour'+(c.nom?' '+c.nom:'')+',\n\nVeuillez trouver ci-joint notre devis '+numDev+' du '+dateDev+'.\n\nMontant total TTC : '+fmt2(ttc)+' €\nCe devis est valable jusqu\'au '+dateExp.toLocaleDateString('fr-FR')+'.\n\nN\'hésitez pas à nous contacter pour toute question.\n\nCordialement,\n'+(p.nomSociete||'')+(p.tel?'\n'+p.tel:'');
+  let attachments=[];
+  try{
+    const pdfResult=genererDevisPDF({returnB64:true});
+    if(pdfResult&&pdfResult.b64) attachments=[{filename:pdfResult.fileName,content:pdfResult.b64}];
+    else toast('Attention : PDF non généré — le devis sera envoyé sans pièce jointe','warning');
+  }catch(e){console.warn('PDF devis email:',e);toast('Attention : PDF non généré — le devis sera envoyé sans pièce jointe','warning');}
+  toast('Envoi en cours…','info');
+  try{
+    await _envoyerEmailResend({to:emailClient,cc:p.email,subject,text,attachments});
+    if(clientId){const _ci=clientsData.findIndex(x=>x.id===clientId);if(_ci>=0&&clientsData[_ci].workflowStatut!=='client_actif')clientsData[_ci].workflowStatut='devis_envoye';}
+    renderHistoriqueDevis(); sauvegarderTout(true);
+    toast('✉ Devis '+numDev+' envoyé à '+emailClient,'success');
+  }catch(err){toast('Erreur envoi : '+err.message,'error');}
 }
 
 function renderHistoriqueDevis(){
