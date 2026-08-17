@@ -15707,12 +15707,12 @@ function lingeAjouterLigne(pfx,nbLits){
   var prix=lingeGetPrix(nbLits);
   var desc='Traitement du linge — '+nbLits+' lit'+(nbLits>1?'s':'');
   if(pfx==='devis'){
-    if(!window.lignesDevisData) lignesDevisData=[];
+    if(!lignesDevisData) lignesDevisData=[];
     lignesDevisData.push({desc:desc,qte:1,unite:'forfait',prixUnit:prix});
     if(typeof renderLignesDevis==='function') renderLignesDevis();
     if(typeof calculerTotauxDevis==='function') calculerTotauxDevis();
   } else {
-    if(!window.lignesFactureData) lignesFactureData=[];
+    if(!lignesFactureData) lignesFactureData=[];
     lignesFactureData.push({desc:desc,qte:1,unite:'forfait',prixUnit:prix});
     if(typeof renderLignesFacture==='function') renderLignesFacture();
     if(typeof calculerTotauxFacture==='function') calculerTotauxFacture();
