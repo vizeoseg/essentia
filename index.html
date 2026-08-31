@@ -5246,7 +5246,7 @@ function injecterTourneesEnFrais(){
     const dateKeyI=_dateKeyJour2(jour,wOff);
     // const cj=clientsData.filter(c=>_getJoursClientDate(c,dateKeyI).includes(jour)&&c.commune&&!((deplacementsData||[]).find(d=>d.clientId===c.id&&d.dateNouvelle===dateKeyI&&(d.statut==='absent'||d.statut==='absent_essentia')))); // dead code — dateNouvelle inversé + statut absent de deplacementsData
     const cj=clientsData.filter(c=>_getJoursClientDate(c,dateKeyI).includes(jour)&&c.commune&&!_clientExclusDuCalculFrais(c,dateKeyI));
-    const airbnbsI=(deplacementsData||[]).filter(d=>d.dateNouvelle===dateKeyI&&!cj.find(x=>x.id===d.clientId)).map(d=>{const c=clientsData.find(x=>x.id===d.clientId);return c?{...c,heureDebut:d.heureNouvelle||c.heureDebut}:null;}).filter(Boolean);
+    const airbnbsI=(deplacementsData||[]).filter(d=>d.dateNouvelle===dateKeyI&&!cj.find(x=>x.id===d.clientId)).map(d=>{const c=clientsData.find(x=>x.id===d.clientId);return c?{...c,heureDebut:d.heureNouvelle||c.heureDebut}:null;}).filter(c=>c&&!_clientExclusDuCalculFrais(c,dateKeyI));
     const avecDist=[...cj,...airbnbsI].filter(c=>c.commune).map(c=>({...c,_dkm:communesAube.find(x=>x.nom===c.commune)?.distance||0})).sort((a,b)=>toMinI(a.heureDebut)-toMinI(b.heureDebut));
     if(!avecDist.length)return;
     let dist=0,last=depotDist;
@@ -5609,7 +5609,7 @@ function chargerTournees(){
     const cj = clientsData.filter(c => _getJoursClientDate(c, dateKey).includes(jour) && c.commune && !_clientExclusDuCalculFrais(c, dateKey));
     const toMin = t=>{const s=String(t||'00:00');const p=s.includes(':')?s.split(':'):['0','0'];return (parseInt(p[0])||0)*60+(parseInt(p[1])||0);};
     // Interventions RBNB ponctuelles planifiées ce jour
-    const airbnbsJour = (deplacementsData||[]).filter(d=>d.dateNouvelle===dateKey&&!cj.find(x=>x.id===d.clientId)).map(d=>{const c=clientsData.find(x=>x.id===d.clientId);return c?{...c,heureDebut:d.heureNouvelle||c.heureDebut,_airbnb:d.airbnb||false}:null;}).filter(Boolean);
+    const airbnbsJour = (deplacementsData||[]).filter(d=>d.dateNouvelle===dateKey&&!cj.find(x=>x.id===d.clientId)).map(d=>{const c=clientsData.find(x=>x.id===d.clientId);return c?{...c,heureDebut:d.heureNouvelle||c.heureDebut,_airbnb:d.airbnb||false}:null;}).filter(c=>c&&!_clientExclusDuCalculFrais(c,dateKey));
     const avecDist = [...cj,...airbnbsJour].map(c=>({...c,dd:Math.abs((communesAube.find(x=>x.nom===c.commune)?.distance||0)-depotDist)})).sort((a,b)=>toMin(a.heureDebut)-toMin(b.heureDebut));
     let dist=0,last=depotDist;
     avecDist.forEach(c=>{const d=communesAube.find(x=>x.nom===c.commune)?.distance||0;dist+=Math.abs(d-last);last=d;});
@@ -5710,7 +5710,7 @@ function injecterMoisEnFrais(mois, annee){
       const dateKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
       // const cj=clientsData.filter(c=>_getJoursClientDate(c,dateKey).includes(jour)&&c.commune&&!((deplacementsData||[]).find(dep=>dep.clientId===c.id&&dep.dateNouvelle===dateKey&&(dep.statut==='absent'||dep.statut==='absent_essentia')))); // dead code — dateNouvelle inversé + statut absent de deplacementsData
       const cj=clientsData.filter(c=>_getJoursClientDate(c,dateKey).includes(jour)&&c.commune&&!_clientExclusDuCalculFrais(c,dateKey));
-      const airbnbsM=(deplacementsData||[]).filter(dep=>dep.dateNouvelle===dateKey&&!cj.find(x=>x.id===dep.clientId)).map(dep=>{const c=clientsData.find(x=>x.id===dep.clientId);return c?{...c,heureDebut:dep.heureNouvelle||c.heureDebut}:null;}).filter(Boolean);
+      const airbnbsM=(deplacementsData||[]).filter(dep=>dep.dateNouvelle===dateKey&&!cj.find(x=>x.id===dep.clientId)).map(dep=>{const c=clientsData.find(x=>x.id===dep.clientId);return c?{...c,heureDebut:dep.heureNouvelle||c.heureDebut}:null;}).filter(c=>c&&!_clientExclusDuCalculFrais(c,dateKey));
       const avecDist=[...cj,...airbnbsM].filter(c=>c.commune).map(c=>({...c,_dkm:communesAube.find(x=>x.nom===c.commune)?.distance||0})).sort((a,b)=>toMinM(a.heureDebut)-toMinM(b.heureDebut));
       if(!avecDist.length) return;
       let dist=0,last=depotDist;
@@ -5797,7 +5797,7 @@ function genererNoteFraisMensuelPDF(mois, annee){
       const dateKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
       // const cj=clientsData.filter(c=>_getJoursClientDate(c,dateKey).includes(jour)&&c.commune&&!((deplacementsData||[]).find(d=>d.clientId===c.id&&d.dateNouvelle===dateKey&&(d.statut==='absent'||d.statut==='absent_essentia')))); // dead code — dateNouvelle inversé + statut absent de deplacementsData
       const cj=clientsData.filter(c=>_getJoursClientDate(c,dateKey).includes(jour)&&c.commune&&!_clientExclusDuCalculFrais(c,dateKey));
-      const airbnbs=(deplacementsData||[]).filter(dj=>dj.dateNouvelle===dateKey&&!cj.find(x=>x.id===dj.clientId)).map(dj=>{const c=clientsData.find(x=>x.id===dj.clientId);return c?{...c,heureDebut:dj.heureNouvelle||c.heureDebut,_airbnb:dj.airbnb||false}:null;}).filter(Boolean);
+      const airbnbs=(deplacementsData||[]).filter(dj=>dj.dateNouvelle===dateKey&&!cj.find(x=>x.id===dj.clientId)).map(dj=>{const c=clientsData.find(x=>x.id===dj.clientId);return c?{...c,heureDebut:dj.heureNouvelle||c.heureDebut,_airbnb:dj.airbnb||false}:null;}).filter(c=>c&&!_clientExclusDuCalculFrais(c,dateKey));
       const avecDist=[...cj,...airbnbs].map(c=>({...c,dkm:communesAube.find(x=>x.nom===c.commune)?.distance||0})).sort((a,b)=>toMin(a.heureDebut)-toMin(b.heureDebut));
       if(!avecDist.length) return;
       let dist=0,last=depotDist;
