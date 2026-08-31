@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Projection Financière 2026 — Essentia Services</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: #1a3a8f; font-size: 12px; }
+
+  .header { background: linear-gradient(135deg, #1a3a8f, #2d5be3); color: white; padding: 20px 32px; display: flex; justify-content: space-between; align-items: center; }
+  .header h1 { font-size: 20px; font-weight: 700; letter-spacing: 1px; }
+  .header p { font-size: 11px; opacity: 0.8; margin-top: 4px; }
+  .header-right { text-align: right; font-size: 11px; opacity: 0.85; }
+
+  .container { padding: 24px 32px; }
+
+  .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #1a3a8f; margin: 20px 0 8px; padding-left: 4px; border-left: 3px solid #2d5be3; }
+
+  table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  thead th { background: #1a3a8f; color: white; padding: 7px 6px; text-align: center; font-size: 10px; font-weight: 600; white-space: nowrap; }
+  thead th:first-child { text-align: left; padding-left: 10px; width: 180px; }
+  tbody tr:nth-child(even) { background: #f7f9ff; }
+  tbody tr:hover { background: #e8eeff; }
+  tbody td { padding: 5px 6px; border-bottom: 1px solid #dde3f0; text-align: right; }
+  tbody td:first-child { text-align: left; font-weight: 500; padding-left: 10px; color: #1a3a8f; white-space: nowrap; }
+
+  .editable { cursor: text; min-width: 52px; }
+  .editable:focus { outline: 2px solid #2d5be3; background: #fff; border-radius: 3px; }
+
+  .subtotal td { background: #e8eeff !important; font-weight: 700; color: #1a3a8f; border-top: 2px solid #2d5be3; }
+  .total-ca td { background: #1a3a8f !important; color: white !important; font-weight: 700; font-size: 11px; }
+  .total-charges td { background: #c0392b !important; color: white !important; font-weight: 700; font-size: 11px; }
+  .total-net td { font-size: 12px; font-weight: 800; }
+  .total-net.positif td { background: #27ae60 !important; color: white !important; }
+  .total-net.negatif td { background: #c0392b !important; color: white !important; }
+  .total-annuel { font-weight: 800; font-size: 11px; border-left: 2px solid #1a3a8f; }
+
+  .sub-label td:first-child { padding-left: 22px; font-weight: 400; color: #444; font-size: 11px; }
+
+  .badges { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .badge { background: white; border-radius: 10px; padding: 12px 18px; box-shadow: 0 2px 8px rgba(26,58,143,0.1); min-width: 140px; }
+  .badge-val { font-size: 18px; font-weight: 800; color: #1a3a8f; }
+  .badge-val.green { color: #27ae60; }
+  .badge-val.red { color: #c0392b; }
+  .badge-label { font-size: 10px; color: #888; margin-top: 2px; }
+
+  .btn-print { background: #1a3a8f; color: white; border: none; padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; }
+  .btn-reset { background: #e8eeff; color: #1a3a8f; border: 1px solid #c0cce8; padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; margin-left: 8px; }
+  .btn-row { display: flex; gap: 8px; margin-bottom: 20px; align-items: center; }
+
+  .note { font-size: 10px; color: #888; margin-top: 6px; font-style: italic; }
+
+  @media print {
+    body { background: white; }
+    .btn-row { display: none; }
+    .badges { margin-bottom: 12px; }
+    .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    thead th, .subtotal td, .total-ca td, .total-charges td, .total-net td, .total-annuel { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>ESSENTIA SERVICES SAS</h1>
+    <p>Projection Financière 2026 — Services à la Personne Agréés</p>
+    <p>Agrément SAP N° SAP101860997 · SIRET : à compléter · Tribunal de Commerce de Troyes</p>
+  </div>
+  <div class="header-right">
+    <div style="font-size:13px;font-weight:700;">Exercice 2026</div>
+    <div>Amandine Sautière — Présidente</div>
+    <div>8 Rue Du Théau, 10800 Les Bordes-Aumont</div>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="btn-row">
+    <button class="btn-print" onclick="window.print()">🖨 Imprimer / PDF</button>
+    <button class="btn-reset" onclick="resetAll()">↺ Réinitialiser</button>
+    <span style="font-size:10px;color:#888;margin-left:8px;">Cliquez sur une cellule pour modifier le montant (€ HT)</span>
+  </div>
+
+  <!-- BADGES RÉSUMÉ -->
+  <div class="badges">
+    <div class="badge"><div class="badge-val" id="badge-ca">0 €</div><div class="badge-label">CA annuel prévisionnel HT</div></div>
+    <div class="badge"><div class="badge-val red" id="badge-charges">0 €</div><div class="badge-label">Charges annuelles totales</div></div>
+    <div class="badge"><div class="badge-val green" id="badge-net">0 €</div><div class="badge-label">Résultat net annuel</div></div>
+    <div class="badge"><div class="badge-val" id="badge-moy">0 €</div><div class="badge-label">CA moyen mensuel</div></div>
+    <div class="badge"><div class="badge-val" id="badge-marge">0%</div><div class="badge-label">Taux de marge nette</div></div>
+  </div>
+
+  <!-- ═══ REVENUS ═══ -->
+  <div class="section-title">Chiffre d'affaires — Revenus HT</div>
+  <table id="table-ca">
+    <thead>
+      <tr>
+        <th>Catégorie</th>
+        <th>Jan</th><th>Fév</th><th>Mar</th><th>Avr</th><th>Mai</th><th>Jun</th>
+        <th>Jul</th><th>Aoû</th><th>Sep</th><th>Oct</th><th>Nov</th><th>Déc</th>
+        <th>TOTAL</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="sub-label"><td>Particuliers SAP (10% TVA — Art. 279)</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="total-annuel">0</td>
+      </tr>
+      <tr class="sub-label"><td>Airbnb Particuliers (10% TVA)</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="total-annuel">0</td>
+      </tr>
+      <tr class="sub-label"><td>Airbnb Agences (20% TVA — régime général)</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="total-annuel">0</td>
+      </tr>
+      <tr class="sub-label"><td>Entreprises (20% TVA — régime général)</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="total-annuel">0</td>
+      </tr>
+      <tr class="sub-label"><td>Clients exonérés TVA 0%</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="total-annuel">0</td>
+      </tr>
+      <tr class="sub-label"><td>Autres revenus (formations, prestations ponctuelles)</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="total-annuel">0</td>
+      </tr>
+      <tr class="total-ca" id="row-total-ca">
+        <td>TOTAL CA HT</td>
+        <td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td>
+        <td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td>
+        <td>0</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ═══ CHARGES ═══ -->
+  <div class="section-title">Charges — Dépenses</div>
+  <table id="table-charges">
+    <thead>
+      <tr>
+        <th>Catégorie</th>
+        <th>Jan</th><th>Fév</th><th>Mar</th><th>Avr</th><th>Mai</th><th>Jun</th>
+        <th>Jul</th><th>Aoû</th><th>Sep</th><th>Oct</th><th>Nov</th><th>Déc</th>
+        <th>TOTAL</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="sub-label"><td>Salaires bruts (intervenantes)</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="total-annuel">0</td>
+      </tr>
+      <tr class="sub-label"><td>Charges sociales patronales (~45%)</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="total-annuel">0</td>
+      </tr>
+      <tr class="sub-label"><td>Carburant / frais kilométriques</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="total-annuel">0</td>
+      </tr>
+      <tr class="sub-label"><td>Fournitures / produits d'entretien</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="total-annuel">0</td>
+      </tr>
+      <tr class="sub-label"><td>Assurance RCP</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="total-annuel">0</td>
+      </tr>
+      <tr class="sub-label"><td>Téléphone / internet</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="total-annuel">0</td>
+      </tr>
+      <tr class="sub-label"><td>Expert-comptable / honoraires</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="total-annuel">0</td>
+      </tr>
+      <tr class="sub-label"><td>Logiciels / abonnements (Supabase, Netlify…)</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="total-annuel">0</td>
+      </tr>
+      <tr class="sub-label"><td>Formation / développement</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="total-annuel">0</td>
+      </tr>
+      <tr class="sub-label"><td>Autres charges diverses</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="editable" contenteditable="true" oninput="recalc()">0</td>
+        <td class="total-annuel">0</td>
+      </tr>
+      <tr class="total-charges" id="row-total-charges">
+        <td>TOTAL CHARGES</td>
+        <td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td>
+        <td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td>
+        <td>0</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ═══ RÉSULTAT NET ═══ -->
+  <div class="section-title">Résultat Net Mensuel</div>
+  <table id="table-net">
+    <thead>
+      <tr>
+        <th>Résultat</th>
+        <th>Jan</th><th>Fév</th><th>Mar</th><th>Avr</th><th>Mai</th><th>Jun</th>
+        <th>Jul</th><th>Aoû</th><th>Sep</th><th>Oct</th><th>Nov</th><th>Déc</th>
+        <th>TOTAL</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="total-net positif" id="row-net">
+        <td>RÉSULTAT NET (CA − Charges)</td>
+        <td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td>
+        <td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td>
+        <td>0</td>
+      </tr>
+      <tr class="subtotal" id="row-cumul">
+        <td>Cumul annuel</td>
+        <td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td>
+        <td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td>
+        <td>—</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p class="note">* Tous les montants sont en euros HT. Ce tableau est une projection prévisionnelle — les chiffres réels peuvent différer. Cliquez sur une cellule pour la modifier.</p>
+  <p class="note" style="margin-top:4px;">Essentia Services SAS · Agrément SAP N° SAP101860997 · Tribunal de Commerce de Troyes</p>
+
+</div>
+
+<script>
+function val(el){ return parseFloat(el.textContent.replace(/\s/g,'').replace(',','.')) || 0; }
+function fmt(n){ return n.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €'; }
+
+function recalc(){
+  const N = 12;
+
+  // Colonnes CA par mois
+  const caRows = document.querySelectorAll('#table-ca tbody tr.sub-label');
+  const caByMonth = Array(N).fill(0);
+  caRows.forEach(row => {
+    const cells = row.querySelectorAll('td.editable');
+    cells.forEach((c,i) => { caByMonth[i] += val(c); });
+    const total = cells.length ? Array.from(cells).reduce((s,c)=>s+val(c),0) : 0;
+    row.querySelector('.total-annuel').textContent = fmt(total);
+  });
+
+  // Colonnes Charges par mois
+  const chRows = document.querySelectorAll('#table-charges tbody tr.sub-label');
+  const chByMonth = Array(N).fill(0);
+  chRows.forEach(row => {
+    const cells = row.querySelectorAll('td.editable');
+    cells.forEach((c,i) => { chByMonth[i] += val(c); });
+    const total = cells.length ? Array.from(cells).reduce((s,c)=>s+val(c),0) : 0;
+    row.querySelector('.total-annuel').textContent = fmt(total);
+  });
+
+  // Total CA row
+  const rowCA = document.querySelector('#row-total-ca');
+  const caCells = rowCA.querySelectorAll('td:not(:first-child):not(:last-child)');
+  let totalCA = 0;
+  caCells.forEach((c,i)=>{ c.textContent=fmt(caByMonth[i]); totalCA+=caByMonth[i]; });
+  rowCA.querySelector('.total-annuel'||'td:last-child').textContent=fmt(totalCA);
+  rowCA.querySelectorAll('td').forEach((c,i)=>{ if(i===N+1) c.textContent=fmt(totalCA); });
+
+  // Total Charges row
+  const rowCH = document.querySelector('#row-total-charges');
+  const chCells = rowCH.querySelectorAll('td:not(:first-child):not(:last-child)');
+  let totalCH = 0;
+  chCells.forEach((c,i)=>{ c.textContent=fmt(chByMonth[i]); totalCH+=chByMonth[i]; });
+  rowCH.querySelectorAll('td').forEach((c,i)=>{ if(i===N+1) c.textContent=fmt(totalCH); });
+
+  // Résultat net
+  const rowNet = document.querySelector('#row-net');
+  const netCells = rowNet.querySelectorAll('td:not(:first-child):not(:last-child)');
+  const netByMonth = Array(N).fill(0);
+  netCells.forEach((c,i)=>{ netByMonth[i]=caByMonth[i]-chByMonth[i]; c.textContent=fmt(netByMonth[i]); });
+  const totalNet = totalCA - totalCH;
+  rowNet.querySelectorAll('td').forEach((c,i)=>{ if(i===N+1) c.textContent=fmt(totalNet); });
+  rowNet.parentElement.parentElement.classList.toggle('positif', totalNet>=0);
+  rowNet.parentElement.parentElement.classList.toggle('negatif', totalNet<0);
+
+  // Cumul
+  const rowCumul = document.querySelector('#row-cumul');
+  const cumulCells = rowCumul.querySelectorAll('td:not(:first-child):not(:last-child)');
+  let cumul = 0;
+  cumulCells.forEach((c,i)=>{ cumul+=netByMonth[i]; c.textContent=fmt(cumul); });
+
+  // Fix last cells of CA and charges rows
+  rowCA.lastElementChild.textContent = fmt(totalCA);
+  rowCH.lastElementChild.textContent = fmt(totalCH);
+  rowNet.lastElementChild.textContent = fmt(totalNet);
+
+  // Badges
+  document.getElementById('badge-ca').textContent = fmt(totalCA);
+  document.getElementById('badge-charges').textContent = fmt(totalCH);
+  const netEl = document.getElementById('badge-net');
+  netEl.textContent = fmt(totalNet);
+  netEl.className = 'badge-val ' + (totalNet>=0?'green':'red');
+  document.getElementById('badge-moy').textContent = fmt(totalCA/12);
+  const marge = totalCA>0 ? (totalNet/totalCA*100).toFixed(1)+'%' : '0%';
+  document.getElementById('badge-marge').textContent = marge;
+}
+
+function resetAll(){
+  if(!confirm('Réinitialiser tous les montants à 0 ?')) return;
+  document.querySelectorAll('.editable').forEach(c=>c.textContent='0');
+  recalc();
+}
+
+recalc();
+</script>
+</body>
+</html>

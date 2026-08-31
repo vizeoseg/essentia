@@ -4507,6 +4507,20 @@ function confirmerDeplacement(){
 }
 
 function annulerDeplacement(depId){
+  var dep = deplacementsData.find(function(d){ return d.id === depId; });
+  if(dep){
+    var nomClient = (clientsData.find(function(c){ return c.id === dep.clientId; })||{}).nom||'ce client';
+    var choix = prompt(
+      'Que se passe-t-il pour ' + nomClient + ' le ' + dep.dateOrigine + ' (date d\'origine) ?\n\n' +
+      '1 — Reprend son horaire habituel\n' +
+      '2 — Client annule (pas de prestation)\n' +
+      '3 — Essentia ne peut pas assurer la prestation\n\n' +
+      'Tapez 1, 2 ou 3 :'
+    );
+    if(choix === '2') setPlanStatut(dep.clientId, dep.dateOrigine, 'absent');
+    else if(choix === '3') setPlanStatut(dep.clientId, dep.dateOrigine, 'absent_essentia');
+    // choix === '1', autre valeur ou Annuler → comportement actuel, rien à faire
+  }
   try {
     var _delDeps = JSON.parse(localStorage.getItem('_deletedDeplacementIds')||'[]');
     if(_delDeps.indexOf(depId)===-1) _delDeps.push(depId);
@@ -4536,14 +4550,18 @@ function clientEstAbsentCeJour(clientId, dateKey){
 }
 
 // Filtre utilisé UNIQUEMENT par les calculs de frais KM (chargerTournees, injecter*, genererNoteFraisMensuelPDF).
-// Combine deux sources d'absence :
-// (A) planningPrevData : statut posé manuellement par le gérant dans le planning prévisionnel
-// (B) deplacementsData.dateOrigine : client déplacé depuis cette date via la modal (scénario rétroactif)
-// Ne pas utiliser pour l'affichage calendrier — clientEstAbsentCeJour() reste inchangée pour les 7 appels existants.
+// Combine trois sources d'absence :
+// (A) planningPrevData : statut posé manuellement dans le planning prévisionnel
+// (B) deplacementsData.dateOrigine : client déplacé depuis cette date via la modal
+// (C) interventionsData : intervention Airbnb/acte annulée à cette date
+// Ne pas utiliser pour l'affichage calendrier — clientEstAbsentCeJour() reste inchangée.
 function _clientExclusDuCalculFrais(c, dateKey) {
   var statut = planningPrevData[c.id]?.[dateKey]?.statut;
   if (statut === 'absent' || statut === 'absent_essentia') return true;
-  return clientEstAbsentCeJour(c.id, dateKey);
+  if (clientEstAbsentCeJour(c.id, dateKey)) return true;
+  return (interventionsData||[]).some(function(i){
+    return i.clientId === c.id && i.date === dateKey && i.statut === 'annule';
+  });
 }
 
 const JOURS_NOMS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carte de visite – Essentia Services</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #0d1520;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 40px;
+    padding: 40px 20px;
+  }
+
+  h2 {
+    color: rgba(255,255,255,.45);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: 400;
+    margin-bottom: 12px;
+  }
+
+  .card-wrapper { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+
+  /* ── Dimensions standard carte de visite 85 × 55 mm ── */
+  .card {
+    width: 85mm;
+    height: 55mm;
+    border-radius: 3mm;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.08);
+  }
+
+  /* ═══════════════════════════════
+     RECTO
+  ═══════════════════════════════ */
+  .recto {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 55%, #0f172a 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 6mm 7mm 5mm 7mm;
+  }
+
+  /* Ligne décorative haut */
+  .recto::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2.5px;
+    background: linear-gradient(90deg, #4f7df3, #7eb3ff, #4f7df3);
+  }
+
+  /* Coin déco bas-droite */
+  .recto::after {
+    content: '';
+    position: absolute;
+    bottom: -18mm; right: -18mm;
+    width: 36mm; height: 36mm;
+    border-radius: 50%;
+    background: rgba(79,125,243,.12);
+    pointer-events: none;
+  }
+
+  .recto .logo-zone {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .recto .logo-icon {
+    width: 9mm; height: 9mm;
+    background: linear-gradient(135deg, #4f7df3, #7eb3ff);
+    border-radius: 2mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .recto .logo-icon svg {
+    width: 5mm; height: 5mm;
+    fill: #fff;
+  }
+
+  .recto .logo-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1;
+  }
+
+  .recto .brand {
+    font-size: 10.5pt;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+  }
+
+  .recto .tagline {
+    font-size: 5.5pt;
+    color: #7eb3ff;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-weight: 400;
+    margin-top: 1.5px;
+  }
+
+  .recto .person {
+    margin-top: 2mm;
+  }
+
+  .recto .name {
+    font-size: 12.5pt;
+    font-weight: 600;
+    color: #e8f0ff;
+    letter-spacing: .2px;
+  }
+
+  .recto .contacts {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 1.5mm;
+  }
+
+  .recto .contact-line {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 6.8pt;
+    color: rgba(255,255,255,.72);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .recto .contact-line .dot {
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    background: #4f7df3;
+    flex-shrink: 0;
+  }
+
+  /* ═══════════════════════════════
+     VERSO
+  ═══════════════════════════════ */
+  .verso {
+    background: linear-gradient(155deg, #1a2e4a 0%, #101830 60%, #0c1b35 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 5mm 7mm;
+    gap: 3.5mm;
+  }
+
+  .verso::after {
+    content: '';
+    position: absolute;
+    top: -15mm; left: -15mm;
+    width: 32mm; height: 32mm;
+    border-radius: 50%;
+    background: rgba(79,125,243,.09);
+    pointer-events: none;
+  }
+
+  .verso .divider {
+    width: 20mm;
+    height: 1.5px;
+    background: linear-gradient(90deg, transparent, #4f7df3, transparent);
+  }
+
+  .verso .address-block {
+    text-align: center;
+  }
+
+  .verso .addr-line {
+    font-size: 6.5pt;
+    color: rgba(255,255,255,.7);
+    line-height: 1.55;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .verso .addr-line.bold {
+    font-weight: 600;
+    color: rgba(255,255,255,.88);
+    font-size: 7pt;
+    letter-spacing: .3px;
+  }
+
+  .verso .legal-block {
+    text-align: center;
+    margin-top: 1mm;
+  }
+
+  .verso .legal-line {
+    font-size: 5pt;
+    color: rgba(255,255,255,.38);
+    font-family: 'DM Mono', monospace;
+    line-height: 1.6;
+    letter-spacing: .3px;
+  }
+
+  /* ═══════════════════════════════
+     BOUTON IMPRESSION
+  ═══════════════════════════════ */
+  .print-btn {
+    margin-top: 10px;
+    padding: 10px 28px;
+    background: linear-gradient(90deg, #4f7df3, #7eb3ff);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: .4px;
+    box-shadow: 0 4px 18px rgba(79,125,243,.4);
+    transition: opacity .2s;
+  }
+  .print-btn:hover { opacity: .88; }
+
+  /* ═══════════════════════════════
+     IMPRESSION
+  ═══════════════════════════════ */
+  @media print {
+    body {
+      background: #fff;
+      gap: 15mm;
+      padding: 10mm;
+    }
+    h2 { color: #999; }
+    .print-btn { display: none; }
+    .card {
+      box-shadow: 0 0 0 0.5pt #ccc;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    /* Forcer page break entre recto et verso si besoin */
+    .card-wrapper + .card-wrapper { page-break-before: always; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── RECTO ── -->
+<div class="card-wrapper">
+  <h2>Recto</h2>
+  <div class="card recto">
+    <div class="logo-zone">
+      <div class="logo-icon">
+        <!-- Icône simple "étoile / service" -->
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <span class="brand">Essentia Services</span>
+        <span class="tagline">Votre prestataire de confiance</span>
+      </div>
+    </div>
+
+    <div class="person">
+      <div class="name">Amandine Sautière</div>
+      <div class="contacts">
+        <div class="contact-line"><span class="dot"></span>+33 6 03 69 08 98</div>
+        <div class="contact-line"><span class="dot"></span>contact@essentia-service.fr</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── VERSO ── -->
+<div class="card-wrapper">
+  <h2>Verso</h2>
+  <div class="card verso">
+    <div class="address-block">
+      <div class="addr-line bold">8 Rue du Théau</div>
+      <div class="addr-line">10800 Les Bordes-Aumont</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="legal-block">
+      <div class="legal-line">ESSENTIA SERVICES – SAS au capital de 1 000 €</div>
+      <div class="legal-line">SIRET : 101 860 997 00013</div>
+    </div>
+  </div>
+</div>
+
+<button class="print-btn" onclick="window.print()">Imprimer / Exporter PDF</button>
+
+</body>
+</html>
