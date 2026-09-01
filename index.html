@@ -4950,6 +4950,20 @@ function toggleAdvClient(){
   if(icon) icon.style.transform = open ? '' : 'rotate(90deg)';
 }
 
+// Init/réinit Select2 sur #newCommune — factorisé pour DOMContentLoaded + changerTab
+function _initCommuneSelect2(){
+  if(typeof $!=='function' || !$.fn || !$.fn.select2) return;
+  const _norm = s => s ? s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase() : '';
+  try{
+    $('#newCommune').select2('destroy');
+  }catch(e){}
+  $('#newCommune').select2({width:'100%',placeholder:'Choisir...',matcher:function(params,data){
+    if(!params.term) return data;
+    if(_norm(data.text).includes(_norm(params.term))) return data;
+    return null;
+  }});
+}
+
 // Reset formulaire client après ajout
 function _resetFormClient(){
   ['newNom','newTel','newEmail','newEntreprise','newAdresse','newDateArrivee','newDateSortie'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
@@ -4962,6 +4976,9 @@ function _resetFormClient(){
   document.querySelectorAll('.jour-day-btn').forEach(b=>b.classList.remove('jour-on'));
   const sel=document.getElementById('newJours'); if(sel) Array.from(sel.options).forEach(o=>o.selected=false);
   const rc=document.getElementById('resumeCalcClient'); if(rc) rc.style.display='none';
+  // Reset commune (Select2 requiert trigger('change') pour rafraîchir l'affichage)
+  if(typeof $==='function' && $.fn && $.fn.select2){ $('#newCommune').val('').trigger('change'); }
+  else { const nc=document.getElementById('newCommune'); if(nc) nc.value=''; }
 }
 
 function horloge(){const d=new Date();document.getElementById('clockDisplay').textContent=d.toLocaleDateString('fr-FR')+' · '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
@@ -5043,6 +5060,10 @@ function changerTab(btn){
     } else {
       chargerNotesFrais();
     }
+  }
+  if(tab==='clients' && typeof $==='function' && $.fn && $.fn.select2){
+    // Réinit Select2 après que l'onglet est visible (largeur mesurable)
+    setTimeout(_initCommuneSelect2, 50);
   }
   if(window.innerWidth<=900)document.getElementById('sidebar').classList.remove('open');
 }
@@ -10533,15 +10554,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   anneeEls.forEach(el=>{if(!el.innerHTML){for(let y=a;y>=a-5;y--)el.innerHTML+=`<option value="${y}">${y}</option>`;}});
   // Select2 — avec fallback vanilla si jQuery/Select2 indisponible
   try{
-    if(typeof $==='function' && typeof $.fn.select2==='function'){
-      const _normalizeStr = s => s ? s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase() : '';
-      $('.commune-select').select2({width:'100%',placeholder:'Choisir...',matcher:function(params,data){
-        if(!params.term) return data;
-        if(_normalizeStr(data.text).includes(_normalizeStr(params.term))) return data;
-        return null;
-      }});
-      $('.jours-select').select2({width:'100%',placeholder:'Choisir...'});
-    }
+    _initCommuneSelect2();
+    if(typeof $==='function' && $.fn && $.fn.select2) $('.jours-select').select2({width:'100%',placeholder:'Choisir...'});
   }catch(e){ console.warn('Select2 init skipped:', e.message); }
   // Charger données en arrière-plan
   chargerDonnees();
