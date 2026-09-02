@@ -4954,9 +4954,7 @@ function toggleAdvClient(){
 function _initCommuneSelect2(){
   if(typeof $!=='function' || !$.fn || !$.fn.select2) return;
   const _norm = s => s ? s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase() : '';
-  try{
-    $('#newCommune').select2('destroy');
-  }catch(e){}
+  if($('#newCommune').data('select2')){ $('#newCommune').select2('destroy'); }
   $('#newCommune').select2({width:'100%',placeholder:'Choisir...',matcher:function(params,data){
     if(!params.term) return data;
     if(_norm(data.text).includes(_norm(params.term))) return data;
