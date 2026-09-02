@@ -18,7 +18,7 @@ exports.handler = async function (event) {
   }
 
   const secret = (event.headers['x-app-secret'] || '').trim();
-  if (!secret || secret !== process.env.APP_SECRET) {
+  if (!secret || secret !== process.env.PIN_GERANT_QONTO) {
     return {
       statusCode: 401,
       headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },

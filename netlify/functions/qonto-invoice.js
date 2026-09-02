@@ -97,7 +97,7 @@ exports.handler = async (event) => {
     return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
-  const appSecret = process.env.APP_SECRET;
+  const appSecret = process.env.PIN_GERANT_QONTO;
   const provided = event.headers['x-app-secret'] || event.headers['X-App-Secret'];
   if (!appSecret || !provided || provided !== appSecret) {
     return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) };

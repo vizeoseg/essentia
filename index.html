@@ -6502,12 +6502,15 @@ async function envoyerFraisVersQonto(fraisId) {
   }
   if (!photoSrc) { toast('Aucune photo justificatif disponible', 'warning'); return; }
 
+  const _pin = prompt('Code gérant (confirmation Qonto) :');
+  if (_pin === null) return;
+
   var body = document.getElementById('modalQontoTxBody');
   body.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);"><i class="fas fa-spinner fa-spin" style="font-size:22px;"></i><div style="margin-top:10px;font-size:13px;">Chargement des transactions Qonto…</div></div>';
   document.getElementById('modalQontoTx').style.display = 'flex';
 
   try {
-    var resp = await fetch(_QONTO_TX_ENDPOINT, { method: 'GET', headers: { 'X-App-Secret': APP_SECRET_FRONT } });
+    var resp = await fetch(_QONTO_TX_ENDPOINT, { method: 'GET', headers: { 'X-App-Secret': _pin } });
     var data = await resp.json();
     if (!resp.ok) { body.innerHTML = '<p style="color:var(--red);padding:10px;">' + _esc(data.error || 'Erreur API Qonto') + '</p>'; return; }
 
@@ -6562,13 +6565,16 @@ async function _rattacherQontoTx(fraisId, transactionId) {
   var ext        = mimeType === 'image/png' ? 'png' : mimeType === 'image/gif' ? 'gif' : 'jpg';
   var fileName   = 'justificatif_' + (f.date || 'sans_date').replace(/-/g,'') + '.' + ext;
 
+  const _pin = prompt('Code gérant (confirmation Qonto) :');
+  if (_pin === null) return;
+
   var body = document.getElementById('modalQontoTxBody');
   body.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);"><i class="fas fa-spinner fa-spin" style="font-size:22px;"></i><div style="margin-top:10px;font-size:13px;">Envoi vers Qonto…</div></div>';
 
   try {
     var resp = await fetch(_QONTO_ATTACH_ENDPOINT, {
       method: 'POST',
-      headers: { 'X-App-Secret': APP_SECRET_FRONT, 'Content-Type': 'application/json' },
+      headers: { 'X-App-Secret': _pin, 'Content-Type': 'application/json' },
       body: JSON.stringify({ fileBase64: fileBase64, fileName: fileName, mimeType: mimeType, transactionId: transactionId })
     });
     var data = await resp.json();
@@ -8465,11 +8471,14 @@ async function envoyerFactureVersQonto() {
     status: 'draft',
   };
 
+  const _pin = prompt('Code gérant (confirmation Qonto) :');
+  if (_pin === null) return;
+
   toast('Envoi vers Qonto…', 'info');
   try {
     var resp = await fetch('/.netlify/functions/qonto-invoice', {
       method: 'POST',
-      headers: { 'X-App-Secret': APP_SECRET_FRONT, 'Content-Type': 'application/json' },
+      headers: { 'X-App-Secret': _pin, 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     var data = await resp.json();
@@ -15818,7 +15827,7 @@ function lingeAjouterLigne(pfx,nbLits){
   const SUPA_ENABLED = !!(SUPA_CONFIG.url && SUPA_CONFIG.key);
 
   // ── QONTO — proxy Netlify sécurisé ──────────────────────────
-  window.APP_SECRET_FRONT      = 'ee9e5e2a96d617c60a5c01bda8cddf7dd7178c023b2e50cefef2cb465000d018';
+  // Le secret n'est plus stocké côté client — saisi par l'utilisateur à chaque action
   window._QONTO_TX_ENDPOINT    = '/.netlify/functions/qonto-transactions';
   window._QONTO_ATTACH_ENDPOINT = '/.netlify/functions/qonto-attachment';
 
