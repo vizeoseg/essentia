@@ -10260,6 +10260,8 @@ function normaliserClient(c){
 }
 
 function _purgerPhotosOrphelines(){
+  if(window._purgePhotosRan) return;
+  window._purgePhotosRan = true;
   try {
     const idsValides = new Set((notesFraisData || []).map(function(f){ return f.id; }));
     // Collecter toutes les clés _fraisPhoto: en une passe (ne pas modifier le storage pendant l'itération)
@@ -10335,7 +10337,6 @@ function chargerDonnees(){
       return c;
     }).map(normaliserClient);
     chargerClients();chargerSalaries();mettreAJourFinances();chargerNotesFrais();calculerStats();chargerAccueil();chargerTournees();chargerStock();chargerFournisseurs();
-    _purgerPhotosOrphelines();
     toast('Données chargées','info');
   }catch(e){console.error(e);}
   // Charger paramètres (avec valeurs par défaut si absentes)
@@ -16673,6 +16674,7 @@ function lingeAjouterLigne(pfx,nbLits){
             }
           } catch(e) { console.warn('[Sync] Fusion locale/cloud échouée :', e.message); }
           appliquerDonneesDistantes(remoteData);
+          _purgerPhotosOrphelines(); // notesFraisData = état Supabase complet
           // Aussi écrire en localStorage (cache local)
           try { localStorage.setItem('progestV10', JSON.stringify(remoteData)); } catch(e) {}
           console.log('[Supabase] Données chargées depuis le cloud');
@@ -16686,15 +16688,18 @@ function lingeAjouterLigne(pfx,nbLits){
         } else {
           // localStorage déjà chargé — démarrer le temps réel quand même
           console.log('[Supabase] Aucune donnée cloud — chargement local');
+          _purgerPhotosOrphelines(); // notesFraisData = état local (Supabase vide)
           supabaseRealtime();
         }
       }).catch(function() {
         // localStorage déjà chargé — démarrer le temps réel
+        _purgerPhotosOrphelines(); // notesFraisData = état local (Supabase inaccessible)
         supabaseRealtime();
       });
     } else {
       // Mode local pur (Supabase non configuré)
       if (typeof _origCharger === "function") _origCharger();
+      _purgerPhotosOrphelines(); // notesFraisData = état local définitif (pas de Supabase)
     }
   };
 
