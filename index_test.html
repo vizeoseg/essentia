@@ -3096,7 +3096,7 @@ tr{transition:background .12s;}
     <div style="display:flex;gap:5px;margin-top:5px;">
       <button type="button" onclick="_selectGroupeNf('',this)" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--accent);color:#fff;">Toutes</button>
       <button type="button" onclick="_selectGroupeNf('1',this)" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg2);">🔵 Tournée 1</button>
-      <button type="button" onclick="_selectGroupeNf('2',this)" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg2);">🟠 Tournée 2</button>
+      <button type="button" onclick="_selectGroupeNf('2',this)" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg2);">🟢 Tournée 2</button>
     </div>
   </div>
   <p style="font-size:11px;color:var(--text3);margin-top:8px;"><i class="fas fa-info-circle"></i> PDF avec détail des clients/communes et distances par jour, totaux semaine et mois. Indemnité 0,697 €/km.</p>
@@ -5428,7 +5428,7 @@ function modifierClient(id){
               +'<div style=\"display:flex;gap:2px;flex-shrink:0;\">'
               +'<button type=\"button\" onclick=\"_selectGroupeJour(\''+j+'\',\'\',this)\" style=\"font-size:10px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;cursor:pointer;'+(grpCur===''?'background:var(--accent);color:#fff;':'background:var(--bg2);')+'\">—</button>'
               +'<button type=\"button\" onclick=\"_selectGroupeJour(\''+j+'\',\'1\',this)\" style=\"font-size:10px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;cursor:pointer;'+(grpCur==='1'?'background:#3b82f6;color:#fff;':'background:var(--bg2);')+'\">🔵 1</button>'
-              +'<button type=\"button\" onclick=\"_selectGroupeJour(\''+j+'\',\'2\',this)\" style=\"font-size:10px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;cursor:pointer;'+(grpCur==='2'?'background:#f97316;color:#fff;':'background:var(--bg2);')+'\">🟠 2</button>'
+              +'<button type=\"button\" onclick=\"_selectGroupeJour(\''+j+'\',\'2\',this)\" style=\"font-size:10px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;cursor:pointer;'+(grpCur==='2'?'background:#16a34a;color:#fff;':'background:var(--bg2);')+'\">🟢 2</button>'
               +'</div>'
               +'</div>';
           }).join('');
@@ -5481,7 +5481,7 @@ function _detecterChangementJours(clientId){
 function _selectGroupeJour(jour, val, btnEl){
   document.getElementById('interv_groupe_'+jour).value = val;
   btnEl.parentNode.querySelectorAll('button').forEach(b=>{ b.style.background='var(--bg2)'; b.style.color='var(--text)'; });
-  btnEl.style.background = val==='' ? 'var(--accent)' : val==='1' ? '#3b82f6' : '#f97316';
+  btnEl.style.background = val==='' ? 'var(--accent)' : val==='1' ? '#3b82f6' : '#16a34a';
   btnEl.style.color = '#fff';
 }
 
@@ -5722,14 +5722,14 @@ function ouvrirModalNoteFraisPDF(){
 function _selectGroupeAirbnb(val, btnEl){
   document.getElementById('airbnbGroupe').value = val;
   btnEl.parentNode.querySelectorAll('button').forEach(b=>{ b.style.background='var(--bg2)'; b.style.color='var(--text)'; });
-  btnEl.style.background = val==='' ? 'var(--accent)' : val==='1' ? '#3b82f6' : '#f97316';
+  btnEl.style.background = val==='' ? 'var(--accent)' : val==='1' ? '#3b82f6' : '#16a34a';
   btnEl.style.color = '#fff';
 }
 
 function _selectGroupeNf(val, btnEl){
   document.getElementById('nfGroupe').value = val;
   btnEl.parentNode.querySelectorAll('button').forEach(b=>{ b.style.background='var(--bg2)'; b.style.color='var(--text)'; });
-  btnEl.style.background = val==='' ? 'var(--accent)' : val==='1' ? '#3b82f6' : '#f97316';
+  btnEl.style.background = val==='' ? 'var(--accent)' : val==='1' ? '#3b82f6' : '#16a34a';
   btnEl.style.color = '#fff';
 }
 
@@ -17653,7 +17653,7 @@ function assignerActivite(clientId, jour, activite){
         <div style="display:flex;gap:5px;margin-top:5px;">
           <button type="button" onclick="_selectGroupeAirbnb('',this)" class="airbnb-grp-btn" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--accent);color:#fff;">—</button>
           <button type="button" onclick="_selectGroupeAirbnb('1',this)" class="airbnb-grp-btn" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg2);">🔵 1</button>
-          <button type="button" onclick="_selectGroupeAirbnb('2',this)" class="airbnb-grp-btn" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg2);">🟠 2</button>
+          <button type="button" onclick="_selectGroupeAirbnb('2',this)" class="airbnb-grp-btn" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg2);">🟢 2</button>
         </div>
       </div>
       <div id="airbnbRecap" style="display:none;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:10px;padding:10px 12px;font-size:11px;color:#c2410c;line-height:1.6;"></div>
