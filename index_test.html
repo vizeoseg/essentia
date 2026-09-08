@@ -3090,12 +3090,21 @@ tr{transition:background .12s;}
     </select></div>
     <div class="form-group"><label>Année</label><input type="number" id="nfAnnee" value="2026" min="2024" max="2030" style="margin-top:5px;"></div>
   </div>
+  <div class="form-group" style="margin-top:10px;">
+    <label style="font-size:11px;font-weight:700;">Tournée</label>
+    <input type="hidden" id="nfGroupe" value="">
+    <div style="display:flex;gap:5px;margin-top:5px;">
+      <button type="button" onclick="_selectGroupeNf('',this)" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--accent);color:#fff;">Toutes</button>
+      <button type="button" onclick="_selectGroupeNf('1',this)" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg2);">🔵 Tournée 1</button>
+      <button type="button" onclick="_selectGroupeNf('2',this)" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg2);">🟠 Tournée 2</button>
+    </div>
+  </div>
   <p style="font-size:11px;color:var(--text3);margin-top:8px;"><i class="fas fa-info-circle"></i> PDF avec détail des clients/communes et distances par jour, totaux semaine et mois. Indemnité 0,697 €/km.</p>
 </div>
 <div style="display:flex;gap:9px;flex-direction:column;">
   <div style="display:flex;gap:9px;">
-    <button class="btn btn-primary" style="flex:1;" onclick="genererNoteFraisMensuelPDF(parseInt(document.getElementById('nfMois').value),parseInt(document.getElementById('nfAnnee').value));document.getElementById('modalNoteFraisPDF').style.display='none';"><i class="fas fa-file-pdf"></i> Générer PDF</button>
-    <button class="btn btn-warning" style="flex:1;" onclick="injecterMoisEnFrais(parseInt(document.getElementById('nfMois').value),parseInt(document.getElementById('nfAnnee').value));document.getElementById('modalNoteFraisPDF').style.display='none';"><i class="fas fa-road"></i> Injecter en frais</button>
+    <button class="btn btn-primary" style="flex:1;" onclick="genererNoteFraisMensuelPDF(parseInt(document.getElementById('nfMois').value),parseInt(document.getElementById('nfAnnee').value),document.getElementById('nfGroupe').value||'');document.getElementById('modalNoteFraisPDF').style.display='none';"><i class="fas fa-file-pdf"></i> Générer PDF</button>
+    <button class="btn btn-warning" style="flex:1;" onclick="injecterMoisEnFrais(parseInt(document.getElementById('nfMois').value),parseInt(document.getElementById('nfAnnee').value),document.getElementById('nfGroupe').value||'');document.getElementById('modalNoteFraisPDF').style.display='none';"><i class="fas fa-road"></i> Injecter en frais</button>
   </div>
   <button class="btn btn-ghost" onclick="document.getElementById('modalNoteFraisPDF').style.display='none'">Annuler</button>
 </div>
@@ -5408,12 +5417,19 @@ function modifierClient(id){
             const ex=(c.interventions||[]).find(i=>i.jour===j)||{};
             const actCur=ex.activite||'domicile';
             const salCur=ex.intervenant||'';
+            const grpCur=ex.groupe||'';
             const actOpts=Object.entries(activiteLabels).map(([v,l])=>'<option value=\"'+v+'\"'+(actCur===v?' selected':'')+'>'+l+'</option>').join('');
             const salOptsFin='<option value=\"\">— Gérant —</option>'+salariesData.map(s=>'<option value=\"'+s.nom+'\"'+(salCur===s.nom?' selected':'')+'>'+s.nom+'</option>').join('');
             return '<div style=\"display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:7px 10px;\">'
               +'<span style=\"font-size:11px;font-weight:700;color:var(--accent);min-width:72px;\">'+j[0].toUpperCase()+j.slice(1)+'</span>'
               +'<select id=\"interv_activite_'+j+'\" style=\"font-size:11px;flex:1;border:1px solid var(--border);border-radius:6px;padding:4px 6px;\">'+actOpts+'</select>'
               +'<select id=\"interv_sal_'+j+'\" style=\"font-size:11px;flex:1;border:1px solid var(--border);border-radius:6px;padding:4px 6px;\">'+salOptsFin+'</select>'
+              +'<input type=\"hidden\" id=\"interv_groupe_'+j+'\" value=\"'+grpCur+'\">'
+              +'<div style=\"display:flex;gap:2px;flex-shrink:0;\">'
+              +'<button type=\"button\" onclick=\"_selectGroupeJour(\''+j+'\',\'\',this)\" style=\"font-size:10px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;cursor:pointer;'+(grpCur===''?'background:var(--accent);color:#fff;':'background:var(--bg2);')+'\">—</button>'
+              +'<button type=\"button\" onclick=\"_selectGroupeJour(\''+j+'\',\'1\',this)\" style=\"font-size:10px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;cursor:pointer;'+(grpCur==='1'?'background:#3b82f6;color:#fff;':'background:var(--bg2);')+'\">🔵 1</button>'
+              +'<button type=\"button\" onclick=\"_selectGroupeJour(\''+j+'\',\'2\',this)\" style=\"font-size:10px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;cursor:pointer;'+(grpCur==='2'?'background:#f97316;color:#fff;':'background:var(--bg2);')+'\">🟠 2</button>'
+              +'</div>'
               +'</div>';
           }).join('');
         })()}
@@ -5462,6 +5478,13 @@ function _detecterChangementJours(clientId){
   }
 }
 
+function _selectGroupeJour(jour, val, btnEl){
+  document.getElementById('interv_groupe_'+jour).value = val;
+  btnEl.parentNode.querySelectorAll('button').forEach(b=>{ b.style.background='var(--bg2)'; b.style.color='var(--text)'; });
+  btnEl.style.background = val==='' ? 'var(--accent)' : val==='1' ? '#3b82f6' : '#f97316';
+  btnEl.style.color = '#fff';
+}
+
 function sauvegarderModificationClient(){
   const id=window.currentEditClientId;const c=clientsData.find(x=>x.id===id);if(!c)return;
   c.nom=document.getElementById('editNom').value;
@@ -5501,7 +5524,8 @@ function sauvegarderModificationClient(){
   c.interventions = joursNouveaux.map(j => ({
     jour: j,
     activite: document.getElementById('interv_activite_'+j)?.value || 'domicile',
-    intervenant: document.getElementById('interv_sal_'+j)?.value || ''
+    intervenant: document.getElementById('interv_sal_'+j)?.value || '',
+    groupe: document.getElementById('interv_groupe_'+j)?.value || ''
   }));
   // Recalcul normalisé des champs dérivés
   const idx = clientsData.findIndex(x=>x.id===c.id);
@@ -5695,7 +5719,30 @@ function ouvrirModalNoteFraisPDF(){
   document.getElementById('modalNoteFraisPDF').style.display='flex';
 }
 
-function injecterMoisEnFrais(mois, annee){
+function _selectGroupeAirbnb(val, btnEl){
+  document.getElementById('airbnbGroupe').value = val;
+  btnEl.parentNode.querySelectorAll('button').forEach(b=>{ b.style.background='var(--bg2)'; b.style.color='var(--text)'; });
+  btnEl.style.background = val==='' ? 'var(--accent)' : val==='1' ? '#3b82f6' : '#f97316';
+  btnEl.style.color = '#fff';
+}
+
+function _selectGroupeNf(val, btnEl){
+  document.getElementById('nfGroupe').value = val;
+  btnEl.parentNode.querySelectorAll('button').forEach(b=>{ b.style.background='var(--bg2)'; b.style.color='var(--text)'; });
+  btnEl.style.background = val==='' ? 'var(--accent)' : val==='1' ? '#3b82f6' : '#f97316';
+  btnEl.style.color = '#fff';
+}
+
+// Retourne true si le déplacement c doit être inclus selon groupeFiltre.
+// c._depGroupe est présent pour les entrées Airbnb/Urgence, sinon on cherche dans c.interventions[jour].
+function _matchGroupeFrais(c, jour, groupeFiltre){
+  if(!groupeFiltre) return true;
+  if(c._depGroupe !== undefined) return (c._depGroupe||'') === groupeFiltre;
+  const interv=(c.interventions||[]).find(i=>i.jour===jour);
+  return (interv?.groupe||'') === groupeFiltre;
+}
+
+function injecterMoisEnFrais(mois, annee, groupeFiltre){
   const IK=0.697;
   const moisFr=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
   const _pFM=JSON.parse(localStorage.getItem('progestParams')||'{}');
@@ -5728,8 +5775,8 @@ function injecterMoisEnFrais(mois, annee){
       if(d.getMonth()!==mois-1||d.getFullYear()!==annee) return;
       const dateKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
       // const cj=clientsData.filter(c=>_getJoursClientDate(c,dateKey).includes(jour)&&c.commune&&!((deplacementsData||[]).find(dep=>dep.clientId===c.id&&dep.dateNouvelle===dateKey&&(dep.statut==='absent'||dep.statut==='absent_essentia')))); // dead code — dateNouvelle inversé + statut absent de deplacementsData
-      const cj=clientsData.filter(c=>_getJoursClientDate(c,dateKey).includes(jour)&&c.commune&&!_clientExclusDuCalculFrais(c,dateKey));
-      const airbnbsM=(deplacementsData||[]).filter(dep=>dep.dateNouvelle===dateKey&&!cj.find(x=>x.id===dep.clientId)).map(dep=>{const c=clientsData.find(x=>x.id===dep.clientId);return c?{...c,heureDebut:dep.heureNouvelle||c.heureDebut}:null;}).filter(c=>c&&!_clientExclusDuCalculFrais(c,dateKey));
+      const cj=clientsData.filter(c=>_getJoursClientDate(c,dateKey).includes(jour)&&c.commune&&!_clientExclusDuCalculFrais(c,dateKey)&&_matchGroupeFrais(c,jour,groupeFiltre));
+      const airbnbsM=(deplacementsData||[]).filter(dep=>dep.dateNouvelle===dateKey&&!cj.find(x=>x.id===dep.clientId)).map(dep=>{const c=clientsData.find(x=>x.id===dep.clientId);return c?{...c,heureDebut:dep.heureNouvelle||c.heureDebut,_depGroupe:dep.groupe||''}:null;}).filter(c=>c&&!_clientExclusDuCalculFrais(c,dateKey)&&_matchGroupeFrais(c,jour,groupeFiltre));
       const avecDist=[...cj,...airbnbsM].filter(c=>c.commune).map(c=>({...c,_dkm:communesAube.find(x=>x.nom===c.commune)?.distance||0})).sort((a,b)=>toMinM(a.heureDebut)-toMinM(b.heureDebut));
       if(!avecDist.length) return;
       let dist=0,last=depotDist;
@@ -5757,7 +5804,7 @@ function injecterMoisEnFrais(mois, annee){
   toast(`${moisFr[mois-1]} ${annee} injecté : ${montant.toFixed(2)} € pour ${Math.round(monthTotalDist)} km ✓`,'success');
 }
 
-function genererNoteFraisMensuelPDF(mois, annee){
+function genererNoteFraisMensuelPDF(mois, annee, groupeFiltre){
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({unit:'mm',format:'a4'});
   const W=210,M=15,IK=0.697;
@@ -5815,8 +5862,8 @@ function genererNoteFraisMensuelPDF(mois, annee){
       if(d.getMonth()!==mois-1||d.getFullYear()!==annee) return;
       const dateKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
       // const cj=clientsData.filter(c=>_getJoursClientDate(c,dateKey).includes(jour)&&c.commune&&!((deplacementsData||[]).find(d=>d.clientId===c.id&&d.dateNouvelle===dateKey&&(d.statut==='absent'||d.statut==='absent_essentia')))); // dead code — dateNouvelle inversé + statut absent de deplacementsData
-      const cj=clientsData.filter(c=>_getJoursClientDate(c,dateKey).includes(jour)&&c.commune&&!_clientExclusDuCalculFrais(c,dateKey));
-      const airbnbs=(deplacementsData||[]).filter(dj=>dj.dateNouvelle===dateKey&&!cj.find(x=>x.id===dj.clientId)).map(dj=>{const c=clientsData.find(x=>x.id===dj.clientId);return c?{...c,heureDebut:dj.heureNouvelle||c.heureDebut,_airbnb:dj.airbnb||false}:null;}).filter(c=>c&&!_clientExclusDuCalculFrais(c,dateKey));
+      const cj=clientsData.filter(c=>_getJoursClientDate(c,dateKey).includes(jour)&&c.commune&&!_clientExclusDuCalculFrais(c,dateKey)&&_matchGroupeFrais(c,jour,groupeFiltre));
+      const airbnbs=(deplacementsData||[]).filter(dj=>dj.dateNouvelle===dateKey&&!cj.find(x=>x.id===dj.clientId)).map(dj=>{const c=clientsData.find(x=>x.id===dj.clientId);return c?{...c,heureDebut:dj.heureNouvelle||c.heureDebut,_airbnb:dj.airbnb||false,_depGroupe:dj.groupe||''}:null;}).filter(c=>c&&!_clientExclusDuCalculFrais(c,dateKey)&&_matchGroupeFrais(c,jour,groupeFiltre));
       const avecDist=[...cj,...airbnbs].map(c=>({...c,dkm:communesAube.find(x=>x.nom===c.commune)?.distance||0})).sort((a,b)=>toMin(a.heureDebut)-toMin(b.heureDebut));
       if(!avecDist.length) return;
       let dist=0,last=depotDist;
@@ -17193,6 +17240,12 @@ function ouvrirModalAirbnb(){
   if(recapEl) recapEl.style.display = 'none';
   const modeEl = document.getElementById('urgenceMode');
   if(modeEl) modeEl.value = 'acte';
+  const grpElA = document.getElementById('airbnbGroupe');
+  if(grpElA) grpElA.value = '';
+  document.querySelectorAll('#modalAirbnb .airbnb-grp-btn').forEach((b,i)=>{
+    b.style.background = i===0 ? 'var(--accent)' : 'var(--bg2)';
+    b.style.color = i===0 ? '#fff' : 'var(--text)';
+  });
   mettreAJourModeUrgence();
   modal.style.display = 'flex';
 }
@@ -17244,6 +17297,7 @@ function sauvegarderAirbnb(){
   const duree = mode==='heure' ? heuresSaisies : (c.heures||1);
   const note = document.getElementById('airbnbNote').value.trim();
   const intervenant = document.getElementById('airbnbIntervenant').value;
+  const groupe = document.getElementById('airbnbGroupe')?.value || '';
   // Sécurité : vider les jours récurrents des clients Airbnb pour éviter la duplication
   if(isAirbnb && c.jours && c.jours.length){ c.jours = []; }
   deplacementsData.push({
@@ -17252,7 +17306,7 @@ function sauvegarderAirbnb(){
     dateNouvelle: date, heureNouvelle: heure,
     dureeEstimee: duree, dureeReelle: null,
     modeFacturation: mode,
-    intervenant, note, airbnb: isAirbnb,
+    intervenant, note, airbnb: isAirbnb, groupe,
     motif: (isAirbnb?'Airbnb':'Urgence')+(note?' — '+note:'')
   });
   sauvegarderTout(true);
@@ -17592,6 +17646,15 @@ function assignerActivite(clientId, jour, activite){
       <div class="form-group">
         <label>Note / Description</label>
         <input type="text" id="airbnbNote" placeholder="Ex: Ménage complet, vitre urgence, repassage...">
+      </div>
+      <div class="form-group">
+        <label style="font-size:11px;font-weight:700;">Tournée <span style="font-size:10px;color:var(--text3);font-weight:400;">— frais kilométriques</span></label>
+        <input type="hidden" id="airbnbGroupe" value="">
+        <div style="display:flex;gap:5px;margin-top:5px;">
+          <button type="button" onclick="_selectGroupeAirbnb('',this)" class="airbnb-grp-btn" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--accent);color:#fff;">—</button>
+          <button type="button" onclick="_selectGroupeAirbnb('1',this)" class="airbnb-grp-btn" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg2);">🔵 1</button>
+          <button type="button" onclick="_selectGroupeAirbnb('2',this)" class="airbnb-grp-btn" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg2);">🟠 2</button>
+        </div>
       </div>
       <div id="airbnbRecap" style="display:none;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:10px;padding:10px 12px;font-size:11px;color:#c2410c;line-height:1.6;"></div>
     </div>
