@@ -16169,9 +16169,14 @@ function lingeAjouterLigne(pfx,nbLits){
   var realtimeSocket = null;
   var realtimePollingTimer = null;
   var realtimeLastUpdated = null;
+  var realtimeHeartbeatTimer = null;
 
   function supabaseRealtime() {
     if (!SUPA_ENABLED) return;
+    if (realtimeSocket && (realtimeSocket.readyState === WebSocket.CONNECTING || realtimeSocket.readyState === WebSocket.OPEN)) {
+      console.log('[Supabase Realtime] Déjà actif — appel ignoré');
+      return;
+    }
 
     // Tenter WebSocket seulement si on est en HTTPS (pas file://, pas http://)
     var isSecureContext = (typeof window.isSecureContext !== 'undefined')
@@ -16182,10 +16187,13 @@ function lingeAjouterLigne(pfx,nbLits){
       try {
         var wsUrl = SUPA_CONFIG.url.replace('https://', 'wss://') +
           '/realtime/v1/websocket?apikey=' + SUPA_CONFIG.key;
-        realtimeSocket = new WebSocket(wsUrl);
-        realtimeSocket.onopen = function() {
+        var ws = new WebSocket(wsUrl);
+        var wsHeartbeat = null;
+        realtimeSocket = ws;
+        ws.onopen = function() {
+          if (ws.readyState !== WebSocket.OPEN) return;
           // Format Phoenix v2 pour Supabase Realtime
-          realtimeSocket.send(JSON.stringify({
+          ws.send(JSON.stringify({
             topic: 'realtime:*',
             event: 'phx_join',
             payload: {
@@ -16202,14 +16210,21 @@ function lingeAjouterLigne(pfx,nbLits){
             },
             ref: '1'
           }));
+          // Heartbeat client : Phoenix ferme la connexion sans heartbeat toutes les ~30s
+          if (realtimeHeartbeatTimer) clearInterval(realtimeHeartbeatTimer);
+          wsHeartbeat = realtimeHeartbeatTimer = setInterval(function() {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({topic:'phoenix',event:'heartbeat',payload:{},ref:'hb'}));
+            }
+          }, 25000);
           console.log('[Supabase Realtime] WebSocket connecté — canal postgres_changes actif');
         };
-        realtimeSocket.onmessage = function(e) {
+        ws.onmessage = function(e) {
           try {
             var msg = JSON.parse(e.data);
             // Heartbeat Supabase — répondre pour garder la connexion
             if (msg.event === 'heartbeat') {
-              realtimeSocket.send(JSON.stringify({topic:'phoenix',event:'heartbeat',payload:{},ref:'hb'}));
+              if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({topic:'phoenix',event:'heartbeat',payload:{},ref:'hb'}));
               return;
             }
             // Format v2 : event INSERT/UPDATE dans payload.data
@@ -16233,11 +16248,19 @@ function lingeAjouterLigne(pfx,nbLits){
             console.warn('[Supabase WS] Erreur message:', ex.message);
           }
         };
-        realtimeSocket.onerror = function() {
+        ws.onerror = function() {
+          if (ws !== realtimeSocket) return; // ancien socket remplacé ou arrêt volontaire
           console.warn('[Supabase Realtime] WebSocket échoué — bascule sur polling');
           demarrerPolling();
         };
-        realtimeSocket.onclose = function() {
+        ws.onclose = function() {
+          if (wsHeartbeat) {
+            clearInterval(wsHeartbeat);
+            if (realtimeHeartbeatTimer === wsHeartbeat) realtimeHeartbeatTimer = null;
+            wsHeartbeat = null;
+          }
+          if (ws !== realtimeSocket) return; // ancien socket remplacé ou arrêt volontaire
+          realtimeSocket = null;
           // Reconnect via polling si le WS se ferme inopinément
           setTimeout(demarrerPolling, 5000);
         };
@@ -16943,7 +16966,8 @@ CREATE POLICY "anon_delete" ON storage.objects
   window.stopSupaSync = function() {
     if (_supaDebounceTimer)    { clearTimeout(_supaDebounceTimer);   _supaDebounceTimer = null; }
     if (realtimePollingTimer)  { clearInterval(realtimePollingTimer); realtimePollingTimer = null; }
-    if (realtimeSocket)        { try { realtimeSocket.close(); } catch(e) {} realtimeSocket = null; }
+    if (realtimeHeartbeatTimer) { clearInterval(realtimeHeartbeatTimer); realtimeHeartbeatTimer = null; }
+    if (realtimeSocket)        { var _ws = realtimeSocket; realtimeSocket = null; try { _ws.close(); } catch(e) {} }
     realtimeLastUpdated = null;
     console.log('[Supabase] Sync arrêtée');
   };
