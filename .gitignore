@@ -1,2 +1,5 @@
 # Local Netlify folder
 .netlify
+
+# Dossier de déploiement filtré
+_deploy/

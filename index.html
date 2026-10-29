@@ -6,6 +6,49 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Essentia Services — by Kairos Studio</title>
 <meta name="theme-color" content="#0e2040">
+<script>
+// ── MODE TEST — lecture seule Supabase ─────────────────────────
+// Actif uniquement quand la page est servie sous le nom index_test.html :
+// si ce fichier est copié en index.html pour le déploiement, la garde se désactive d'elle-même.
+(function(){
+  var TEST_RO = /index_test\.html$/i.test(location.pathname);
+  window.__ESSENTIA_TEST_RO = TEST_RO;
+  if (!TEST_RO) return;
+  function _estEcritureSupabase(url, method) {
+    var m = String(method || 'GET').toUpperCase();
+    if (m === 'GET' || m === 'HEAD' || m === 'OPTIONS') return false;
+    return /supabase\.co|\/rest\/v1\/|\/storage\/v1\//i.test(String(url || ''));
+  }
+  var _fetch = window.fetch;
+  window.fetch = function(input, init) {
+    var url = (input && typeof input === 'object' && 'url' in input) ? input.url : input;
+    var method = (init && init.method) || (input && typeof input === 'object' && input.method) || 'GET';
+    if (_estEcritureSupabase(url, method)) {
+      console.warn('[TEST] Écriture Supabase bloquée', String(method).toUpperCase(), url);
+      return Promise.resolve(new Response(null, { status: 204, statusText: 'TEST read-only' }));
+    }
+    return _fetch.apply(this, arguments);
+  };
+  var _open = XMLHttpRequest.prototype.open, _send = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.open = function(method, url) {
+    this.__roBlocked = _estEcritureSupabase(url, method);
+    this.__roInfo = String(method).toUpperCase() + ' ' + url;
+    return _open.apply(this, arguments);
+  };
+  XMLHttpRequest.prototype.send = function() {
+    if (this.__roBlocked) { console.warn('[TEST] Écriture Supabase bloquée', this.__roInfo); return; }
+    return _send.apply(this, arguments);
+  };
+  document.addEventListener('DOMContentLoaded', function() {
+    var b = document.createElement('div');
+    b.id = 'bandeauModeTest';
+    b.textContent = 'MODE TEST — lecture seule, rien n’est enregistré';
+    b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#dc2626;color:#fff;font:700 13px/26px sans-serif;text-align:center;letter-spacing:.04em;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.3);';
+    document.body.appendChild(b);
+  });
+  console.warn('[TEST] Mode lecture seule actif — aucune écriture Supabase ne sera envoyée');
+})();
+</script>
 <meta name="apple-mobile-web-app-capable" content="apple-mobile-web-app-capable">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Essentia">
@@ -813,6 +856,7 @@ tr{transition:background .12s;}
     <button class="nav-btn" data-tab="finances" data-label="Finances" onclick="changerTab(this)"><span class="ni"><i class="fas fa-coins"></i></span><span class="nav-btn-text">Finances</span></button>
     <button class="nav-btn" data-tab="frais" data-label="Notes de frais" onclick="changerTab(this)"><span class="ni"><i class="fas fa-receipt"></i></span><span class="nav-btn-text">Notes de frais <span id="kmAlerteBadge" class="badge badge-red" style="display:none;margin-left:4px;font-size:9px;">0</span></span></button>
     <button class="nav-btn" data-tab="tva" data-label="TVA" onclick="changerTab(this)"><span class="ni"><i class="fas fa-percentage"></i></span><span class="nav-btn-text">Déclaration TVA</span></button>
+    <button class="nav-btn" data-tab="ema" data-label="EMA NOVA" onclick="changerTab(this)"><span class="ni"><i class="fas fa-landmark"></i></span><span class="nav-btn-text">Déclaration EMA</span></button>
     <button class="nav-btn" data-tab="resultat" data-label="Résultat" onclick="changerTab(this)"><span class="ni"><i class="fas fa-chart-pie"></i></span><span class="nav-btn-text">Résultat net</span></button>
     <div class="nav-section">Stock & Outils</div>
     <button class="nav-btn" data-tab="stock" data-label="Stock" onclick="changerTab(this)"><span class="ni"><i class="fas fa-boxes"></i></span><span class="nav-btn-text">Gestion stock</span></button>
@@ -1086,6 +1130,26 @@ tr{transition:background .12s;}
             <th>Actions</th>
           </tr></thead><tbody id="clientsTableBody"></tbody></table>
         </div>
+      </div>
+    </div>
+
+    <!-- ═══ DÉCLARATION EMA (NOVA) ═══ -->
+    <div id="tab-ema" class="tab-pane">
+      <div class="card">
+        <div class="card-header"><div class="card-icon"><i class="fas fa-landmark"></i></div><h3>Déclaration EMA (NOVA)</h3>
+          <div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <select id="emaTrimestre" class="filter-select" onchange="renderEMA()"></select>
+            <select id="emaAnnee" class="filter-select" onchange="renderEMA()"></select>
+            <button class="btn btn-primary btn-sm" onclick="exporterEMACSV()"><i class="fas fa-file-csv"></i> Exporter CSV</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:10px;">Chiffres à recopier dans le formulaire EMA trimestriel de nova.entreprises.gouv.fr (mode prestataire, une ligne par mois). Calcul sur les factures émises (envoyées, payées, archivées) et leurs avoirs — pas sur les heures estimées des fiches clients.</div>
+        <div class="table-wrap" id="emaTableau"></div>
+        <div id="emaNote" style="font-size:10px;color:var(--text3);margin-top:8px;line-height:1.6;"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-icon"><i class="fas fa-list-check"></i></div><h3>Factures prises en compte</h3><span class="badge badge-blue" id="emaNbFactures">0</span></div>
+        <div class="table-wrap" id="emaControle"></div>
       </div>
     </div>
 
@@ -4482,6 +4546,10 @@ function confirmerDeplacement(){
   if(dateNouvelle === _deplDateOrigine && heureNouvelle === document.getElementById('deplHeureOrigine').value){
     toast('La nouvelle date/heure est identique à l\'originale','warning'); return;
   }
+  // Groupe (tournée) : celui de l'ancien déplacement remplacé s'il en avait un,
+  // sinon celui de l'intervention récurrente du client le jour d'origine
+  const _ancienDep = deplacementsData.find(d => d.clientId === _deplClientId && d.dateOrigine === _deplDateOrigine);
+  const groupe = (_ancienDep && _ancienDep.groupe) || _groupeInterventionJourOrigine(_deplClientId, _deplDateOrigine);
   // Supprimer ancien déplacement si existe
   deplacementsData = deplacementsData.filter(d => !(d.clientId === _deplClientId && d.dateOrigine === _deplDateOrigine));
   deplacementsData.push({
@@ -4491,7 +4559,8 @@ function confirmerDeplacement(){
     heureOrigine: document.getElementById('deplHeureOrigine').value,
     dateNouvelle,
     heureNouvelle,
-    motif: document.getElementById('deplMotif').value || ''
+    motif: document.getElementById('deplMotif').value || '',
+    groupe
   });
   sauvegarderTout(true);
   document.getElementById('deplacementModal').style.display = 'none';
@@ -4513,6 +4582,15 @@ function confirmerDeplacement(){
       ouvrirDrawerJour(_deplDateOrigine, _jours[_d.getDay()]);
     }
   }, 300);
+}
+
+// Groupe de l'intervention récurrente du client le jour de la semaine de dateOrigine ('' si introuvable)
+function _groupeInterventionJourOrigine(clientId, dateOrigine){
+  if(!clientId || !dateOrigine) return '';
+  const c = clientsData.find(x => x.id === clientId);
+  if(!c || !Array.isArray(c.interventions)) return '';
+  const jourNom = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'][new Date(dateOrigine+'T12:00:00').getDay()];
+  return (c.interventions.find(i => i.jour === jourNom) || {}).groupe || '';
 }
 
 function annulerDeplacement(depId){
@@ -4568,6 +4646,18 @@ function _clientExclusDuCalculFrais(c, dateKey) {
   var statut = planningPrevData[c.id]?.[dateKey]?.statut;
   if (statut === 'absent' || statut === 'absent_essentia') return true;
   if (clientEstAbsentCeJour(c.id, dateKey)) return true;
+  return (interventionsData||[]).some(function(i){
+    return i.clientId === c.id && i.date === dateKey && i.statut === 'annule';
+  });
+}
+
+// Variante pour les entrées issues de deplacementsData (déplacement VERS dateKey) :
+// le déplacement prouve la présence ce jour-là, donc la règle « déplacé depuis ce jour »
+// (clientEstAbsentCeJour) ne s'applique pas — sinon un changement d'heure le même jour
+// (dateOrigine === dateNouvelle) serait exclu. Seuls absent / absent_essentia / annulé excluent.
+function _deplacementExcluDuCalculFrais(c, dateKey) {
+  var statut = planningPrevData[c.id]?.[dateKey]?.statut;
+  if (statut === 'absent' || statut === 'absent_essentia') return true;
   return (interventionsData||[]).some(function(i){
     return i.clientId === c.id && i.date === dateKey && i.statut === 'annule';
   });
@@ -5039,7 +5129,7 @@ function changerTab(btn){
   btn.classList.add('active');
   const tab=btn.dataset.tab;
   document.getElementById('tab-'+tab).classList.add('active');
-  const labels={accueil:'Accueil',clients:'Clients',tournees:'Tournées',salaries:'Salariés',paiements:'Prévisions paiements',finances:'Finances',frais:'Notes de frais',resultat:'Résultat net',tva:'Déclaration TVA',factures:'Factures',attestations:'Attestations fiscales',tarifshoraires:'Tarifs horaires',exports:'Exports PDF',stock:'Gestion du stock',fournisseurs:'Fournisseurs',parametres:'Paramètres',archives:'Archives'};
+  const labels={accueil:'Accueil',clients:'Clients',tournees:'Tournées',salaries:'Salariés',paiements:'Prévisions paiements',finances:'Finances',frais:'Notes de frais',resultat:'Résultat net',tva:'Déclaration TVA',ema:'Déclaration EMA (NOVA)',factures:'Factures',attestations:'Attestations fiscales',tarifshoraires:'Tarifs horaires',exports:'Exports PDF',stock:'Gestion du stock',fournisseurs:'Fournisseurs',parametres:'Paramètres',archives:'Archives'};
   setEl('topbarTitle',labels[tab]||tab);
   if(tab==='attestations'){chargerAttestations();}
   if(tab==='exports'){_chargerExportAttestSelect();}
@@ -5047,6 +5137,7 @@ function changerTab(btn){
   if(tab==='devis'){_lingeRafraichirBoutons();}
   if(tab==='factures'){_lingeRafraichirBoutons();}
   if(tab==='tva'){chargerTVA();}
+  if(tab==='ema'){chargerEMA();}
   if(tab==='paiements'){chargerPrevisionsPaiements();}
   if(tab==='accueil'){chargerAccueil();}
   if(tab==='stock'){chargerStock();}
@@ -5733,11 +5824,19 @@ function _selectGroupeNf(val, btnEl){
   btnEl.style.color = '#fff';
 }
 
+// Groupe effectif d'une entrée issue de deplacementsData (c._depGroupe défini) :
+// groupe enregistré, sinon (anciens déplacements sans groupe) groupe de l'intervention récurrente
+// du jour d'origine (c._depDateOrigine). '' si introuvable. Lecture seule : rien n'est réécrit.
+function _groupeDeplacementFrais(c){
+  if(c._depGroupe) return c._depGroupe;
+  return _groupeInterventionJourOrigine(c.id, c._depDateOrigine);
+}
+
 // Retourne true si le déplacement c doit être inclus selon groupeFiltre.
-// c._depGroupe est présent pour les entrées Airbnb/Urgence, sinon on cherche dans c.interventions[jour].
+// c._depGroupe est présent pour les entrées Airbnb/Urgence/déplacements, sinon on cherche dans c.interventions[jour].
 function _matchGroupeFrais(c, jour, groupeFiltre){
   if(!groupeFiltre) return true;
-  if(c._depGroupe !== undefined) return (c._depGroupe||'') === groupeFiltre;
+  if(c._depGroupe !== undefined) return _groupeDeplacementFrais(c) === groupeFiltre;
   const interv=(c.interventions||[]).find(i=>i.jour===jour);
   return (interv?.groupe||'') === groupeFiltre;
 }
@@ -5776,7 +5875,7 @@ function injecterMoisEnFrais(mois, annee, groupeFiltre){
       const dateKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
       // const cj=clientsData.filter(c=>_getJoursClientDate(c,dateKey).includes(jour)&&c.commune&&!((deplacementsData||[]).find(dep=>dep.clientId===c.id&&dep.dateNouvelle===dateKey&&(dep.statut==='absent'||dep.statut==='absent_essentia')))); // dead code — dateNouvelle inversé + statut absent de deplacementsData
       const cj=clientsData.filter(c=>_getJoursClientDate(c,dateKey).includes(jour)&&c.commune&&!_clientExclusDuCalculFrais(c,dateKey)&&_matchGroupeFrais(c,jour,groupeFiltre));
-      const airbnbsM=(deplacementsData||[]).filter(dep=>dep.dateNouvelle===dateKey&&!cj.find(x=>x.id===dep.clientId)).map(dep=>{const c=clientsData.find(x=>x.id===dep.clientId);return c?{...c,heureDebut:dep.heureNouvelle||c.heureDebut,_depGroupe:dep.groupe||''}:null;}).filter(c=>c&&!_clientExclusDuCalculFrais(c,dateKey)&&_matchGroupeFrais(c,jour,groupeFiltre));
+      const airbnbsM=(deplacementsData||[]).filter(dep=>dep.dateNouvelle===dateKey&&!cj.find(x=>x.id===dep.clientId)).map(dep=>{const c=clientsData.find(x=>x.id===dep.clientId);return c?{...c,heureDebut:dep.heureNouvelle||c.heureDebut,_depGroupe:dep.groupe||'',_depDateOrigine:dep.dateOrigine||''}:null;}).filter(c=>c&&!_deplacementExcluDuCalculFrais(c,dateKey)&&_matchGroupeFrais(c,jour,groupeFiltre));
       const avecDist=[...cj,...airbnbsM].filter(c=>c.commune).map(c=>({...c,_dkm:communesAube.find(x=>x.nom===c.commune)?.distance||0})).sort((a,b)=>toMinM(a.heureDebut)-toMinM(b.heureDebut));
       if(!avecDist.length) return;
       let dist=0,last=depotDist;
@@ -5840,6 +5939,7 @@ function genererNoteFraisMensuelPDF(mois, annee, groupeFiltre){
   while(wS<=lastDay){weeks.push(new Date(wS));wS=new Date(wS);wS.setDate(wS.getDate()+7);}
 
   let monthTotalDist=0;
+  const _sansGroupe=[]; // déplacements dont le groupe est introuvable (filtre groupe actif)
   const toMin=t=>{const s=String(t||'00:00');const p=s.includes(':')?s.split(':'):['0','0'];return (parseInt(p[0])||0)*60+(parseInt(p[1])||0);};
 
   weeks.forEach((wMon,wi)=>{
@@ -5863,7 +5963,12 @@ function genererNoteFraisMensuelPDF(mois, annee, groupeFiltre){
       const dateKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
       // const cj=clientsData.filter(c=>_getJoursClientDate(c,dateKey).includes(jour)&&c.commune&&!((deplacementsData||[]).find(d=>d.clientId===c.id&&d.dateNouvelle===dateKey&&(d.statut==='absent'||d.statut==='absent_essentia')))); // dead code — dateNouvelle inversé + statut absent de deplacementsData
       const cj=clientsData.filter(c=>_getJoursClientDate(c,dateKey).includes(jour)&&c.commune&&!_clientExclusDuCalculFrais(c,dateKey)&&_matchGroupeFrais(c,jour,groupeFiltre));
-      const airbnbs=(deplacementsData||[]).filter(dj=>dj.dateNouvelle===dateKey&&!cj.find(x=>x.id===dj.clientId)).map(dj=>{const c=clientsData.find(x=>x.id===dj.clientId);return c?{...c,heureDebut:dj.heureNouvelle||c.heureDebut,_airbnb:dj.airbnb||false,_depGroupe:dj.groupe||''}:null;}).filter(c=>c&&!_clientExclusDuCalculFrais(c,dateKey)&&_matchGroupeFrais(c,jour,groupeFiltre));
+      const airbnbs=(deplacementsData||[]).filter(dj=>dj.dateNouvelle===dateKey&&!cj.find(x=>x.id===dj.clientId)).map(dj=>{const c=clientsData.find(x=>x.id===dj.clientId);return c?{...c,heureDebut:dj.heureNouvelle||c.heureDebut,_airbnb:dj.airbnb||false,_depGroupe:dj.groupe||'',_depDateOrigine:dj.dateOrigine||''}:null;}).filter(c=>{
+        if(!c||_deplacementExcluDuCalculFrais(c,dateKey)) return false;
+        // Groupe introuvable : non compté, mais listé en fin de PDF pour correction
+        if(groupeFiltre&&!_groupeDeplacementFrais(c)){_sansGroupe.push({dateKey,nom:c.nom,commune:c.commune||''});return false;}
+        return _matchGroupeFrais(c,jour,groupeFiltre);
+      });
       const avecDist=[...cj,...airbnbs].map(c=>({...c,dkm:communesAube.find(x=>x.nom===c.commune)?.distance||0})).sort((a,b)=>toMin(a.heureDebut)-toMin(b.heureDebut));
       if(!avecDist.length) return;
       let dist=0,last=depotDist;
@@ -5948,6 +6053,28 @@ function genererNoteFraisMensuelPDF(mois, annee, groupeFiltre){
   doc.setTextColor(160,180,220); doc.setFontSize(7); doc.setFont('helvetica','normal');
   doc.text('Indemnité kilométrique SAS : 0,697 €/km — Barème 2026',M+4,y+12);
   y+=19;
+
+  // ── Interventions sans groupe attribué (filtre groupe actif) ──
+  if(groupeFiltre&&_sansGroupe.length){
+    _sansGroupe.sort((a,b)=>a.dateKey.localeCompare(b.dateKey));
+    if(y+14>270){doc.addPage();y=15;}
+    doc.setFillColor(254,242,242); doc.setDrawColor(230,69,69); doc.rect(M,y,W-2*M,7,'FD');
+    doc.setTextColor(185,28,28); doc.setFontSize(9); doc.setFont('helvetica','bold');
+    doc.text('Interventions sans groupe attribué (non comptées)',M+3,y+5);
+    y+=9;
+    doc.setFontSize(7.5); doc.setFont('helvetica','italic'); doc.setTextColor(120,60,60);
+    doc.text('Déplacements sans tournée enregistrée ni jour d\'origine : à corriger dans le planning pour les inclure.',M+3,y+3);
+    y+=6;
+    _sansGroupe.forEach(it=>{
+      if(y+5.5>280){doc.addPage();y=15;}
+      const dS=new Date(it.dateKey+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'2-digit'});
+      doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(60,40,40);
+      doc.text(dS,M+3,y+3.5);
+      doc.setFont('helvetica','bold'); doc.text(it.nom||'—',M+30,y+3.5);
+      doc.setFont('helvetica','normal'); doc.setTextColor(110,90,90); doc.text(it.commune||'—',M+110,y+3.5);
+      y+=5.5;
+    });
+  }
 
   // ── Pied de page ──
   const pgN=doc.getNumberOfPages();
@@ -7247,6 +7374,80 @@ function _parseH(v){
   return v;
 }
 function fmtH(h){const hrs=Math.floor(h);const mins=Math.round((h-hrs)*60);return mins>0?`${hrs}h${String(mins).padStart(2,'0')}`:`${hrs}h`;}
+
+// ── Intervention réellement planifiée ce jour-là (même règle que le planning) ──
+// Vrai si : jour récurrent valable à cette date ET pas déplacé depuis cette date,
+//       OU  déplacement vers cette date.
+function _dateInterventionReelle(c,dateKey){
+  if(!c||!dateKey) return false;
+  const deps=deplacementsData||[];
+  if(deps.some(d=>d.clientId===c.id&&d.dateNouvelle===dateKey)) return true;
+  const jourNom=['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'][new Date(dateKey+'T12:00:00').getDay()];
+  const joursValides=(typeof _getJoursClientDate==='function')?_getJoursClientDate(c,dateKey):(console.error('[Facture] _getJoursClientDate introuvable — repli sur c.jours'),c.jours||[]);
+  if(joursValides.indexOf(jourNom)===-1) return false;
+  return !deps.some(d=>d.clientId===c.id&&d.dateOrigine===dateKey);
+}
+
+// Dates ajoutées à la main depuis l'avertissement du formulaire facture — clé `${clientId}|${dateKey}`
+let _facInclusionsManuelles={};
+
+// Entrées confirme/partiel du mois pour la facture (source unique : lignes auto ET détail PDF)
+// retenues : facturées · aValider : orphelines (hors planning) ou heures non renseignées, exclues sauf si cochées
+function _analyseInterventionsFacture(c,periodeRef,silencieux){
+  const prev=(planningPrevData&&c&&c.id)?(planningPrevData[c.id]||{}):{};
+  const retenues=[],aValider=[];
+  Object.keys(prev).sort().forEach(dk=>{
+    const e=prev[dk];
+    if(!e||(e.statut!=='confirme'&&e.statut!=='partiel')) return;
+    const d=new Date(dk+'T12:00:00');
+    if(d.getFullYear()!==periodeRef.getFullYear()||d.getMonth()!==periodeRef.getMonth()) return;
+    const hSaisie=_parseH(e.heuresReelles);
+    const it={dateKey:dk,entry:e,h:hSaisie>0?hSaisie:(_parseH(c.heures)||0),
+      orpheline:!_dateInterventionReelle(c,dk),sansHeures:c.type==='Heure'&&!(hSaisie>0)};
+    if(!it.orpheline&&!it.sansHeures){retenues.push(it);return;}
+    aValider.push(it);
+    if(_facInclusionsManuelles[c.id+'|'+dk]) retenues.push(it);
+    else if(it.orpheline&&!silencieux) console.warn('[Facture] Entrée orpheline ignorée',c.id,dk,e.statut);
+  });
+  return {retenues,aValider};
+}
+function _basculerInclusionFacture(clientId,dateKey,coche){
+  const k=clientId+'|'+dateKey;
+  if(coche) _facInclusionsManuelles[k]=true; else delete _facInclusionsManuelles[k];
+  remplirLignesAuto();
+}
+window._basculerInclusionFacture=_basculerInclusionFacture;
+function _afficherAlerteInterventionsFacture(c,aValider){
+  let el=document.getElementById('facOrphelinesAlerte');
+  const cont=document.getElementById('lignesFacture');
+  if(!el&&cont&&cont.parentNode){
+    el=document.createElement('div');el.id='facOrphelinesAlerte';
+    cont.parentNode.insertBefore(el,cont);
+  }
+  if(!el) return;
+  if(!c||!aValider.length){el.style.display='none';el.innerHTML='';return;}
+  const jFr=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  const lignes=aValider.map(it=>{
+    const d=new Date(it.dateKey+'T12:00:00');
+    const dateStr=`${jFr[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+    const motifs=[it.orpheline?'hors planning':'',it.sansHeures?'heures non renseignées':''].filter(Boolean).join(' · ');
+    const hStr=_parseH(it.entry.heuresReelles)>0?fmtH(_parseH(it.entry.heuresReelles)):`— (durée fiche ${fmtH(_parseH(c.heures)||0)} si incluse)`;
+    const coche=!!_facInclusionsManuelles[c.id+'|'+it.dateKey];
+    return `<label style="display:flex;align-items:center;gap:8px;margin-top:6px;padding-top:6px;border-top:1px solid #fecaca;cursor:pointer;">
+      <input type="checkbox" ${coche?'checked':''} onchange="_basculerInclusionFacture('${c.id}','${it.dateKey}',this.checked)">
+      <span style="font-weight:700;min-width:70px;">${dateStr}</span>
+      <span>${it.entry.statut==='partiel'?'Partiel':'Confirmé'} · ${hStr}</span>
+      <span style="color:#b91c1c;font-style:italic;">${motifs}</span>
+      <span style="margin-left:auto;color:#7f1d1d;">inclure</span>
+    </label>`;
+  }).join('');
+  el.style.display='block';
+  el.innerHTML=`<div style="background:#fef2f2;border:1px solid #fecaca;border-left:4px solid var(--red);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:11px;color:#7f1d1d;">
+    <div style="font-weight:700;font-size:12px;">⚠️ ${aValider.length} entrée${aValider.length>1?'s':''} à vérifier — non facturée${aValider.length>1?'s':''} sauf si cochée${aValider.length>1?'s':''}</div>
+    <div style="color:#991b1b;margin-top:2px;">Statut confirmé/partiel dans les données, mais aucune intervention planifiée ce jour-là ou heures réelles non saisies.</div>
+    ${lignes}
+  </div>`;
+}
 function _facDateDefaut(){
   // Au 1er–5e du mois : proposer le mois précédent (on facture le mois écoulé)
   const now=new Date();
@@ -7422,6 +7623,7 @@ function remplirLignesAuto(){
   const depsMois=(deplacementsData||[]).filter(d=>d.clientId===id&&(d.dateNouvelle||'').startsWith(moisKey));
 
   if(isAirbnb||c.type==='Acte'){
+    _afficherAlerteInterventionsFacture(null,[]);
     if(depsMois.length>0){
       const modeH=depsMois.some(d=>d.modeFacturation==='heure');
       if(modeH){
@@ -7441,23 +7643,24 @@ function remplirLignesAuto(){
   }
 
   // ── Clients récurrents (Heure / Forfait) : planningPrevData ──────────
-  const clientPrev=(planningPrevData&&id)?(planningPrevData[id]||{}):{};
-  const interventions=Object.entries(clientPrev)
-    .filter(([,e])=>e&&(e.statut==='confirme'||e.statut==='partiel'))
-    .filter(([dk])=>{const d=new Date(dk+'T12:00:00');return d.getFullYear()===periodeRef.getFullYear()&&d.getMonth()===periodeRef.getMonth();});
+  // Seules les dates réellement planifiées (_dateInterventionReelle) + celles cochées à la main
+  const _analyse=_analyseInterventionsFacture(c,periodeRef);
+  _afficherAlerteInterventionsFacture(c,_analyse.aValider);
+  const interventions=_analyse.retenues;
 
   if(interventions.length>0){
-    const hReelles=interventions.reduce((s,[,e])=>{const h=_parseH(e.heuresReelles);return s+(h>0?h:(_parseH(c.heures)||0));},0);
-    const hTotal=Math.round(hReelles*10)/10;
+    const hReelles=interventions.reduce((s,it)=>s+it.h,0);
+    const hTotal=Math.round(hReelles*100)/100;
     const label=`Prestations nettoyage – ${periode} (${interventions.length} intervention${interventions.length>1?'s':''} confirmée${interventions.length>1?'s':''})`;
     if(c.type==='Heure'&&hTotal>0) lignesFactureData.push({desc:label,qte:hTotal,unite:'heures',prixUnit:c.tarif||0});
     else lignesFactureData.push({desc:label,qte:interventions.length,unite:'acte',prixUnit:c.tarif||0});
     toast(`${interventions.length} intervention(s) confirmée(s) — ${hTotal}h réelles utilisées`,'success');
+  } else if(c.type==='Heure'){
+    // Plus de repli ×4,33 : rien n'est facturé sans intervention confirmée dans le planning
+    toast('Aucune intervention confirmée dans le planning pour ce mois — vérifiez l\'encadré rouge ou ajoutez les lignes manuellement','warning');
   } else {
-    const hMois=Math.round((_parseH(c.heures)||0)*(c.frequence||1)*4.33*10)/10;
-    if(c.type==='Heure'&&hMois>0) lignesFactureData.push({desc:`Prestations nettoyage – ${periode}`,qte:hMois,unite:'heures',prixUnit:c.tarif||0});
-    else lignesFactureData.push({desc:`Prestation forfaitaire – ${periode}`,qte:1,unite:'forfait',prixUnit:c.totalMoisHT||0});
-    toast('Aucune intervention confirmée pour ce mois — formule moyenne utilisée (×4,33)','info');
+    lignesFactureData.push({desc:`Prestation forfaitaire – ${periode}`,qte:1,unite:'forfait',prixUnit:c.totalMoisHT||0});
+    toast('Aucune intervention confirmée pour ce mois — ligne forfaitaire mensuelle utilisée','info');
   }
   renderLignesFacture();calculerTotauxFacture();
 }
@@ -7472,7 +7675,7 @@ function renderLignesFacture(){
     <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right;">Prix unit.</span>
     <span></span>
   </div>`;
-  const rows=lignesFactureData.map((l,i)=>`<div style="display:grid;grid-template-columns:3fr 70px 80px 100px 36px;gap:7px;align-items:center;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;"><input type="text" value="${l.desc}" placeholder="Description" style="font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);" oninput="lignesFactureData[${i}].desc=this.value;calculerTotauxFacture()"><input type="number" value="${l.qte}" step="0.1" style="font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);text-align:right;" oninput="lignesFactureData[${i}].qte=parseFloat(this.value)||0;calculerTotauxFacture()"><input type="text" value="${l.unite}" style="font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);" oninput="lignesFactureData[${i}].unite=this.value"><input type="number" value="${l.prixUnit}" step="0.01" style="font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);text-align:right;" oninput="lignesFactureData[${i}].prixUnit=parseFloat(this.value)||0;calculerTotauxFacture()"><button onclick="supprimerLigneFacture(${i})" style="width:30px;height:30px;border:none;background:var(--red-l);color:var(--red);border-radius:6px;cursor:pointer;">×</button></div><div style="text-align:right;font-size:10px;color:var(--text2);padding-right:46px;">Total : <strong>${((l.qte||0)*(l.prixUnit||0)).toFixed(2)} €</strong></div>`).join('');
+  const rows=lignesFactureData.map((l,i)=>`<div style="display:grid;grid-template-columns:3fr 70px 80px 100px 36px;gap:7px;align-items:center;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;"><input type="text" value="${l.desc}" placeholder="Description" style="font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);" oninput="lignesFactureData[${i}].desc=this.value;calculerTotauxFacture()"><input type="number" value="${l.qte}" step="0.01" min="0" style="font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);text-align:right;" oninput="lignesFactureData[${i}].qte=parseFloat(this.value)||0;calculerTotauxFacture()"><input type="text" value="${l.unite}" style="font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);" oninput="lignesFactureData[${i}].unite=this.value"><input type="number" value="${l.prixUnit}" step="0.01" style="font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);text-align:right;" oninput="lignesFactureData[${i}].prixUnit=parseFloat(this.value)||0;calculerTotauxFacture()"><button onclick="supprimerLigneFacture(${i})" style="width:30px;height:30px;border:none;background:var(--red-l);color:var(--red);border-radius:6px;cursor:pointer;">×</button></div><div style="text-align:right;font-size:10px;color:var(--text2);padding-right:46px;">Total : <strong>${((l.qte||0)*(l.prixUnit||0)).toFixed(2)} €</strong></div>`).join('');
   cont.innerHTML = lignesFactureData.length ? header + rows : '<p style="font-size:11px;color:var(--text3);text-align:center;padding:12px;">Aucune ligne — cliquez sur "+ Ajouter une ligne"</p>';
 }
 function calculerTotauxFacture(){
@@ -7935,15 +8138,10 @@ function genererFacturePDF(opts){
 
   // ── Détail des interventions réalisées ───────────────────
   const _periodeStart=dateFacRaw?new Date(dateFacRaw):new Date();
-  const _clientPrev=(planningPrevData&&clientId)?(planningPrevData[clientId]||{}):{};
-  const _today=new Date().toISOString().split('T')[0];
-  const _interventions=(!_isAirbnbPdf&&c.type!=='Acte')?Object.entries(_clientPrev)
-    .filter(([,entry])=>entry&&(entry.statut==='confirme'||entry.statut==='partiel'||entry.statut==='prevu'||entry.statut==='absent'||entry.statut==='absent_essentia'))
-    .filter(([dateKey])=>{
-      const d=new Date(dateKey);
-      return d.getFullYear()===_periodeStart.getFullYear()&&d.getMonth()===_periodeStart.getMonth()&&dateKey<=_today;
-    })
-    .sort(([a],[b])=>a.localeCompare(b)):[];
+  // Même liste que remplirLignesAuto : dates réellement planifiées, confirme/partiel, + inclusions cochées
+  const _periodeRefPdf=dateFacRaw?new Date(dateFacRaw+'T12:00:00'):new Date();
+  const _interventions=(!_isAirbnbPdf&&c.type!=='Acte')
+    ?_analyseInterventionsFacture(c,_periodeRefPdf,true).retenues.map(it=>[it.dateKey,it.entry,it.h]):[];
 
   if(_interventions.length>0){
     // ── En-tête section : planning récurrent + heure à droite ──
@@ -7957,10 +8155,9 @@ function genererFacturePDF(opts){
     y+=5.5;
     const _joursFr=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
     const _dd=d=>`${_joursFr[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
-    _interventions.forEach(([dateKey,entry],idx)=>{
+    _interventions.forEach(([dateKey,entry,_hReal],idx)=>{
       if(y>262){doc.addPage();y=M;}
       const _d=new Date(dateKey+'T12:00:00');
-      const _hReal=(entry.statut==='absent'||entry.statut==='absent_essentia')?0:(_parseH(entry.heuresReelles)||_parseH(c.heures)||0);
       const _st=entry.statut||'prevu';
       const _absent=_st==='absent';
       const _absentEssentia=_st==='absent_essentia';
@@ -7996,9 +8193,9 @@ function genererFacturePDF(opts){
       doc.text(`${fmt2(_hReal*(c.tarif||0))} €`,W-M-2,y+4,{align:'right'});
       y+=5.5;
     });
-    // ── Ligne total (confirme + partiel uniquement, hors prévu et absent) ──
-    const _billed=_interventions.filter(([,e])=>e.statut==='confirme'||e.statut==='partiel');
-    const _totalH=_billed.reduce((s,[,e])=>s+(_parseH(e.heuresReelles)||_parseH(c.heures)||0),0);
+    // ── Ligne total (même liste et mêmes heures que le détail) ──
+    const _billed=_interventions;
+    const _totalH=Math.round(_billed.reduce((s,[,,h])=>s+h,0)*100)/100; // même arrondi que remplirLignesAuto
     const _totalMt=_totalH*(c.tarif||0);
     doc.setFillColor(220,228,248);doc.rect(M,y,W-2*M,5.5,'F');
     doc.setTextColor(40,60,120);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
@@ -8061,7 +8258,7 @@ function genererFacturePDF(opts){
     doc.rect(M,y,W-2*M,6,'F');
     doc.setTextColor(20,37,64);doc.setFontSize(8);doc.setFont('helvetica','normal');
     let cx2=M+2;
-    [[l.desc||'—',false],[String(l.qte||0),true],[l.unite||'',true],[`${fmt2(l.prixUnit||0)} €`,true],[`${fmt2(tot)} €`,true]]
+    [[l.desc||'—',false],[(Math.round((l.qte||0)*100)/100).toLocaleString('fr-FR',{maximumFractionDigits:2,useGrouping:false}),true],[l.unite||'',true],[`${fmt2(l.prixUnit||0)} €`,true],[`${fmt2(tot)} €`,true]]
       .forEach(([v,r],i)=>{doc.text(String(v),r?cx2+colW[i]-3:cx2,y+4.5,{align:r?'right':'left',maxWidth:colW[i]-2});cx2+=colW[i];});
     y+=6;
   });
@@ -8256,6 +8453,305 @@ function renderHistoriqueFactures(){
   // Supprimer le filtre "avoir" du select s'il existe (obsolète)
   cont.innerHTML=resumeHtml+facturesHtml;
 }
+
+// ══════════════════════════════════════════════════════════
+// DÉCLARATION EMA (NOVA) — trimestrielle, une ligne par mois
+// Source : factures émises (envoyee / payee / archivee) + avoirs.
+// SAP = client particulier / exonere_0, hors opérations b2b / export.
+// ══════════════════════════════════════════════════════════
+let _emaSaisies={};   // {'2026-04':{nb_salaries,heures_salaries,masse_salariale,nb_intervenants}}
+let _emaModifies={};  // mois saisis dans cette session (non écrasés par le rechargement Supabase)
+let _emaSaveTimers={};
+let _emaDernier=null; // dernier calcul affiché {moisKeys,M,lignes}
+const _EMA_STATUTS=['envoyee','payee','archivee'];
+
+function _emaFmtMt(v){return (Math.round((parseFloat(v)||0)*100)/100).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:false});}
+function _emaFmtH(v){return (Math.round((parseFloat(v)||0)*100)/100).toLocaleString('fr-FR',{maximumFractionDigits:2,useGrouping:false});}
+function _emaEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function _emaLabelMois(k){const [y,m]=k.split('-');return `${_moisNoms[parseInt(m)-1]} ${y}`;}
+// "Septembre 2026" → "2026-09" ('' si illisible)
+function _emaMoisPeriode(periode){
+  const p=String(periode||'').trim().split(/\s+/);
+  if(p.length<2) return '';
+  const m=_moisNoms.findIndex(n=>n.toLowerCase()===p[0].toLowerCase());
+  const y=p[p.length-1];
+  return (m<0||!/^\d{4}$/.test(y))?'':`${y}-${String(m+1).padStart(2,'0')}`;
+}
+function _emaEstSAP(f,c){
+  if(f.typeOp==='b2b'||f.typeOp==='export') return false;
+  return !!c&&(c.typeClient==='particulier'||c.typeClient==='exonere_0');
+}
+function _emaUniteHeure(u){const s=String(u||'').trim().toLowerCase();return s==='heures'||s==='h';}
+// Ligne non horaire d'une facture SAP : 'linge' / 'deplacement' (CA SAP, sans heures) ou 'hors' (CA hors SAP)
+function _emaCategorieLigne(desc){
+  const d=String(desc||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  if(['linge','repassage','collecte','livraison'].some(m=>d.includes(m))) return 'linge';
+  if(['deplacement','frais km','kilom','trajet'].some(m=>d.includes(m))) return 'deplacement';
+  return 'hors';
+}
+function _emaClientFacture(f){
+  return (clientsData||[]).find(x=>x.id===f.clientId)||(f.client?(clientsData||[]).find(x=>x.nom===f.client):null)||null;
+}
+
+// Classement d'une facture : mois retenu, heures SAP, HT SAP / hors SAP, contrôles
+function _emaAnalyserFacture(f){
+  const mp=_emaMoisPeriode(f.periode), md=_facMoisKey(f);
+  const c=_emaClientFacture(f);
+  const sap=_emaEstSAP(f,c);
+  const alertes=[];
+  if(!mp) alertes.push('mois pris sur la date de facture (période absente ou illisible)');
+  else if(md&&mp!==md) alertes.push(`période « ${f.periode} » ≠ mois de la date de facture (${_emaLabelMois(md)}) — période retenue`);
+  if(!c) alertes.push('client introuvable dans les fiches');
+  let h=0,htSAP=0,htHors=0;
+  const L=Array.isArray(f.lignes)?f.lignes:[];
+  if(!L.length){
+    const t=parseFloat(f.totalHT)||0;
+    if(sap) htSAP=t; else htHors=t;
+    alertes.push('aucune ligne enregistrée — total HT classé en bloc, 0 h');
+  }
+  L.forEach(l=>{
+    const q=parseFloat(l.qte)||0, ht=q*(parseFloat(l.prixUnit)||0);
+    if(sap&&_emaUniteHeure(l.unite)){h+=q;htSAP+=ht;}
+    else if(!sap) htHors+=ht;
+    else{
+      // Client SAP, ligne non horaire : linge / déplacement → SAP sans heures, le reste → hors SAP
+      const cat=_emaCategorieLigne(l.desc);
+      if(cat==='hors') htHors+=ht; else htSAP+=ht;
+      const lib={linge:'SAP linge',deplacement:'SAP déplacement',hors:'hors SAP'}[cat];
+      alertes.push(`à vérifier : ligne « ${l.desc||'—'} » (${l.unite||'sans unité'}, ${_emaFmtMt(ht)} €) classée ${lib}`);
+    }
+  });
+  if(sap&&L.length&&!L.some(l=>_emaUniteHeure(l.unite))) alertes.push('client SAP facturé à l\'acte / au forfait — 0 h comptée');
+  if(L.length&&Math.abs(htSAP+htHors-(parseFloat(f.totalHT)||0))>0.01)
+    alertes.push(`somme des lignes (${_emaFmtMt(htSAP+htHors)} €) ≠ total HT enregistré (${_emaFmtMt(f.totalHT)} €) — lignes retenues`);
+  const motifHors=sap?'':((f.typeOp==='b2b'||f.typeOp==='export')?`opération ${f.typeOp}`:(c?c.typeClient:'client inconnu'));
+  return {mois:mp||md,c,sap,h,htSAP,htHors,alertes,motifHors};
+}
+
+function _emaCalculer(moisKeys){
+  const M={};
+  moisKeys.forEach(k=>M[k]={heures:0,caSAP:0,caHors:0,clients:new Set(),interv:new Set()});
+  const lignes=[];
+  // Factures
+  (facturesData||[]).filter(f=>f.type!=='avoir').forEach(f=>{
+    const a=_emaAnalyserFacture(f);
+    if(!M[a.mois]) return;
+    if(_EMA_STATUTS.indexOf(f.statut)===-1){lignes.push({f,a,ignoree:true});return;}
+    const m=M[a.mois];
+    m.heures+=a.h; m.caSAP+=a.htSAP; m.caHors+=a.htHors;
+    if(a.sap&&a.htSAP>0){
+      m.clients.add(f.clientId||f.client);
+      ((a.c&&a.c.interventions)||[]).forEach(i=>{const n=String(i.intervenant||'').trim();if(n)m.interv.add(n.toLowerCase());});
+    }
+    lignes.push({f,a});
+  });
+  // Avoirs : déduits du mois / de la catégorie de la facture d'origine
+  (facturesData||[]).filter(f=>f.type==='avoir').forEach(av=>{
+    const orig=(facturesData||[]).find(x=>x.type!=='avoir'&&x.id===av.factureRef)
+      ||(av.factureNumero?(facturesData||[]).find(x=>x.type!=='avoir'&&x.numero===av.factureNumero):null);
+    if(!orig){
+      // Facture d'origine introuvable : facture et avoir s'annulent → avoir non déduit, seulement listé
+      const moisAv=_facMoisKey(av);
+      if(M[moisAv]) lignes.push({f:av,avoir:true,ignoree:true,a:{mois:moisAv,h:0,htSAP:0,htHors:0,sap:false,alertes:['avoir non déduit'],motifHors:'',
+        motifIgnore:`ignoré — facture d'origine introuvable (n° ${av.factureNumero||av.factureRef||'—'}) : la facture et son avoir s'annulent, aucun des deux n'est compté`}});
+      return;
+    }
+    const alertes=['avoir — heures non modifiées'];
+    let mois,tva,partSAP;
+    if(_EMA_STATUTS.indexOf(orig.statut)===-1){
+      // Facture d'origine non comptée → avoir non déduit, seulement listé
+      const ao=_emaAnalyserFacture(orig);
+      if(M[ao.mois]) lignes.push({f:av,avoir:true,ignoree:true,a:{mois:ao.mois,h:0,htSAP:0,htHors:0,sap:false,alertes:[`facture d'origine ${orig.numero||''} non comptée — avoir non déduit`],motifHors:'',
+        motifIgnore:`ignoré — facture d'origine non comptée (statut : ${orig.statut||'—'})`}});
+      return;
+    }
+    {
+      const ao=_emaAnalyserFacture(orig);
+      mois=ao.mois; tva=parseFloat(orig.tva)||0;
+      const tot=ao.htSAP+ao.htHors;
+      partSAP=tot>0?ao.htSAP/tot:(ao.sap?1:0);
+      alertes.push(`déduit du mois de la facture d'origine ${orig.numero||''}`);
+      if(partSAP>0&&partSAP<1) alertes.push(`réparti comme la facture d'origine : ${Math.round(partSAP*100)} % SAP / ${100-Math.round(partSAP*100)} % hors SAP`);
+    }
+    if(!M[mois]) return;
+    const ht=(parseFloat(av.totalTTC)||0)/(1+tva/100);
+    M[mois].caSAP-=ht*partSAP; M[mois].caHors-=ht*(1-partSAP);
+    lignes.push({f:av,avoir:true,a:{mois,h:0,htSAP:-ht*partSAP,htHors:-ht*(1-partSAP),sap:partSAP>0,alertes,motifHors:''}});
+  });
+  lignes.sort((x,y)=>(x.a.mois+(x.f.numero||'')).localeCompare(y.a.mois+(y.f.numero||'')));
+  return {moisKeys,M,lignes};
+}
+
+function _emaMoisDuTrimestre(){
+  const t=parseInt(document.getElementById('emaTrimestre')?.value)||1;
+  const a=parseInt(document.getElementById('emaAnnee')?.value)||new Date().getFullYear();
+  return [0,1,2].map(i=>`${a}-${String((t-1)*3+i+1).padStart(2,'0')}`);
+}
+function _emaSaisie(k){return _emaSaisies[k]||{nb_salaries:0,heures_salaries:0,masse_salariale:0,nb_intervenants:null};}
+function _emaNbIntervenants(k){
+  const s=_emaSaisie(k), m=_emaDernier?.M[k];
+  let est=m?.interv.size||0, plancher=false;
+  // Aucun intervenant renseigné dans les fiches mais du CA SAP : au moins la gérante
+  if(est===0&&m&&m.caSAP>0){est=1;plancher=true;}
+  const saisi=s.nb_intervenants!==null&&s.nb_intervenants!==undefined&&s.nb_intervenants!=='';
+  return {val:saisi?s.nb_intervenants:est,saisi,est,plancher};
+}
+
+function chargerEMA(){
+  const selT=document.getElementById('emaTrimestre'), selA=document.getElementById('emaAnnee');
+  if(selT&&selA&&!selA.options.length){
+    // Par défaut : le trimestre écoulé (celui qu'on déclare)
+    const now=new Date(); let t=Math.floor(now.getMonth()/3)-1, a=now.getFullYear();
+    if(t<0){t=3;a-=1;}
+    for(let y=now.getFullYear();y>=now.getFullYear()-3;y--) selA.innerHTML+=`<option value="${y}">${y}</option>`;
+    selT.innerHTML=[1,2,3,4].map(n=>`<option value="${n}">T${n} — ${_moisNoms[(n-1)*3]} à ${_moisNoms[(n-1)*3+2]}</option>`).join('');
+    selT.value=String(t+1); selA.value=String(a);
+  }
+  renderEMA();
+}
+
+function renderEMA(sansRecharger){
+  const moisKeys=_emaMoisDuTrimestre();
+  _emaDernier=_emaCalculer(moisKeys);
+  const {M,lignes}=_emaDernier;
+  const cp=(v,input)=>`<button class="btn btn-ghost btn-sm" style="padding:1px 5px;font-size:10px;margin-left:4px;" title="Copier" onclick="_emaCopier(this)" ${input?'data-input="1"':`data-v="${_emaEsc(v)}"`}><i class="fas fa-copy"></i></button>`;
+  const td=v=>`<td style="text-align:right;white-space:nowrap;font-family:'DM Mono',monospace;">${v}${cp(v)}</td>`;
+  const inp=(k,champ,val,step,ph)=>`<td style="text-align:right;white-space:nowrap;"><input type="number" min="0" step="${step}" value="${val===null||val===undefined?'':val}" ${ph!==undefined?`placeholder="${ph}"`:''} oninput="_emaSaisir('${k}','${champ}',this.value)" style="width:80px;font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;text-align:right;font-family:'DM Mono',monospace;">${cp('',true)}</td>`;
+  const tete=['Mois','Nb Clients','Nb Heures Facturées','Chiffre d\'affaires SAP (HT)','Chiffre d\'affaires hors SAP (HT)','Nb Intervenants','Nb Salariés','Dont Heures Salariés','Masse Salariale'];
+  let html=`<table><thead><tr>${tete.map(t=>`<th style="white-space:nowrap;">${t}</th>`).join('')}</tr></thead><tbody>`;
+  const tot={clients:new Set(),heures:0,caSAP:0,caHors:0};
+  moisKeys.forEach(k=>{
+    const m=M[k], s=_emaSaisie(k), ni=_emaNbIntervenants(k);
+    m.clients.forEach(x=>tot.clients.add(x)); tot.heures+=m.heures; tot.caSAP+=m.caSAP; tot.caHors+=m.caHors;
+    html+=`<tr><td style="font-weight:700;white-space:nowrap;">${_emaLabelMois(k)}</td>`
+      +td(m.clients.size)+td(_emaFmtH(m.heures))+td(_emaFmtMt(m.caSAP))+td(_emaFmtMt(m.caHors))
+      +inp(k,'nb_intervenants',s.nb_intervenants,1,ni.est).replace('</td>',` <span id="emaIntInd_${k}" title="${!ni.saisi&&ni.plancher?'au moins 1 intervenant (la gérante)':''}" style="font-size:9px;font-weight:700;color:${ni.saisi?'var(--green)':'var(--amber)'};">${ni.saisi?'saisi':'estimé'}</span></td>`)
+        .replace('<input ',`<input title="${ni.plancher?'au moins 1 intervenant (la gérante)':''}" `)
+      +inp(k,'nb_salaries',s.nb_salaries,1)+inp(k,'heures_salaries',s.heures_salaries,0.01)+inp(k,'masse_salariale',s.masse_salariale,0.01)
+      +`</tr>`;
+  });
+  html+=`<tr style="background:var(--bg3);font-weight:700;"><td>Total trimestre <span style="font-weight:400;font-size:9px;color:var(--text3);">(indicatif)</span></td>`
+    +`<td style="text-align:right;" title="Clients distincts sur le trimestre">${tot.clients.size}</td>`
+    +`<td style="text-align:right;">${_emaFmtH(tot.heures)}</td><td style="text-align:right;">${_emaFmtMt(tot.caSAP)}</td><td style="text-align:right;">${_emaFmtMt(tot.caHors)}</td>`
+    +`<td style="text-align:right;color:var(--text3);" title="Non additif">—</td><td style="text-align:right;color:var(--text3);" title="Non additif">—</td>`
+    +`<td style="text-align:right;" id="emaTot_heures_salaries"></td><td style="text-align:right;" id="emaTot_masse_salariale"></td></tr>`;
+  html+=`</tbody></table>`;
+  document.getElementById('emaTableau').innerHTML=html;
+  _emaMajTotaux();
+
+  const note=document.getElementById('emaNote');
+  if(note) note.innerHTML='Nb Intervenants : estimation = intervenants distincts des fiches des clients SAP facturés dans le mois ; une saisie la remplace. '
+    +'Avoirs déduits du mois et de la catégorie de leur facture d\'origine (HT recalculé depuis le TTC). '
+    +'<br>Les factures générées avant le correctif d\'arrondi ont pu enregistrer des heures arrondies au dixième (ex. 5,3 h au lieu de 5,25 h) : elles sont reprises telles quelles.';
+
+  // Liste de contrôle
+  const nbPrises=lignes.filter(l=>!l.ignoree).length;
+  setEl('emaNbFactures',nbPrises);
+  const rows=lignes.map(({f,a,ignoree,avoir})=>{
+    const ht=a.htSAP+a.htHors;
+    const cat=ignoree?`<span style="color:var(--text3);">${a.motifIgnore?_emaEsc(a.motifIgnore):`ignorée (statut ${_emaEsc(f.statut||'—')})`}</span>`
+      :(a.htSAP!==0&&a.htHors!==0)?'<span style="color:var(--amber);font-weight:700;">Mixte</span>'
+      :a.sap?'<span style="color:var(--green);font-weight:700;">SAP</span>'
+      :`<span style="color:#1d4ed8;font-weight:700;">Hors SAP</span>${a.motifHors?` <span style="font-size:9px;color:var(--text3);">(${_emaEsc(a.motifHors)})</span>`:''}`;
+    const detail=(a.htSAP!==0&&a.htHors!==0)?`<div style="font-size:9px;color:var(--text3);">SAP ${_emaFmtMt(a.htSAP)} · hors SAP ${_emaFmtMt(a.htHors)}</div>`:'';
+    const al=a.alertes.length?`<ul style="margin:0;padding-left:14px;font-size:10px;color:#b45309;">${a.alertes.map(x=>`<li>${_emaEsc(x)}</li>`).join('')}</ul>`:'<span style="color:var(--text3);font-size:10px;">—</span>';
+    return `<tr style="${ignoree?'opacity:.55;':''}${avoir?'background:rgba(99,102,241,.05);':''}">
+      <td style="white-space:nowrap;font-weight:600;">${avoir?'↩ ':''}${_emaEsc(f.numero||'—')}</td>
+      <td>${_emaEsc(f.client||'—')}</td>
+      <td style="white-space:nowrap;">${_emaEsc(f.dateDisplay||f.dateRaw||f.date||'—')}</td>
+      <td style="white-space:nowrap;">${_emaLabelMois(a.mois)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;">${_emaFmtH(a.h)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;white-space:nowrap;">${_emaFmtMt(ht)} €${detail}</td>
+      <td>${cat}</td><td>${al}</td></tr>`;
+  }).join('');
+  document.getElementById('emaControle').innerHTML=lignes.length
+    ?`<table><thead><tr><th>N°</th><th>Client</th><th>Date</th><th>Mois retenu</th><th style="text-align:right;">Heures SAP</th><th style="text-align:right;">HT</th><th>SAP / hors SAP</th><th>Contrôles</th></tr></thead><tbody>${rows}</tbody></table>`
+    :'<p style="color:var(--text3);font-size:12px;padding:10px;">Aucune facture ni avoir rattaché à ce trimestre.</p>';
+
+  if(!sansRecharger) _emaChargerSaisies(moisKeys);
+}
+
+function _emaMajTotaux(){
+  if(!_emaDernier) return;
+  let hs=0,ms=0;
+  _emaDernier.moisKeys.forEach(k=>{
+    const s=_emaSaisie(k); hs+=parseFloat(s.heures_salaries)||0; ms+=parseFloat(s.masse_salariale)||0;
+    const ni=_emaNbIntervenants(k), ind=document.getElementById('emaIntInd_'+k);
+    if(ind){ind.textContent=ni.saisi?'saisi':'estimé';ind.style.color=ni.saisi?'var(--green)':'var(--amber)';ind.title=!ni.saisi&&ni.plancher?'au moins 1 intervenant (la gérante)':'';}
+  });
+  setEl('emaTot_heures_salaries',_emaFmtH(hs));
+  setEl('emaTot_masse_salariale',_emaFmtMt(ms));
+}
+
+// Valeurs déjà déclarées (table ema_declarations)
+function _emaChargerSaisies(moisKeys){
+  if(!window._emaSupabase) return;
+  window._emaSupabase.charger(moisKeys).then(rows=>{
+    if(!Array.isArray(rows)) return;
+    let chg=false;
+    rows.forEach(r=>{
+      if(!r||!r.mois||_emaModifies[r.mois]) return;
+      _emaSaisies[r.mois]={nb_salaries:r.nb_salaries||0,heures_salaries:parseFloat(r.heures_salaries)||0,
+        masse_salariale:parseFloat(r.masse_salariale)||0,nb_intervenants:(r.nb_intervenants===null||r.nb_intervenants===undefined)?null:r.nb_intervenants};
+      chg=true;
+    });
+    if(chg&&_emaDernier&&_emaDernier.moisKeys.join()===moisKeys.join()) renderEMA(true);
+  }).catch(e=>console.warn('[EMA] Lecture ema_declarations impossible (table absente ?) :',e.message));
+}
+
+function _emaSaisir(k,champ,val){
+  const s=_emaSaisies[k]||(_emaSaisies[k]=_emaSaisie(k));
+  const v=String(val).replace(',','.');
+  if(champ==='nb_intervenants') s[champ]=v===''?null:Math.max(0,parseInt(v)||0);
+  else if(champ==='nb_salaries') s[champ]=Math.max(0,parseInt(v)||0);
+  else s[champ]=Math.max(0,Math.round((parseFloat(v)||0)*100)/100);
+  _emaModifies[k]=true;
+  _emaMajTotaux();
+  clearTimeout(_emaSaveTimers[k]);
+  _emaSaveTimers[k]=setTimeout(()=>{
+    if(!window._emaSupabase) return;
+    window._emaSupabase.enregistrer(Object.assign({mois:k},s))
+      .then(()=>toast(`EMA ${_emaLabelMois(k)} enregistrée ✓`,'success'))
+      .catch(e=>toast('⚠️ EMA non enregistrée ('+e.message+') — la table ema_declarations existe-t-elle ?','warning'));
+  },900);
+}
+window._emaSaisir=_emaSaisir;
+
+function _emaCopier(btn){
+  let v=btn.dataset.v||'';
+  if(btn.dataset.input){
+    const i=btn.parentNode.querySelector('input');
+    v=i?String(i.value===''?(i.placeholder||'0'):i.value).replace('.',','):'';
+  }
+  const ok=()=>toast('Copié : '+v,'success',1200);
+  const repli=()=>{const t=document.createElement('textarea');t.value=v;document.body.appendChild(t);t.select();try{document.execCommand('copy');ok();}catch(e){toast('Copie impossible','error');}t.remove();};
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(v).then(ok).catch(repli); else repli();
+}
+window._emaCopier=_emaCopier;
+
+function exporterEMACSV(){
+  if(!_emaDernier) renderEMA(true);
+  const {moisKeys,M}=_emaDernier;
+  const q=s=>'"'+String(s).replace(/"/g,'""')+'"';
+  const tete=['Mois','Nb Clients','Nb Heures Facturées','Chiffre d\'affaires SAP (HT)','Chiffre d\'affaires hors SAP (HT)','Nb Intervenants','Nb Salariés','Dont Heures Salariés','Masse Salariale'];
+  const out=[tete.map(q).join(';')];
+  const tot={clients:new Set(),h:0,sap:0,hors:0,hs:0,ms:0};
+  moisKeys.forEach(k=>{
+    const m=M[k], s=_emaSaisie(k), ni=_emaNbIntervenants(k);
+    m.clients.forEach(x=>tot.clients.add(x)); tot.h+=m.heures; tot.sap+=m.caSAP; tot.hors+=m.caHors;
+    tot.hs+=parseFloat(s.heures_salaries)||0; tot.ms+=parseFloat(s.masse_salariale)||0;
+    out.push([_emaLabelMois(k),m.clients.size,_emaFmtH(m.heures),_emaFmtMt(m.caSAP),_emaFmtMt(m.caHors),ni.val,s.nb_salaries||0,_emaFmtH(s.heures_salaries),_emaFmtMt(s.masse_salariale)].map(q).join(';'));
+  });
+  out.push(['Total trimestre (indicatif)',tot.clients.size,_emaFmtH(tot.h),_emaFmtMt(tot.sap),_emaFmtMt(tot.hors),'','',_emaFmtH(tot.hs),_emaFmtMt(tot.ms)].map(q).join(';'));
+  const t=document.getElementById('emaTrimestre')?.value||'', a=document.getElementById('emaAnnee')?.value||'';
+  const blob=new Blob(['﻿'+out.join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const lien=document.createElement('a');
+  lien.href=URL.createObjectURL(blob); lien.download=`EMA_T${t}_${a}.csv`;
+  document.body.appendChild(lien); lien.click(); lien.remove();
+  setTimeout(()=>URL.revokeObjectURL(lien.href),1000);
+  toast('CSV EMA exporté ✓','success');
+}
+window.chargerEMA=chargerEMA; window.renderEMA=renderEMA; window.exporterEMACSV=exporterEMACSV;
 
 // ══════════════════════════════════════════════════════════
 // FACTUR-X — GÉNÉRATION XML EN 16931
@@ -13889,6 +14385,12 @@ function chargerPlanningPrevisionnel(){
         if(_getJoursClientDate(client, sKey).indexOf(jourNom) !== -1){
           // Check if client was displaced FROM this date
           var depFrom = deplacementsData.find(function(dep){ return dep.clientId===client.id && dep.dateOrigine===sKey; });
+          // Déplacement le même jour (changement d'heure seulement) : séance normale à la nouvelle heure,
+          // surtout pas « déplacée depuis » (qui forcerait statut absent sur la date où l'intervention a lieu)
+          if(depFrom && depFrom.dateNouvelle === sKey){
+            sessions.push({date: dt, key: sKey, jourNom: jourNom, deplacement: depFrom, deplaceVers: true});
+            continue;
+          }
           sessions.push({date: dt, key: sKey, jourNom: jourNom, deplacement: depFrom||null, deplace: !!depFrom});
         }
       }
@@ -15914,6 +16416,10 @@ function lingeAjouterLigne(pfx,nbLits){
   // Retry x3 avec backoff sur erreurs réseau
   function supaFetchOnce(method, table, body, filters) {
     if (!SUPA_ENABLED) return Promise.resolve(null);
+    if (window.__ESSENTIA_TEST_RO && method !== 'GET') {
+      console.warn('[TEST] Écriture Supabase bloquée', method, table);
+      return Promise.resolve(null);
+    }
     var url = SUPA_CONFIG.url + '/rest/v1/' + table;
     if (filters) url += '?' + filters;
     var hdrs = {
@@ -16005,6 +16511,7 @@ function lingeAjouterLigne(pfx,nbLits){
   // Retourne l'URL publique ou null en cas d'échec
   function supaStorageUpload(dataUrl, fraisId) {
     if (!SUPA_ENABLED || !dataUrl || dataUrl === '__photo_locale__') return Promise.resolve(null);
+    if (window.__ESSENTIA_TEST_RO) { console.warn('[TEST] Écriture Supabase bloquée', 'upload Storage', fraisId); return Promise.resolve(null); }
     try {
       // Convertir data URL → Blob
       var parts = dataUrl.split(',');
@@ -16042,6 +16549,7 @@ function lingeAjouterLigne(pfx,nbLits){
   // Supprimer une photo du Storage lors de la suppression d'une note
   function supaStorageDelete(fraisId) {
     if (!SUPA_ENABLED) return;
+    if (window.__ESSENTIA_TEST_RO) { console.warn('[TEST] Écriture Supabase bloquée', 'delete Storage', fraisId); return; }
     // On tente les deux extensions
     ['jpg','png'].forEach(function(ext) {
       var path = SUPA_CONFIG.tenant + '/' + fraisId + '.' + ext;
@@ -16107,6 +16615,7 @@ function lingeAjouterLigne(pfx,nbLits){
 
   function supabaseSave(data) {
     if (!SUPA_ENABLED) return;
+    if (window.__ESSENTIA_TEST_RO) { console.warn('[TEST] Écriture Supabase bloquée', 'supabaseSave'); return; }
     var dataLean = _stripPhotos(data);
     // Estimer taille approximative
     var taille = JSON.stringify(dataLean).length;
@@ -16162,6 +16671,22 @@ function lingeAjouterLigne(pfx,nbLits){
       return null;
     });
   }
+
+  // ── DÉCLARATION EMA — table dédiée ema_declarations ─────────
+  window._emaSupabase = {
+    charger: function(moisList) {
+      return supaFetch('GET', 'ema_declarations', null,
+        'tenant_id=eq.' + encodeURIComponent(SUPA_CONFIG.tenant) +
+        '&mois=in.(' + moisList.map(function(m){ return '"' + m + '"'; }).join(',') + ')' +
+        '&select=mois,nb_salaries,heures_salaries,masse_salariale,nb_intervenants');
+    },
+    enregistrer: function(row) {
+      // Upsert sur la clé primaire (tenant_id, mois) : Prefer resolution=merge-duplicates (supaFetchOnce) + on_conflict explicite
+      return supaFetch('POST', 'ema_declarations', Object.assign(
+        { tenant_id: SUPA_CONFIG.tenant, updated_at: new Date().toISOString() }, row),
+        'on_conflict=tenant_id,mois');
+    }
+  };
 
   // ── TEMPS RÉEL (realtime) ───────────────────────────────────
   // WebSocket désactivé sur contextes non-HTTPS (cause "operation is insecure" sur mobile)
@@ -16523,6 +17048,10 @@ function lingeAjouterLigne(pfx,nbLits){
             if (local.dateArchivage) f.dateArchivage = local.dateArchivage;
           }
         });
+      }
+      // EMA : recalculer si l'écran est ouvert (données arrivées après son affichage)
+      if (document.getElementById('tab-ema')?.classList.contains('active') && typeof window.renderEMA === 'function') {
+        setTimeout(function(){ window.renderEMA(true); }, 0);
       }
       if (d.stock)        stockData        = d.stock;
       if (d.devis)        devisData        = d.devis;
