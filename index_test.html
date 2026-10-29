@@ -16418,7 +16418,7 @@ function lingeAjouterLigne(pfx,nbLits){
   // ── CLIENT SUPABASE LÉGER ────────────────────────────────────
   // Sans AbortController (cause "object can not be cloned" sur iOS/Android WebView)
   // Retry x3 avec backoff sur erreurs réseau
-  function supaFetchOnce(method, table, body, filters) {
+  function supaFetchOnce(method, table, body, filters, prefer) {
     if (!SUPA_ENABLED) return Promise.resolve(null);
     if (window.__ESSENTIA_TEST_RO && method !== 'GET') {
       console.warn('[TEST] Écriture Supabase bloquée', method, table);
@@ -16432,7 +16432,7 @@ function lingeAjouterLigne(pfx,nbLits){
     };
     if (method !== 'GET') {
       hdrs['Content-Type'] = 'application/json';
-      hdrs['Prefer'] = 'return=minimal,resolution=merge-duplicates';
+      hdrs['Prefer'] = prefer || 'return=minimal,resolution=merge-duplicates';
     }
     return fetch(url, {
       method: method,
@@ -16458,12 +16458,12 @@ function lingeAjouterLigne(pfx,nbLits){
     });
   }
 
-  function supaFetch(method, table, body, filters) {
+  function supaFetch(method, table, body, filters, prefer) {
     if (!SUPA_ENABLED) return Promise.resolve(null);
     var maxAttempts = 3;
     var attempt = 0;
     function run() {
-      return supaFetchOnce(method, table, body, filters).catch(function(e) {
+      return supaFetchOnce(method, table, body, filters, prefer).catch(function(e) {
         attempt++;
         if (e.message === 'NETWORK' && attempt < maxAttempts) {
           var delay = attempt * 2500;
@@ -16617,47 +16617,147 @@ function lingeAjouterLigne(pfx,nbLits){
   window.supaStorageUpload        = supaStorageUpload;
   window.supaStorageDelete        = supaStorageDelete;
 
+  // ── CONTRÔLE DE VERSION (écriture conditionnelle sur updated_at) ─────
+  // _supaVersion = updated_at de la ligne essentia_data correspondant à l'état en mémoire :
+  // dernière lecture appliquée (appliquerDonneesDistantes) ou dernière écriture réussie.
+  // null = aucune lecture réussie depuis l'ouverture de la page → aucune écriture autorisée.
+  var _supaVersion = null;
+  var _supaChargementEnCours = false;
+  var _supaVersionsLues = (typeof WeakMap === 'function') ? new WeakMap() : null;
+  var _supaDernierMsg = {};
+  function _supaMsgUnique(cle, msg, type) {
+    var t = Date.now();
+    if (_supaDernierMsg[cle] && t - _supaDernierMsg[cle] < 20000) return;
+    _supaDernierMsg[cle] = t;
+    toast(msg, type || 'warning', 6000);
+  }
+  function _supaIndicateur(ok) {
+    ['cloudIndicator','cloudIndicatorEmp'].forEach(function(eid) {
+      var ind = document.getElementById(eid);
+      if (!ind) return;
+      var col = ok ? (eid === 'cloudIndicatorEmp' ? '#6ee7b7' : 'var(--green)') : (eid === 'cloudIndicatorEmp' ? '#fca5a5' : 'var(--red)');
+      ind.style.background = ok ? 'rgba(18,184,122,.15)' : 'rgba(230,69,69,.12)';
+      ind.style.color = col;
+      ind.innerHTML = '<span style="width:7px;height:7px;border-radius:50%;background:'+col+';display:inline-block;"></span> ' + (ok ? 'Sync ✓' : 'Hors sync');
+    });
+  }
+  // Associe un objet data lu dans Supabase à son updated_at (repris quand il est appliqué)
+  function _supaMemoriserLecture(data, updatedAt) {
+    if (data && updatedAt && _supaVersionsLues) _supaVersionsLues.set(data, updatedAt);
+  }
+  // Appelée en fin d'appliquerDonneesDistantes : la mémoire correspond désormais à cette version
+  function _supaVersionAppliquee(data) {
+    if (data && _supaVersionsLues && _supaVersionsLues.has(data)) _supaVersion = _supaVersionsLues.get(data);
+  }
+  function _supaSauvegardeEnAttente() {
+    return !!_supaDebounceTimer || _supaSaveEnCours;
+  }
+  // PATCH conditionnel : ne modifie la ligne que si elle est encore à la version lue
+  function _supaPatchConditionnel(payload) {
+    return supaFetch('PATCH', 'essentia_data', payload,
+      'tenant_id=eq.' + encodeURIComponent(SUPA_CONFIG.tenant) +
+      '&updated_at=eq.' + encodeURIComponent(_supaVersion) + '&select=updated_at',
+      'return=representation');
+  }
+  // Fusion en cas de conflit (règle actuelle) : Supabase gagne pour les fiches existantes ;
+  // les ajouts locaux (en mémoire, absents du cloud, non supprimés) sont conservés.
+  // Les notes de frais locales sont déjà réinjectées par appliquerDonneesDistantes.
+  function _supaFusionnerAjoutsLocaux(remote) {
+    var lire = function(k) { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch(e) { return []; } };
+    var delCli = lire('_deletedClientIds'), delFac = lire('_deletedFactureIds'), delDep = lire('_deletedDeplacementIds');
+    var n = 0;
+    var ajouter = function(cle, locaux, exclus) {
+      var dist = Array.isArray(remote[cle]) ? remote[cle] : [];
+      (locaux || []).forEach(function(l) {
+        if (!l || !l.id || exclus.indexOf(l.id) !== -1) return;
+        if (!dist.some(function(r) { return r && r.id === l.id; })) { dist.push(l); n++; }
+      });
+      remote[cle] = dist;
+    };
+    ajouter('clients', clientsData, delCli);
+    ajouter('factures', facturesData, delFac);
+    ajouter('deplacements', deplacementsData, delDep);
+    ajouter('devis', devisData, []);
+    ajouter('contrats', contratsData, []);
+    if (n) console.log('[Supabase] Fusion : ' + n + ' ajout(s) local(aux) conservé(s)');
+    return n;
+  }
+
+  // Écriture contrôlée. essai = 1 (premier envoi) ou 2 (après fusion d'un conflit).
+  // patchFn : transport (remplacé par une fausse réponse dans la simulation de test).
+  function _supaEcrire(data, essai, patchFn) {
+    patchFn = patchFn || _supaPatchConditionnel;
+    if (!_supaVersion) {
+      if (_supaChargementEnCours) {
+        // Sauvegarde automatique au démarrage : la sauvegarde à 3 s après chargement la reprendra
+        console.log('[Supabase] Écriture différée — lecture initiale en cours');
+        return Promise.resolve('differee');
+      }
+      console.warn('[Supabase] Écriture refusée — aucune lecture Supabase réussie (pas de version de référence)');
+      _supaMsgUnique('sansVersion', 'Connexion à la base impossible — vos modifications restent sur cet appareil, rechargez la page plus tard.', 'warning');
+      _supaIndicateur(false);
+      return Promise.resolve('sans_version');
+    }
+    var dataLean = _stripPhotos(data);
+    var taille = JSON.stringify(dataLean).length;
+    console.log('[Supabase] Payload:', Math.round(taille/1024) + ' Ko (photos exclues)');
+    var nouvelle = new Date().toISOString();
+    var payload = { data: dataLean, updated_at: nouvelle };
+    return patchFn(payload).then(function(rows) {
+      if (rows && rows.length) {
+        _supaVersion = rows[0].updated_at || nouvelle;
+        console.log('[Supabase] ✓ Sauvegardé (' + Math.round(taille/1024) + ' Ko) — version ' + _supaVersion);
+        _supaIndicateur(true);
+        return 'ok';
+      }
+      return _supaResoudreConflit(essai || 1, nouvelle, patchFn);
+    }).catch(function(e) {
+      var msg = e.message || String(e);
+      console.warn('[Supabase] Échec sauvegarde :', msg);
+      var info = msg === 'NETWORK' ? ' — réseau mobile instable' :
+                 msg.indexOf('TIMEOUT') !== -1 ? ' — timeout réseau' :
+                 msg.indexOf('413') !== -1 ? ' — payload trop lourd' :
+                 ' — données locales OK';
+      toast('⚠️ Cloud non sync' + info, 'warning');
+      _supaIndicateur(false);
+      return 'erreur';
+    });
+  }
+
+  // Aucune ligne modifiée : la base a changé depuis la version lue
+  function _supaResoudreConflit(essai, notreVersion, patchFn) {
+    return supaFetch('GET', 'essentia_data', null,
+      'tenant_id=eq.' + SUPA_CONFIG.tenant + '&select=data,updated_at&limit=1'
+    ).then(function(rows) {
+      var r = rows && rows[0];
+      if (!r) throw new Error('LECTURE_CONFLIT');
+      // Réponse perdue mais écriture passée (nouvel essai réseau) : la version en base est la nôtre
+      if (r.updated_at === notreVersion) { _supaVersion = r.updated_at; _supaIndicateur(true); return 'ok'; }
+      if (essai >= 2) {
+        console.warn('[Supabase] Conflit persistant — écriture abandonnée');
+        _supaMsgUnique('conflit', 'Données modifiées sur un autre appareil — rechargez la page avant de continuer', 'error');
+        _supaIndicateur(false);
+        return 'conflit';
+      }
+      console.warn('[Supabase] Conflit de version (base ' + r.updated_at + ' ≠ lue ' + _supaVersion + ') — fusion puis nouvel essai');
+      var remote = r.data || {};
+      _supaFusionnerAjoutsLocaux(remote);
+      _supaMemoriserLecture(remote, r.updated_at);
+      appliquerDonneesDistantes(remote); // mémoire + écran ; fixe _supaVersion = r.updated_at
+      if (_supaVersion !== r.updated_at) {
+        _supaMsgUnique('conflit', 'Données modifiées sur un autre appareil — rechargez la page avant de continuer', 'error');
+        _supaIndicateur(false);
+        return 'conflit';
+      }
+      toast('🔄 Données mises à jour depuis un autre appareil — vérifiez votre dernière modification', 'info', 6000);
+      return _supaEcrire(_supaConstruireSnapshot(), 2, patchFn);
+    });
+  }
+
   function supabaseSave(data) {
     if (!SUPA_ENABLED) return;
     if (window.__ESSENTIA_TEST_RO) { console.warn('[TEST] Écriture Supabase bloquée', 'supabaseSave'); return; }
-    var dataLean = _stripPhotos(data);
-    // Estimer taille approximative
-    var taille = JSON.stringify(dataLean).length;
-    console.log('[Supabase] Payload:', Math.round(taille/1024) + ' Ko (photos exclues)');
-    var payload = {
-      tenant_id: SUPA_CONFIG.tenant,
-      data: dataLean,
-      updated_at: new Date().toISOString()
-    };
-    supaFetch('POST', 'essentia_data', payload)
-      .then(function() {
-        console.log('[Supabase] ✓ Sauvegardé (' + Math.round(taille/1024) + ' Ko)');
-        // Mettre à jour l'indicateur cloud dans la topbar
-        ['cloudIndicator','cloudIndicatorEmp'].forEach(function(eid) {
-          var ind = document.getElementById(eid);
-          if (!ind) return;
-          ind.style.background = 'rgba(18,184,122,.15)';
-          ind.style.color = eid === 'cloudIndicatorEmp' ? '#6ee7b7' : 'var(--green)';
-          ind.innerHTML = '<span style="width:7px;height:7px;border-radius:50%;background:'+(eid==='cloudIndicatorEmp'?'#6ee7b7':'var(--green)')+';display:inline-block;"></span> Sync ✓';
-        });
-      })
-      .catch(function(e) {
-        var msg = e.message || String(e);
-        console.warn('[Supabase] Échec sauvegarde :', msg);
-        var info = msg === 'NETWORK' ? ' — réseau mobile instable' :
-                   msg.indexOf('TIMEOUT') !== -1 ? ' — timeout réseau' :
-                   msg.indexOf('413') !== -1 ? ' — payload trop lourd' :
-                   ' — données locales OK';
-        toast('⚠️ Cloud non sync' + info, 'warning');
-        // Indicateur rouge
-        ['cloudIndicator','cloudIndicatorEmp'].forEach(function(eid) {
-          var ind = document.getElementById(eid);
-          if (!ind) return;
-          ind.style.background = 'rgba(230,69,69,.12)';
-          ind.style.color = eid === 'cloudIndicatorEmp' ? '#fca5a5' : 'var(--red)';
-          ind.innerHTML = '<span style="width:7px;height:7px;border-radius:50%;background:'+(eid==='cloudIndicatorEmp'?'#fca5a5':'var(--red)')+';display:inline-block;"></span> Hors sync';
-        });
-      });
+    return _supaEcrire(data, 1);
   }
 
   // ── CHARGEMENT SUPABASE ─────────────────────────────────────
@@ -16667,6 +16767,7 @@ function lingeAjouterLigne(pfx,nbLits){
       'tenant_id=eq.' + SUPA_CONFIG.tenant + '&select=data,updated_at&limit=1'
     ).then(function(rows) {
       if (rows && rows.length > 0) {
+        _supaMemoriserLecture(rows[0].data, rows[0].updated_at);
         return rows[0].data;
       }
       return null;
@@ -16767,11 +16868,14 @@ function lingeAjouterLigne(pfx,nbLits){
               record = msg.payload.record;
             }
             if (record && record.data) {
-              var _wsLocalSave = parseInt(localStorage.getItem('_lastSaveTs')||'0');
-              if (Date.now() - _wsLocalSave < 300000) {
-                console.log('[Supabase WS] Skip — sauvegarde locale récente (<5min), merge protection actif');
+              // Contrôle de version : ignorer notre propre écriture ; si une sauvegarde locale est en
+              // attente, c'est elle qui détectera le conflit et fusionnera (PATCH conditionnel)
+              if (record.updated_at && record.updated_at === _supaVersion) return;
+              if (_supaSauvegardeEnAttente()) {
+                console.log('[Supabase WS] Mise à jour distante — sauvegarde locale en attente, fusion au prochain envoi');
                 return;
               }
+              _supaMemoriserLecture(record.data, record.updated_at);
               appliquerDonneesDistantes(record.data);
               toast('🔄 Données mises à jour depuis un autre appareil', 'info');
             }
@@ -16815,24 +16919,18 @@ function lingeAjouterLigne(pfx,nbLits){
       ).then(function(rows) {
         if (!rows || !rows[0]) return;
         var updatedAt = rows[0].updated_at;
-        if (realtimeLastUpdated === null) {
-          // 1er tour — mémoriser sans ré-appliquer (déjà chargé au boot)
-          realtimeLastUpdated = updatedAt;
-          return;
-        }
-        // Fix suppression : ignorer le polling si une sauvegarde locale vient d'être envoyée
-        // (évite la race condition où le polling lit les données avant que Supabase ait enregistré la suppression)
-        var _lastLocalSave = parseInt(localStorage.getItem('_lastSaveTs')||'0');
-        if (Date.now() - _lastLocalSave < 300000) {
-          // Moins de 5min depuis la dernière sauvegarde locale — ne pas écraser
-          realtimeLastUpdated = updatedAt;
-          return;
-        }
-        if (updatedAt !== realtimeLastUpdated) {
-          realtimeLastUpdated = updatedAt;
-          appliquerDonneesDistantes(rows[0].data);
-          toast('🔄 Données mises à jour depuis un autre appareil', 'info');
-        }
+        realtimeLastUpdated = updatedAt;
+        // Contrôle de version : rien à faire si la mémoire est déjà à cette version
+        if (updatedAt === _supaVersion) return;
+        if (_supaChargementEnCours) return;
+        // Une sauvegarde locale en attente détectera le conflit et fusionnera
+        if (_supaSauvegardeEnAttente()) return;
+        var _remotePoll = rows[0].data;
+        // Pas encore de version de référence (chargement initial échoué) : conserver les ajouts locaux
+        if (!_supaVersion) _supaFusionnerAjoutsLocaux(_remotePoll);
+        _supaMemoriserLecture(_remotePoll, updatedAt);
+        appliquerDonneesDistantes(_remotePoll);
+        toast('🔄 Données mises à jour depuis un autre appareil', 'info');
       }).catch(function() {});
     }, 300000); // toutes les 5 minutes
     console.log('[Supabase Realtime] Polling 5min démarré');
@@ -17155,6 +17253,8 @@ function lingeAjouterLigne(pfx,nbLits){
         if (typeof chargerFraisEmp === 'function')          chargerFraisEmp();
         if (typeof chargerChecklistEmp === 'function')      chargerChecklistEmp();
       }
+      // Contrôle de version : la mémoire correspond désormais à la version lue
+      _supaVersionAppliquee(d);
     } catch(ex) {
       console.warn('[Supabase] Erreur application données distantes', ex);
     }
@@ -17167,12 +17267,22 @@ function lingeAjouterLigne(pfx,nbLits){
   var _supaSaveEnCours = false;
 
   function _supaSnapshotEtSave() {
+    _supaDebounceTimer = null;
     if (_supaSaveEnCours) {
       // Reprogrammer après la fin de la sauvegarde en cours
       _supaDebounceTimer = setTimeout(function() { localStorage.setItem('_lastSaveTs', Date.now()); _supaSnapshotEtSave(); }, 3000);
       return;
     }
     _supaSaveEnCours = true;
+    var _liberer = function() { _supaSaveEnCours = false; };
+    var _p = supabaseSave(_supaConstruireSnapshot());
+    if (_p && typeof _p.then === 'function') _p.then(_liberer, _liberer); else _liberer();
+    // Garde-fou : considérer la requête terminée après 15s max
+    setTimeout(_liberer, 15000);
+  }
+
+  // Instantané complet de la mémoire envoyé à essentia_data (aussi utilisé pour le nouvel essai après conflit)
+  function _supaConstruireSnapshot() {
     // Lire les charges depuis le DOM (valeurs actuelles)
     var _charges = {
       coutVentes:          (document.getElementById('saisieCoutVentes')           || {}).value || '0',
@@ -17211,9 +17321,7 @@ function lingeAjouterLigne(pfx,nbLits){
       deletedFactureIds:      (function(){ try{ return JSON.parse(localStorage.getItem('_deletedFactureIds')||'[]'); }catch(e){ return []; } })(),
       params:                 (function(){ try{ return JSON.parse(localStorage.getItem('progestParams')||'{}'); }catch(e){ return {}; } })()
     };
-    supabaseSave(snapshot);
-    // Considérer la requête terminée après 15s max
-    setTimeout(function() { _supaSaveEnCours = false; }, 15000);
+    return snapshot;
   }
 
   sauvegarderTout = function(auto) {
@@ -17234,8 +17342,12 @@ function lingeAjouterLigne(pfx,nbLits){
   chargerDonnees = function() {
     if (SUPA_ENABLED) {
       // Charger le localStorage immédiatement (données visibles sans attendre le réseau)
+      // Contrôle de version : les sauvegardes déclenchées pendant le chargement (migrations
+      // _migrerRefClients / _migrerContrats sur la copie locale) sont différées, jamais envoyées
+      _supaChargementEnCours = true;
       if (typeof _origCharger === "function") _origCharger();
       supabaseLoad().then(function(remoteData) {
+        _supaChargementEnCours = false;
         if (remoteData) {
           // Fusionner TOUJOURS les données locales non encore sync vers Supabase
           // (clients, factures, déplacements créés juste avant fermeture de l'onglet
@@ -17295,6 +17407,7 @@ function lingeAjouterLigne(pfx,nbLits){
           supabaseRealtime();
         }
       }).catch(function() {
+        _supaChargementEnCours = false;
         // localStorage déjà chargé — démarrer le temps réel
         _purgerPhotosOrphelines(); // notesFraisData = état local (Supabase inaccessible)
         supabaseRealtime();
@@ -17514,6 +17627,31 @@ CREATE POLICY "anon_delete" ON storage.objects
   window.supabaseSaveNow = function(data) {
     if (SUPA_ENABLED) supabaseSave(data);
   };
+
+  // ── MODE TEST : simulation du contrôle de version (aucune écriture) ──
+  // Le PATCH est remplacé par une fausse réponse ; seules des lectures partent vers Supabase.
+  // _supaSimulerSauvegarde('ok' | 'conflit' | 'conflit2' | 'sansVersion')
+  if (window.__ESSENTIA_TEST_RO) {
+    window._supaEtatVersion = function() {
+      return { version: _supaVersion, chargementEnCours: _supaChargementEnCours, sauvegardeEnAttente: _supaSauvegardeEnAttente() };
+    };
+    window._supaSimulerSauvegarde = function(scenario) {
+      var n = 0, v0 = _supaVersion;
+      var fauxPatch = function(payload) {
+        n++;
+        console.log('[SIMU] PATCH conditionnel #' + n + ' NON ENVOYÉ — version attendue : ' + _supaVersion);
+        if (scenario === 'ok') return Promise.resolve([{ updated_at: payload.updated_at }]);
+        if (scenario === 'conflit') return Promise.resolve(n === 1 ? [] : [{ updated_at: payload.updated_at }]);
+        return Promise.resolve([]); // conflit2 : la base « change » à chaque essai
+      };
+      if (scenario === 'sansVersion') _supaVersion = null;
+      return _supaEcrire(_supaConstruireSnapshot(), 1, fauxPatch).then(function(res) {
+        console.log('[SIMU] ' + scenario + ' → résultat : ' + res + ' | PATCH simulés : ' + n + ' | version avant : ' + v0 + ' → fin : ' + _supaVersion);
+        _supaVersion = v0; // ne pas fausser la session de test
+        return res;
+      });
+    };
+  }
 
   // ── INIT ────────────────────────────────────────────────────
   function init() {
