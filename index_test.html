@@ -2078,6 +2078,7 @@ tr{transition:background .12s;}
           <div class="form-group" style="margin-bottom:13px;"><label>Assurance RCP (n° police)</label><input type="text" id="paramAssurance" placeholder="Ex : 110044568 Q" oninput="sauvegarderParametres()"></div>
           <div class="form-group" style="margin-bottom:13px;"><label>Commune de départ tournées <span style="font-size:10px;color:var(--text3);">(point fixe SAS)</span></label><select id="paramCommuneDepot" onchange="sauvegarderParametres()"><option value="">— Non configurée —</option></select></div>
           <div class="form-group" style="margin-bottom:13px;"><label>Mention légale factures</label><textarea id="paramMentionLegale" rows="2" placeholder="Exonération de TVA — Art. 261 D 4° du CGI (services à la personne agréés)" oninput="sauvegarderParametres()" style="resize:vertical;"></textarea></div>
+          <div class="form-group" style="margin-bottom:13px;"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="paramFranchiseTVA" checked onchange="sauvegarderParametres();_appliquerFranchiseTVA()" style="width:auto;margin:0;"> Franchise de TVA (art. 293 B du CGI)</label><div style="font-size:10px;color:var(--text3);margin-top:3px;">Cochée : toutes les fiches clients et factures à TVA 0 %, avec la mention « TVA non applicable — Art. 293 B du CGI ».</div></div>
           <div style="background:var(--green-l);border:1px solid var(--green);border-radius:8px;padding:9px 12px;font-size:11px;color:var(--green);"><i class="fas fa-check-circle"></i> Les informations sont sauvegardées automatiquement</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:14px;">
@@ -5069,7 +5070,7 @@ function _resetFormClient(){
   const h=document.getElementById('newHeures'); if(h) h.value='0';
   const f=document.getElementById('newFrequence'); if(f) f.value='1';
   const tc=document.getElementById('newTypeClient'); if(tc) tc.value='particulier';
-  const tv=document.getElementById('newTVAClient'); if(tv) tv.value='10';
+  const tv=document.getElementById('newTVAClient'); if(tv) tv.value=_franchiseTVA()?'0':'10';
   // Reset boutons jours
   document.querySelectorAll('.jour-day-btn').forEach(b=>b.classList.remove('jour-on'));
   const sel=document.getElementById('newJours'); if(sel) Array.from(sel.options).forEach(o=>o.selected=false);
@@ -5151,7 +5152,7 @@ function changerTab(btn){
   if(tab==='archives'){initArchives();}
   if(tab==='remise-materiel'){initRemiseMateriel();}
   if(tab==='livrets'){initLivrets();}
-  if(tab==='parametres'){chargerConfigServeur();}
+  if(tab==='parametres'){chargerConfigServeur();_majCaseFranchise();}
   if(tab==='frais'){
     // Rechargement immédiat depuis Supabase à chaque ouverture de l'onglet frais
     if(typeof window.supabaseLoad === 'function' && window.SUPA_ENABLED){
@@ -5210,6 +5211,7 @@ function mettreAJourTVAClient(){
   const type = document.getElementById('newTypeClient')?.value||'particulier';
   const tvaEl = document.getElementById('newTVAClient');
   if(!tvaEl) return;
+  if(_franchiseTVA()){ tvaEl.value='0'; return; }
   // Auto-remplir TVA selon la nature — l'utilisateur peut ensuite modifier
   if(type==='entreprise'||type==='airbnb_agence') tvaEl.value='20';
   else if(type==='exonere_0') tvaEl.value='0';
@@ -5219,12 +5221,47 @@ function mettreAJourTVAEditClient(){
   const type = document.getElementById('editTypeClient')?.value||'particulier';
   const tvaEl = document.getElementById('editTVA');
   if(!tvaEl) return;
+  if(_franchiseTVA()){ tvaEl.value='0'; return; }
   if(type==='exonere_0') tvaEl.value='0';
   else if(type==='entreprise'||type==='airbnb_agence') tvaEl.value='20';
   else tvaEl.value='10';
 }
 
+// ── Franchise de TVA (art. 293 B du CGI) — réglage Paramètres, stocké 'oui'/'non' ('oui' par défaut) ──
+const MENTION_293B='TVA non applicable — Art. 293 B du CGI';
+function _franchiseTVA(){
+  try{ return (JSON.parse(localStorage.getItem('progestParams')||'{}').franchiseTVA||'oui')!=='non'; }catch(e){ return true; }
+}
+// Mention imprimée quand le taux est 0 % : 293 B en franchise, sinon mention des paramètres (inchangé)
+function _mentionTVA0(mentionLeg){ return _franchiseTVA()?MENTION_293B:(mentionLeg||MENTION_293B); }
+function _majCaseFranchise(){
+  const f=_franchiseTVA();
+  const el=document.getElementById('paramFranchiseTVA'); if(el) el.checked=f;
+  if(f){ const n=document.getElementById('newTVAClient'); if(n) n.value='0'; }
+}
+function _appliquerFranchiseTVA(){
+  _majCaseFranchise();
+  _majSelectTVAContrat();
+  clientsData=clientsData.map(normaliserClient);
+  if(typeof chargerClients==='function') chargerClients();
+  if(typeof calculerStats==='function') calculerStats();
+  sauvegarderTout(true);
+  toast(_franchiseTVA()?'Franchise de TVA activée — fiches clients à 0 %':'Franchise de TVA désactivée','info');
+}
+window._appliquerFranchiseTVA=_appliquerFranchiseTVA;
+// Liste TVA du formulaire contrat : bloquée sur 0 % en franchise, options d'origine sinon
+function _majSelectTVAContrat(){
+  const sel=document.getElementById('contratTVA'); if(!sel) return;
+  if(!sel.dataset.optionsOrigine) sel.dataset.optionsOrigine=sel.innerHTML;
+  if(_franchiseTVA()){
+    sel.innerHTML='<option value="0">0 % — Franchise de TVA (art. 293 B)</option>';
+    sel.value='0'; sel.disabled=true; sel.title='Franchise de TVA activée dans Paramètres';
+  } else if(sel.disabled){
+    sel.innerHTML=sel.dataset.optionsOrigine; sel.disabled=false; sel.title='';
+  }
+}
 function getTVAClient(client){
+  if(_franchiseTVA()) return 0;
   if(client.typeClient==='exonere_0') return 0;
   const v=parseFloat(client.tva);
   if(!isNaN(v)) return v;
@@ -5270,9 +5307,9 @@ function ajouterClient(){
   const freq=parseFloat(document.getElementById('newFrequence').value)||1;
   const typeClient=document.getElementById('newTypeClient').value;
   const tvaVal=parseFloat(document.getElementById('newTVAClient')?.value);
-  const tva=isNaN(tvaVal)?(typeClient==='entreprise'||typeClient==='airbnb_agence'?20:10):tvaVal;
+  const tva=_franchiseTVA()?0:(isNaN(tvaVal)?(typeClient==='entreprise'||typeClient==='airbnb_agence'?20:10):tvaVal);
   // Si TVA = 0 et type particulier → stocker comme exonere_0 pour compatibilité
-  const typeClientFinal=(tva===0&&typeClient==='particulier')?'exonere_0':typeClient;
+  const typeClientFinal=(!_franchiseTVA()&&tva===0&&typeClient==='particulier')?'exonere_0':typeClient;
   const totalMoisHT=tarif*heures*4.33*freq;
   const totalMoisTTC=totalMoisHT*(1+tva/100);
   const refClient=_nextClientRef('CLI-');
@@ -5487,7 +5524,7 @@ function modifierClient(id){
     <div class="form-group" ${(c.typeClient!=='airbnb_particulier'&&c.typeClient!=='airbnb_agence')?'style="display:none;"':''}><label>Adresse propriétaire <span style="font-size:9px;color:var(--text3);">(facturation)</span></label><input type="text" id="editAdresseProprietaire" value="${c.adresseProprietaire||''}"></div>
     <div class="form-group"><label>Entreprise</label><input type="text" id="editEntreprise" value="${c.entreprise||''}"></div>
     <div class="form-group"><label>Type client</label><select id="editTypeClient" onchange="mettreAJourTVAEditClient()"><option value="particulier" ${c.typeClient==='particulier'?'selected':''}>Particulier (10%)</option><option value="entreprise" ${c.typeClient==='entreprise'?'selected':''}>Entreprise (20%)</option><option value="airbnb_particulier" ${c.typeClient==='airbnb_particulier'?'selected':''}>Airbnb Particulier</option><option value="airbnb_agence" ${c.typeClient==='airbnb_agence'?'selected':''}>Airbnb Agence</option><option value="exonere_0" ${c.typeClient==='exonere_0'?'selected':''}>Exonéré TVA 0% ⚡</option></select></div>
-    <div class="form-group"><label>TVA applicable</label><select id="editTVA"><option value="10" ${(getTVAClient(c)==10)?'selected':''}>10%</option><option value="20" ${(getTVAClient(c)==20)?'selected':''}>20%</option><option value="0" ${(getTVAClient(c)==0)?'selected':''}>0% — Exonéré ⚡</option></select></div>
+    ${_franchiseTVA()?`<div class="form-group"><label>TVA applicable</label><select id="editTVA" disabled title="Franchise de TVA activée dans Paramètres"><option value="0" selected>0 % — Franchise de TVA (art. 293 B)</option></select></div>`:`<div class="form-group"><label>TVA applicable</label><select id="editTVA"><option value="10" ${(getTVAClient(c)==10)?'selected':''}>10%</option><option value="20" ${(getTVAClient(c)==20)?'selected':''}>20%</option><option value="0" ${(getTVAClient(c)==0)?'selected':''}>0% — Exonéré ⚡</option></select></div>`}
     <div class="form-group"><label>Tarif (€/h)</label><input type="number" id="editTarif" value="${c.tarif}"></div>
     <div class="form-group"><label>Type prestation</label><select id="editType"><option value="Heure" ${c.type==='Heure'?'selected':''}>Heure</option><option value="Acte" ${c.type==='Acte'?'selected':''}>Acte</option></select></div>
     <div class="form-group"><label>Heures/visite</label><input type="number" id="editHeures" value="${c.heures}" step="0.5"></div>
@@ -5586,7 +5623,7 @@ function sauvegarderModificationClient(){
   c.adresseProprietaire=document.getElementById('editAdresseProprietaire')?.value??c.adresseProprietaire??'';
   c.entreprise=document.getElementById('editEntreprise').value;
   c.typeClient=document.getElementById('editTypeClient').value;
-  c.tva=(()=>{if(c.typeClient==='exonere_0')return 0;const v=parseFloat(document.getElementById('editTVA')?.value);if(isNaN(v)||v===0)return(c.typeClient==='entreprise'||c.typeClient==='airbnb_agence')?20:10;return v;})();
+  c.tva=(()=>{if(_franchiseTVA())return 0;if(c.typeClient==='exonere_0')return 0;const v=parseFloat(document.getElementById('editTVA')?.value);if(isNaN(v)||v===0)return(c.typeClient==='entreprise'||c.typeClient==='airbnb_agence')?20:10;return v;})();
   c.tarif=parseFloat(document.getElementById('editTarif').value)||0;
   c.type=document.getElementById('editType').value;
   c.heures=parseFloat(document.getElementById('editHeures').value)||0;
@@ -5659,7 +5696,7 @@ function chargerSelectClients(){
       if(_c&&typeof getTVAClient==='function'){
         const _taux=getTVAClient(_c);
         const _tEl=document.getElementById('facTauxTVA');if(_tEl)_tEl.value=String(_taux);
-        const _dEl=document.getElementById('facTVADisplay');if(_dEl)_dEl.value=_taux+'% ('+(_c.typeClient==='entreprise'||_c.typeClient==='airbnb_agence'?'Entreprise':_c.typeClient==='exonere_0'?'Exonéré SAP/Franchise':'Particulier')+')';
+        const _dEl=document.getElementById('facTVADisplay');if(_dEl)_dEl.value=_taux+'% ('+(_franchiseTVA()?'Franchise de TVA — art. 293 B':_c.typeClient==='entreprise'||_c.typeClient==='airbnb_agence'?'Entreprise':_c.typeClient==='exonere_0'?'Exonéré SAP/Franchise':'Particulier')+')';
       }
     }
   }
@@ -7517,6 +7554,7 @@ function onFacPeriodeChange(){
   if(clientId) remplirLignesAuto();
 }
 function initFactures(){
+  if(_franchiseTVA()){const _t=document.getElementById('facTauxTVA');if(_t)_t.value='0';}
   chargerSelectClients();
   const annee=new Date().getFullYear();
   document.getElementById('facNumero').placeholder=`FAC-${annee}-XXXX-01`;
@@ -7542,7 +7580,7 @@ function remplirInfosFacture(){
   if(numEl && c.refClient) numEl.value=_refDoc('facture',c);
   const taux=getTVAClient(c);
   const tauxEl=document.getElementById('facTauxTVA');if(tauxEl)tauxEl.value=String(taux);
-  const tvaDispEl=document.getElementById('facTVADisplay');if(tvaDispEl)tvaDispEl.value=taux+'% ('+(c.typeClient==='entreprise'||c.typeClient==='airbnb_agence'?'Entreprise':c.typeClient==='exonere_0'?'Exonéré SAP/Franchise':'Particulier')+')';
+  const tvaDispEl=document.getElementById('facTVADisplay');if(tvaDispEl)tvaDispEl.value=taux+'% ('+(_franchiseTVA()?'Franchise de TVA — art. 293 B':c.typeClient==='entreprise'||c.typeClient==='airbnb_agence'?'Entreprise':c.typeClient==='exonere_0'?'Exonéré SAP/Franchise':'Particulier')+')';
   // Type d'opération selon le type client
   const typeOpEl=document.getElementById('facTypeOp');
   if(typeOpEl) typeOpEl.value=(c.typeClient==='entreprise'||c.typeClient==='airbnb_agence')?'b2b':'b2c';
@@ -8314,7 +8352,7 @@ function genererFacturePDF(opts){
   const footerLines=[
     `${nomSoc}${formeSoc?' — '+formeSoc:''}${siretSoc?' · SIRET : '+siretSoc:''}${p.numSAP?' · Agrément SAP : '+p.numSAP:''}`,
     ...(p.assurance?[`Assurance RCP : n° ${p.assurance}`]:[]),
-    ...(tauxTVA===0?[mentionLeg||'TVA non applicable — Art. 293 B du CGI']:[]),
+    ...(tauxTVA===0?[_mentionTVA0(mentionLeg)]:[]),
     `En cas de litige, le tribunal compétent est le Tribunal de Commerce de Troyes (10000).${p.tvaIntra?' N° TVA : '+p.tvaIntra:''}`,
   ];
   doc.text(footerLines,M,pageH-25,{lineHeightFactor:1.4,maxWidth:W-2*M});
@@ -8943,8 +8981,9 @@ function genererXMLFacturX(d){
       </ram:SpecifiedTradeSettlementPaymentMeans>`:''}
       <ram:ApplicableTradeTax>
         <ram:CalculatedAmount>${fmt2(d.montantTVA)}</ram:CalculatedAmount>
-        <ram:TypeCode>VAT</ram:TypeCode>
-        <ram:ExemptionReasonCode>${d.tauxTVA===0?'VATEX-EU-O':''}</ram:ExemptionReasonCode>
+        <ram:TypeCode>VAT</ram:TypeCode>${d.tauxTVA===0&&_franchiseTVA()?`
+        <ram:ExemptionReason>${esc(MENTION_293B)}</ram:ExemptionReason>`:''}
+        <ram:ExemptionReasonCode>${d.tauxTVA===0?(_franchiseTVA()?'VATEX-FR-FRANCHISE':'VATEX-EU-O'):''}</ram:ExemptionReasonCode>
         <ram:BasisAmount>${fmt2(d.sousTotal)}</ram:BasisAmount>
         <ram:CategoryCode>${catTVA}</ram:CategoryCode><!-- S=Normal AA=Réduit E=Exonéré -->
         <ram:RateApplicablePercent>${d.tauxTVA}</ram:RateApplicablePercent>
@@ -9551,7 +9590,7 @@ function creerAvoir(factureId){
   document.getElementById('avoirFactureId').value=factureId;
   document.getElementById('avoirMontantTTC').textContent=f.totalTTC.toFixed(2).replace('.',',')+' €';
   document.getElementById('avoirMontantHTSaisie').value=f.totalHT.toFixed(2);
-  document.getElementById('avoirTaux').value=f.tva||10;
+  document.getElementById('avoirTaux').value=isNaN(parseFloat(f.tva))?getTVAClient(clientsData.find(x=>x.id===f.clientId)||{}):parseFloat(f.tva);
   document.getElementById('avoirDate').value=new Date().toISOString().split('T')[0];
   document.getElementById('avoirMotif').value='';
   document.getElementById('avoirTypeSelect').value='total';
@@ -9575,7 +9614,8 @@ function confirmerAvoir(){
   const motif=document.getElementById('avoirMotif').value.trim()||'Avoir';
   const date=document.getElementById('avoirDate').value||new Date().toISOString().split('T')[0];
   const isPartiel=document.getElementById('avoirTypeSelect').value==='partiel';
-  const tva=parseFloat(f.tva)||10;
+  // Taux de la facture d'origine (0 % compris) ; repli sur la fiche si absent
+  const tva=isNaN(parseFloat(f.tva))?getTVAClient(clientsData.find(x=>x.id===f.clientId)||{}):parseFloat(f.tva);
   let totalHT,totalTTC;
   if(isPartiel){
     totalHT=parseFloat(document.getElementById('avoirMontantHTSaisie').value)||0;
@@ -9603,6 +9643,15 @@ function confirmerAvoir(){
 }
 window.confirmerAvoir=confirmerAvoir;
 
+// Taux d'un avoir = celui de sa facture d'origine (par id, sinon par numéro) ; à défaut, taux de la fiche + avertissement
+function _tvaAvoir(avoir){
+  const orig=(facturesData||[]).find(x=>x.type!=='avoir'&&(x.id===avoir.factureRef||(avoir.factureNumero&&x.numero===avoir.factureNumero)));
+  const t=orig?parseFloat(orig.tva):NaN;
+  if(!isNaN(t)) return t;
+  console.warn('[Avoir] Facture d\'origine introuvable pour '+avoir.numero+' — taux TVA de la fiche client utilisé');
+  toast('⚠️ Avoir '+avoir.numero+' : facture d\'origine introuvable, taux TVA de la fiche client utilisé','warning');
+  return getTVAClient(clientsData.find(x=>x.id===avoir.clientId)||{});
+}
 function genererAvoirPDF(avoir,opts){
   if(!avoir){toast('Avoir introuvable','error');return;}
   const {jsPDF}=window.jspdf;if(!jsPDF){toast('PDF non disponible','error');return;}
@@ -9620,7 +9669,7 @@ function genererAvoirPDF(avoir,opts){
   const logoB64=localStorage.getItem('progestLogo')||null;
   const c=clientsData.find(x=>x.id===avoir.clientId)||{nom:avoir.client};
   const fmt2=n=>Number(n).toFixed(2).replace('.',',');
-  const tva=parseFloat(avoir.tva)||10;
+  const tva=_tvaAvoir(avoir);
   const montantTVA=Math.round((avoir.totalTTC-avoir.totalHT)*100)/100;
   let y=M;
 
@@ -9736,7 +9785,7 @@ function genererAvoirPDF(avoir,opts){
   const footerLines=[
     nomSoc+(formeSoc?' — '+formeSoc:'')+(siretSoc?' · SIRET : '+siretSoc:'')+(p.numSAP?' · Agr\xe9ment SAP : '+p.numSAP:''),
     ...(p.assurance?['Assurance RCP : n\xb0 '+p.assurance]:[]),
-    ...(tva===0?[mentionLeg||'TVA non applicable — Art. 293 B du CGI']:[]),
+    ...(tva===0?[_mentionTVA0(mentionLeg)]:[]),
     'Avoir \xe9mis conform\xe9ment \xe0 l\'article 289 du CGI. Document tenant lieu de facture rectificative.',
     'En cas de litige, le tribunal comp\xe9tent est le Tribunal de Commerce de Troyes (10000).'+(tvaSoc?' N\xb0 TVA : '+tvaSoc:''),
   ];
@@ -10448,6 +10497,7 @@ function sauvegarderParametres(){
     numSAP:document.getElementById('paramNumSAP')?.value||'',
     assurance:document.getElementById('paramAssurance')?.value||'',
     communeDepot:document.getElementById('paramCommuneDepot')?.value||'',
+    franchiseTVA:document.getElementById('paramFranchiseTVA')?(document.getElementById('paramFranchiseTVA').checked?'oui':'non'):(existing.franchiseTVA||'oui'),
     clientRefCounter:existing.clientRefCounter,
     contratCONTCounter:existing.contratCONTCounter,
     contratCDICounter:existing.contratCDICounter,
@@ -10786,7 +10836,10 @@ function normaliserClient(c){
   const tarif   = parseFloat(c.tarif)   || 0;
   const heures  = _parseH(c.heures)     || 0;
   const freq    = parseFloat(c.frequence)|| 1;
-  const tva     = (c.typeClient === 'exonere_0') ? 0
+  const _franchise = _franchiseTVA();
+  if(_franchise && c.tva!==undefined && c.tva!==null && c.tva!=='' && parseFloat(c.tva)!==0)
+    console.info('[Franchise TVA] '+(c.refClient||c.id||'')+' '+(c.nom||'')+' : TVA '+c.tva+' % → 0 %');
+  const tva     = _franchise ? 0 : (c.typeClient === 'exonere_0') ? 0
     : (c.typeClient === 'entreprise' || c.typeClient === 'airbnb_agence') ? 20
     : (c.tva !== undefined && c.tva !== null && parseFloat(c.tva) === 0) ? 0
     : 10;
@@ -10877,8 +10930,9 @@ function chargerDonnees(){
     clientsData = clientsData.map(function(c){
       var tvaN = parseFloat(c.tva);
       if (c.typeClient === 'exonere_0' && tvaN !== 0) return Object.assign({}, c, {tva: 0});
-      if (c.typeClient === 'particulier' && tvaN === 0) return Object.assign({}, c, {typeClient: 'exonere_0', tva: 0});
-      if (c.typeClient === 'airbnb_particulier' && tvaN === 0) return Object.assign({}, c, {tva: 10});
+      // Franchise de TVA : ne jamais changer le type ni remettre 10 % (normaliserClient met 0 %)
+      if (!_franchiseTVA() && c.typeClient === 'particulier' && tvaN === 0) return Object.assign({}, c, {typeClient: 'exonere_0', tva: 0});
+      if (!_franchiseTVA() && c.typeClient === 'airbnb_particulier' && tvaN === 0) return Object.assign({}, c, {tva: 10});
       return c;
     }).map(normaliserClient);
     chargerClients();chargerSalaries();mettreAJourFinances();chargerNotesFrais();calculerStats();chargerAccueil();chargerTournees();chargerStock();chargerFournisseurs();
@@ -10901,6 +10955,7 @@ function chargerDonnees(){
       sv('paramSiteWeb',p.siteWeb);sv('paramIBAN',p.iban);sv('paramBIC',p.bic||'');sv('paramCapital',p.capital);
       sv('paramMentionLegale',p.mentionLegale);sv('paramTarifKm',p.tarifKm||0.30);
       sv('paramNumSAP',p.numSAP);sv('paramAssurance',p.assurance);
+      _majCaseFranchise();
       const formeEl=document.getElementById('paramForme');if(formeEl&&p.forme)formeEl.value=p.forme;
       const depEl=document.getElementById('paramCommuneDepot');if(depEl&&p.communeDepot)depEl.value=p.communeDepot;
       // Mettre à jour la sidebar avec nom société
@@ -10979,6 +11034,7 @@ function importerJSON(input){
       // ── 1. Paramètres entreprise ──
       if(d.params && typeof d.params === 'object') {
         localStorage.setItem('progestParams', JSON.stringify(d.params));
+        _majCaseFranchise();
         // Mettre à jour les champs du formulaire paramètres
         const sv = (id, val) => { const el = document.getElementById(id); if(el && val !== undefined) el.value = val || ''; };
         sv('paramNomSociete', d.params.nomSociete);
@@ -11641,6 +11697,7 @@ function initLivrets(){
 
 function initContrats(){
   setTypeContrat('prestation');
+  _majSelectTVAContrat();
   // Remplir selects clients et salariés
   const selC=document.getElementById('contratClient');
   if(selC){selC.innerHTML='<option value="">— Sélectionner —</option>'+clientsData.map(c=>`<option value="${c.id}">${c.nom}${c.entreprise?' – '+c.entreprise:''}</option>`).join('');}
@@ -11775,7 +11832,7 @@ function _enregistrerDonneesContrat(){
   const debut=new Date(gv('contratDebut')||new Date()).toLocaleDateString('fr-FR');
   const tarif=parseFloat(gv('contratTarif'))||0;
   const heures=_parseH(gv('contratHeures'))||0;
-  const tva=(function(v){return isNaN(v)?10:v;})(parseFloat(gv('contratTVA')));
+  const tva=_franchiseTVA()?0:(function(v){return isNaN(v)?10:v;})(parseFloat(gv('contratTVA')));
   const frequence=gv('contratFrequence');
   const freqMult={'hebdomadaire':4.33,'bihebdomadaire':8.66,'mensuelle':1,'ponctuelle':1}[frequence]||4.33;
   const montantTTC=(tarif*heures*freqMult)*(1+tva/100);
@@ -12006,7 +12063,9 @@ function remplirInfosContrat(){
     refEl.value=_genContratRef(id);
   }
   const tvaSel=document.getElementById('contratTVA');
-  if(tvaSel){
+  _majSelectTVAContrat();
+  if(tvaSel&&_franchiseTVA()){ tvaSel.value='0'; }
+  else if(tvaSel){
     const tvaCli = parseFloat(c.tva);
     tvaSel.value = (!isNaN(tvaCli) && tvaCli===0) ? '0' : (c.typeClient==='entreprise'||c.typeClient==='airbnb_agence'?'20':'10');
   }
@@ -12070,7 +12129,7 @@ function renderLignesContrat(){
 function calculerTotalContrat(){
   const tarif=parseFloat(document.getElementById('contratTarif')?.value)||0;
   const heures=_parseH(document.getElementById('contratHeures')?.value)||0;
-  const tva=parseFloat(document.getElementById('contratTVA')?.value)||10;
+  const tva=_franchiseTVA()?0:(v=>isNaN(v)?10:v)(parseFloat(document.getElementById('contratTVA')?.value));
   const freqSel=document.getElementById('contratFrequence')?.value||'hebdomadaire';
   const freqMult={'hebdomadaire':4.33,'bihebdomadaire':8.66,'mensuelle':1,'ponctuelle':1}[freqSel]||4.33;
   const prestHT=tarif*heures*freqMult;
@@ -12151,7 +12210,7 @@ function genererContratPrestation(){
   const frequence=gv('contratFrequence');
   const tarif=parseFloat(gv('contratTarif'))||0;
   const heures=_parseH(gv('contratHeures'))||0;
-  const tva=(v=>isNaN(v)?10:v)(parseFloat(gv('contratTVA')));
+  const tva=_franchiseTVA()?0:(v=>isNaN(v)?10:v)(parseFloat(gv('contratTVA')));
   const freqMult={'hebdomadaire':4.33,'bihebdomadaire':8.66,'mensuelle':1,'ponctuelle':1}[frequence]||4.33;
   const montantHT=(tarif*heures*freqMult+_lignesContrat.filter(l=>l.type==='produit').reduce((s,l)=>s+(l.qte||0)*(l.prix||0),0));
   const montantTTC=montantHT*(1+tva/100);
@@ -16994,11 +17053,12 @@ function lingeAjouterLigne(pfx,nbLits){
             _needResync = true;
             return Object.assign({}, c, {tva: 0});
           }
-          if (c.typeClient === 'particulier' && tvaN === 0) {
+          // Franchise de TVA : ne jamais changer le type ni remettre 10 % (normaliserClient met 0 %)
+          if (!_franchiseTVA() && c.typeClient === 'particulier' && tvaN === 0) {
             _needResync = true;
             return Object.assign({}, c, {typeClient: 'exonere_0', tva: 0});
           }
-          if (c.typeClient === 'airbnb_particulier' && tvaN === 0) {
+          if (!_franchiseTVA() && c.typeClient === 'airbnb_particulier' && tvaN === 0) {
             _needResync = true;
             return Object.assign({}, c, {tva: 10});
           }
@@ -17228,6 +17288,7 @@ function lingeAjouterLigne(pfx,nbLits){
           _svP('paramIBAN', _mergedP.iban);             _svP('paramBIC', _mergedP.bic);
           _svP('paramNumSAP', _mergedP.numSAP);         _svP('paramAssurance', _mergedP.assurance);
           _svP('paramCommuneDepot', _mergedP.communeDepot);
+          if (typeof _majCaseFranchise === 'function') _majCaseFranchise();
           if(_mergedP.nomSociete){var _sub=document.getElementById('sidebarSub');if(_sub)_sub.textContent=_mergedP.nomSociete;}
         } catch(e) {}
       }
